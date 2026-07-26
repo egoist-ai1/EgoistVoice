@@ -45,13 +45,17 @@ Windows SmartScreen покажет предупреждение: сборка н
 Нужен .NET 8 SDK и [Inno Setup 6](https://jrsoftware.org/isinfo.php).
 
 ```powershell
-dotnet test                                   # 293 теста
-powershell -File .\scripts\release-2.0.ps1     # self-contained сборка в artifacts\release
-powershell -File .\scripts\build-installer-detached.ps1
-powershell -File .\scripts\poll-installer.ps1  # ждёт завершения: сборка идёт ~10 минут
+dotnet test .\Egoist.Voice.sln -c Release      # 293 теста
+powershell -File .\scripts\release-2.0.ps1     # сборка + установщик, ~10 минут
 ```
 
-Скрипт установщика докачивает модели с Hugging Face по закреплённым ревизиям и сверяет SHA-256.
+`release-2.0.ps1` делает всё: self-contained публикацию, докачку моделей с Hugging Face по
+закреплённым ревизиям со сверкой SHA-256 и упаковку в Inno Setup. Результат — в `artifacts\release`
+вместе с файлом `.sha256`.
+
+Если консоль отваливается по таймауту, тот же установщик собирается в фоне:
+`build-installer-detached.ps1` запускает сборку и возвращает управление, `poll-installer.ps1` ждёт
+её завершения.
 
 Модели хранятся в `%LOCALAPPDATA%\EgoistVoice\Models\Speech`, сохраняются при обновлении и полностью удаляются при деинсталляции через Windows. После загрузки аудио и распознанный текст не покидают компьютер. Пакет self-contained: .NET, CPU, Vulkan и CUDA runtime входят в установщик; Python не требуется.
 
