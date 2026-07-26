@@ -20,7 +20,11 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher=EGOIST
-LicenseFile=..\LICENSE
+; LicenseFile здесь задавать НЕЛЬЗЯ. Он вставляет в мастер страницу wpLicense, на которой кнопка
+; «Далее» заблокирована, пока не отмечен переключатель «принимаю условия». Брендовая оболочка
+; прячет и notebook со страницами, и NextButton, поэтому отметить его нечем: установщик намертво
+; замирает на «Подготавливаю установку» с 1%. Тексты лицензий кладутся в {app} через [Files] —
+; MIT требует, чтобы уведомление сопровождало копии, а не чтобы его прокликивали.
 DefaultDirName={localappdata}\Programs\Egoist Voice
 DefaultGroupName=Egoist Voice
 DisableProgramGroupPage=yes
@@ -60,6 +64,8 @@ Source: "..\assets\installer-microphone-52.bmp"; Flags: dontcopy
 Source: "..\assets\installer-text-26.bmp"; Flags: dontcopy
 Source: "..\assets\installer-privacy-26.bmp"; Flags: dontcopy
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
+Source: "..\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ModelSourceDir}\*"; DestDir: "{localappdata}\EgoistVoice\Models"; Flags: ignoreversion recursesubdirs createallsubdirs onlyifdoesntexist
 
 [InstallDelete]
@@ -453,6 +459,18 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
+  // Страница лицензии в брендовой оболочке — тупик: Inno держит NextButton выключенной, пока не
+  // отмечен переключатель «принимаю», а оболочка прячет и переключатель, и саму кнопку. Один раз
+  // это уже стоило зависания на «Подготавливаю установку» с 1%. LicenseFile из [Setup] убран, но
+  // если его вернут — принимаем сами и едем дальше, а не замираем без единого сообщения.
+  if CurPageID = wpLicense then
+  begin
+    WizardForm.LicenseAcceptedRadio.Checked := True;
+    WizardForm.NextButton.Enabled := True;
+    WizardForm.NextButton.OnClick(WizardForm.NextButton);
+    exit;
+  end;
+
   if CurPageID = wpPreparing then
   begin
     IsInstallStarted := True;
