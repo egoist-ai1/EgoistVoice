@@ -1,0 +1,11 @@
+<Application x:Class="Egoist.Voice.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
+        <SolidColorBrush x:Key="TextPrimary" Color="#F7F7F8" />
+        <SolidColorBrush x:Key="TextMuted" Color="#A3A3AA" />
+        <SolidColorBrush x:Key="Accent" Color="#FF2634" />
+        <SolidColorBrush x:Key="Success" Color="#FFFFFF" />
+    </Application.Resources>
+</Application>

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "dotnet-innosetup": {
+      "version": "6.2.1",
+      "commands": [
+        "iscc"
+      ]
+    }
+  }
+}

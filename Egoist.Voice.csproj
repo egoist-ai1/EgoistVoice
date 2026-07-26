@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>assets\EgoistVoice.ico</ApplicationIcon>
+    <!--
+      DPI awareness is declared in app.manifest, not here. ApplicationHighDpiMode only takes
+      effect through ApplicationConfiguration.Initialize(), which a WPF entry point never calls,
+      so this property silently did nothing while the process ran system-DPI-aware.
+    -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!--
+      WFAC010 asks WinForms projects to move DPI configuration out of the manifest. This is a WPF
+      application that only borrows WinForms for the tray icon: there is no
+      ApplicationConfiguration.Initialize() to honour the property, so the manifest is the only
+      declaration that actually reaches the process.
+    -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+    <AssemblyName>Egoist.Voice</AssemblyName>
+    <RootNamespace>Egoist.Voice</RootNamespace>
+    <Version>2.0.0</Version>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
+    <Company>EGOIST</Company>
+    <Product>Egoist Voice</Product>
+    <Description>Быстрая локальная русская диктовка для Windows</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.3.0" />
+    <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.4" />
+    <PackageReference Include="Whisper.net" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime.Cuda" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime.Vulkan" Version="1.9.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+    <EmbeddedResource Remove="tests\**\*" />
+    <None Remove="tests\**\*" />
+  </ItemGroup>
+
+</Project>
