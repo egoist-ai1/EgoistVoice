@@ -12,6 +12,12 @@ public sealed record CorpusEntry(
     [property: JsonPropertyName("tags")] IReadOnlyList<string>? Tags = null)
 {
     /// <summary>Leading path segment of the id, e.g. <c>ru-en-mixed</c> for <c>ru-en-mixed/004</c>.</summary>
+    /// <remarks>
+    /// JsonIgnore обязателен: значение выводится из <see cref="Id"/>, и без этого сериализатор
+    /// дописывал его в reference.jsonl четвёртым полем. Файл вычитывается глазами, а лишнее поле,
+    /// которое к тому же может разойтись с id, — приглашение поправить не то.
+    /// </remarks>
+    [JsonIgnore]
     public string Set
     {
         get

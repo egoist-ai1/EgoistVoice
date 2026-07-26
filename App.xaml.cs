@@ -67,6 +67,13 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        if (e.Args.Length >= 2 && e.Args[0].Equals("--corpus-record", StringComparison.OrdinalIgnoreCase))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            _ = RunCorpusRecorderAsync(e.Args[1]);
+            return;
+        }
+
         if (e.Args.Length >= 3 && e.Args[0].Equals("--stress-benchmark", StringComparison.OrdinalIgnoreCase))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
