@@ -1,9 +1,22 @@
-param(
-    [string]$Version = "2.0.0"
+﻿param(
+    # Пусто — значит взять версию из Egoist.Voice.csproj. Раньше здесь стояло «2.0.0»
+    # литералом, и после подъёма версии в проекте установщик молча продолжал собираться
+    # под старым именем и со старым AppVersion.
+    [string]$Version = ""
 )
 
 $ErrorActionPreference = "Stop"
 $projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $csproj = Join-Path $projectRoot "Egoist.Voice.csproj"
+    $match = [regex]::Match((Get-Content $csproj -Raw), '<Version>([^<]+)</Version>')
+    if (-not $match.Success) {
+        throw "Не удалось прочитать <Version> из $csproj — версия установщика неизвестна."
+    }
+    $Version = $match.Groups[1].Value.Trim()
+    Write-Output "версия из проекта: $Version"
+}
 $releaseRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot "artifacts\release"))
 $staging = [System.IO.Path]::GetFullPath((Join-Path $releaseRoot "installer-staging"))
 $modelStaging = [System.IO.Path]::GetFullPath((Join-Path $releaseRoot "model-staging"))
