@@ -9,7 +9,8 @@
 
 | Область | Владелец | Файлы |
 | --- | --- | --- |
-| Перевод по голосовой команде | сессия Translator | `Services/TranslatorClient.cs`, `Core/TranslateCommandParser.cs`, ветка перевода в `StopAndTranscribeAsync` |
+| Транспорт перевода | сессия Translator | `Services/TranslatorClient.cs`, ветка перевода в `StopAndTranscribeAsync` |
+| Грамматика команды и языки | сессия Voice — передано владельцем 27 июля | `Core/TranslateCommandParser.cs`, `Core/TranslationLanguages.cs` |
 | Корпус и измерение точности | сессия Voice | `Core/CorpusScript.cs`, `Core/CorpusBenchmark.cs`, `App.CorpusRecorder.cs`, `tests/corpus/**` |
 | Установщик и релиз | сессия Voice | `installer/EgoistVoice.iss`, `scripts/release-*.ps1`, GitHub Releases |
 | Иконки и брендинг | сессия Voice | `assets/**` |

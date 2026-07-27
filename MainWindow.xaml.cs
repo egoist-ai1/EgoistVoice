@@ -57,6 +57,9 @@ public partial class MainWindow : Window, IDisposable
     private readonly FeedbackSoundService _sounds = new();
     private readonly CancelKeyWatcher _cancelKey = new();
     private TranscriptPostProcessor _postProcessor = new();
+
+    // Голосовая команда «переведи …»: локальный переводчик EGOIST (HY-MT1.5).
+    private readonly TranslatorClient _translator = new();
     private readonly ActivationSettingsService _activationSettings = new();
     private readonly DispatcherTimer _hideTimer = new();
     private readonly CancellationTokenSource _lifetimeCancellation = new();
@@ -581,6 +584,33 @@ public partial class MainWindow : Window, IDisposable
             {
                 ShowError("Не услышал");
                 return;
+            }
+
+            // Голосовая команда «переведи …» / «… переведи на немецкий»: текст
+            // уходит в локальный переводчик, вставляется уже перевод. При
+            // недоступном переводчике вставляем оригинал без слова-команды —
+            // потерять надиктованное хуже, чем вставить его без перевода.
+            var directive = TranslateCommandParser.TryParse(text);
+            if (directive is not null)
+            {
+                AppLog.Write($"Команда перевода: → {directive.TargetLanguage}, {directive.Payload.Length} симв.");
+                SetProcessingState("Перевожу", null);
+                var translated = await _translator.TranslateAsync(
+                    directive.Payload,
+                    directive.TargetLanguage,
+                    label => Dispatcher.Invoke(() => SetProcessingState(label, null)),
+                    cancellationToken);
+
+                if (translated is not null)
+                {
+                    text = translated;
+                    AppLog.Write($"Перевод готов: {text.Length} симв.");
+                }
+                else
+                {
+                    AppLog.Write("Переводчик недоступен — вставляю оригинал без команды");
+                    text = directive.Payload;
+                }
             }
 
             var deliveryResult = await _delivery.DeliverAsync(text, _targetWindow, cancellationToken);

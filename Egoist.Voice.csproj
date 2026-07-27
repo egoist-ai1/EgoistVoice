@@ -23,9 +23,9 @@
     <NoWarn>$(NoWarn);WFAC010</NoWarn>
     <AssemblyName>Egoist.Voice</AssemblyName>
     <RootNamespace>Egoist.Voice</RootNamespace>
-    <Version>2.0.0</Version>
-    <AssemblyVersion>2.0.0.0</AssemblyVersion>
-    <FileVersion>2.0.0.0</FileVersion>
+    <Version>2.1.0</Version>
+    <AssemblyVersion>2.1.0.0</AssemblyVersion>
+    <FileVersion>2.1.0.0</FileVersion>
     <Company>EGOIST</Company>
     <Product>Egoist Voice</Product>
     <Description>Быстрая локальная русская диктовка для Windows</Description>
@@ -44,6 +44,16 @@
     <Compile Remove="tests\**\*.cs" />
     <EmbeddedResource Remove="tests\**\*" />
     <None Remove="tests\**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Трей грузит иконку из assets\EgoistVoice.ico рядом с исполняемым файлом и лишь при её
+      отсутствии выковыривает встроенную из exe. Без этой копии первая ветка была мёртвой:
+      файла в выходном каталоге не оказывалось никогда.
+    -->
+    <Content Include="assets\EgoistVoice.ico" Link="assets\EgoistVoice.ico"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

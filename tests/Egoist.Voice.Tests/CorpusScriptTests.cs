@@ -149,8 +149,8 @@ public sealed class CorpusScriptTests
 
         Assert.Equal(first, second);
         Assert.Single(
-            second.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                .Where(line => line.Contains("ru-clean/001", StringComparison.Ordinal)));
+            second.Split('\n', StringSplitOptions.RemoveEmptyEntries),
+            line => line.Contains("ru-clean/001", StringComparison.Ordinal));
     }
 
     [Fact]
