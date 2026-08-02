@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "projectKind": "product",
+  "primaryProfile": "development",
+  "supportingProfiles": [],
+  "verificationLevel": "high-risk",
+  "skillOverrides": {
+    "include": [],
+    "exclude": [],
+    "reason": "none"
+  }
+}

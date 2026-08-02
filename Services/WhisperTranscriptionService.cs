@@ -8,7 +8,7 @@ using Whisper.net.Ggml;
 
 namespace Egoist.Voice.Services;
 
-public sealed class WhisperTranscriptionService : ITranscriptionEngine, IUnloadableEngine
+public sealed class WhisperTranscriptionService : ITranscriptionEngine, ISampleTranscriptionService, IUnloadableEngine
 {
     private readonly SemaphoreSlim _factoryLock = new(1, 1);
     private readonly IModelManager _modelManager;
@@ -93,6 +93,37 @@ public sealed class WhisperTranscriptionService : ITranscriptionEngine, IUnloada
         }
     }
 
+    public async Task<TranscriptionResult> TranscribeSamplesAsync(
+        float[] samples,
+        int sampleRate,
+        CancellationToken cancellationToken)
+    {
+        if (sampleRate != 16_000)
+        {
+            throw new ArgumentException($"Ожидается 16000 Гц, получено {sampleRate}.", nameof(sampleRate));
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        await WarmUpAsync(null, cancellationToken).ConfigureAwait(false);
+        await _factoryLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var factory = _factory ?? throw new InvalidOperationException("Модель Whisper не загружена.");
+            using var processor = CreateProcessor(factory, detectLanguage: true);
+            var segments = new List<TranscriptSegment>();
+            await foreach (var segment in processor.ProcessAsync(samples, cancellationToken).ConfigureAwait(false))
+            {
+                segments.Add(new TranscriptSegment(segment.Text, segment.Start, segment.End));
+            }
+            stopwatch.Stop();
+            return new TranscriptionResult(TranscriptFormatter.Format(segments), stopwatch.Elapsed);
+        }
+        finally
+        {
+            _factoryLock.Release();
+        }
+    }
+
     /// <summary>
     /// Whisper is now only reached when the primary engine has already produced Russian and
     /// something in it looks like an English term. The settings follow from that.
@@ -137,6 +168,8 @@ public sealed class WhisperTranscriptionService : ITranscriptionEngine, IUnloada
     /// while still leaving room for the UI and the audio thread.
     /// </summary>
     private static int WhisperThreads => Math.Clamp(Environment.ProcessorCount * 3 / 4, 2, 12);
+
+    internal static int BenchmarkDecodeThreads => WhisperThreads;
 
     private static async Task PrimeRuntimeAsync(
         WhisperFactory factory,

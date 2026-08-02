@@ -60,7 +60,7 @@ public partial class App
         }
         catch (Exception exception)
         {
-            AppLog.Write($"Corpus recorder failed: {exception}");
+            AppLog.Write($"Corpus recorder failed type={exception.GetType().Name}");
             MessageBox.Show(
                 exception.Message,
                 "Egoist Voice", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -77,7 +77,9 @@ public partial class App
     {
         private readonly CorpusScript _script;
         private readonly string _corpusDirectory;
-        private readonly IAudioCaptureService _capture = new AudioCaptureService();
+        // Corpus recording is the one explicit mode allowed to persist WAV. Normal dictation uses
+        // the same WASAPI path but remains memory-only.
+        private readonly IAudioCaptureService _capture = new AudioCaptureService(persistCompletedTake: true);
 
         private readonly TextBlock _setTitle = new() { FontSize = 15, FontWeight = FontWeights.SemiBold };
         private readonly TextBlock _setHint = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap };
@@ -281,7 +283,7 @@ public partial class App
             }
             catch (Exception exception)
             {
-                AppLog.Write($"Corpus recorder capture failed: {exception}");
+                AppLog.Write($"Corpus recorder capture failed type={exception.GetType().Name}");
                 _status.Text = "Микрофон недоступен: " + exception.Message;
                 _status.Foreground = RecorderAccent;
             }
@@ -323,7 +325,8 @@ public partial class App
                 var line = _script.Lines[_index];
                 var target = Path.Combine(_corpusDirectory, line.Audio);
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                File.Move(result.Path, target, overwrite: true);
+                var capturedPath = result.Path ?? throw new InvalidDataException("Запись корпуса не создала WAV-файл.");
+                File.Move(capturedPath, target, overwrite: true);
                 WriteReference();
 
                 _currentSet = line.Set;
@@ -349,7 +352,7 @@ public partial class App
             }
             catch (Exception exception)
             {
-                AppLog.Write($"Corpus recorder save failed: {exception}");
+                AppLog.Write($"Corpus recorder save failed type={exception.GetType().Name}");
                 _status.Foreground = RecorderAccent;
                 _status.Text = "Не удалось сохранить: " + exception.Message;
             }

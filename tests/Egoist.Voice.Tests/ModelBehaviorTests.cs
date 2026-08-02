@@ -29,11 +29,13 @@ public sealed class ModelBehaviorTests
     {
         var models = ModelCatalog.CreateRequiredModels();
 
-        Assert.Equal(5, models.Count);
+        Assert.Equal(6, models.Count);
         Assert.All(models, model => Assert.Equal(ModelKind.Speech, model.Kind));
+        Assert.Equal(5, models.Count(model => !model.Optional));
+        Assert.Equal(ModelCatalog.GigaAmTokenizer, Assert.Single(models, model => model.Optional));
         Assert.Equal(ModelCatalog.GigaAmEncoder.Id, models[0].Id);
         Assert.Contains(ModelCatalog.GigaAmTokens, models);
-        Assert.Equal(ModelCatalog.Whisper.Id, models[^1].Id);
+        Assert.Contains(ModelCatalog.Whisper, models);
     }
 
     [Fact]
@@ -109,6 +111,27 @@ public sealed class ModelBehaviorTests
         Assert.Equal("Whisper", selected.Engine);
         Assert.Contains("NVIDIA", selected.Text);
         Assert.Contains("Google Chrome", selected.Text);
+    }
+
+    [Fact]
+    public void HybridSelectorPrefersExactAiEntitiesWhenTheUtteranceRemainsComparable()
+    {
+        var selected = new MixedLanguageTranscriptSelector().Select(
+            "Антропик выпустила обновление для Клод Код.",
+            "Anthropic выпустила обновление для Claude Code.");
+
+        Assert.Equal("Whisper", selected.Engine);
+        Assert.Equal("Anthropic выпустила обновление для Claude Code.", selected.Text);
+    }
+
+    [Fact]
+    public void OneRecognizedBrandCannotReplaceAnOtherwiseSubstantiallyWorseTranscript()
+    {
+        var selected = new MixedLanguageTranscriptSelector().Select(
+            "Проверь сборку, затем запусти все тесты и отправь подробный результат в рабочий чат.",
+            "Claude Code.");
+
+        Assert.Equal("GigaAM", selected.Engine);
     }
 
     [Fact]

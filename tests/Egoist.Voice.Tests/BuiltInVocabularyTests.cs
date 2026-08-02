@@ -10,7 +10,6 @@ public sealed class BuiltInVocabularyTests
 {
     [Theory]
     [InlineData("Открой гитхаб и посмотри коммиты.", "GitHub")]
-    [InlineData("Запусти кодекс на этой задаче.", "Codex")]
     [InlineData("Спроси у клод код про эту ошибку.", "Claude Code")]
     [InlineData("Я использую клод каждый день.", "Claude")]
     [InlineData("Разверни докер и проверь бэкенд.", "Docker")]
@@ -19,8 +18,52 @@ public sealed class BuiltInVocabularyTests
     [InlineData("Открой вижуал студио код.", "Visual Studio Code")]
     [InlineData("Создай пул реквест.", "pull request")]
     [InlineData("Спроси у джемини.", "Gemini")]
+    [InlineData("Сравни антро пик и дип сик.", "Anthropic")]
+    [InlineData("Макет лежит в фиг ма.", "Figma")]
+    [InlineData("Открой андроид студио.", "Android Studio")]
+    [InlineData("Запусти контр страйк.", "Counter-Strike")]
+    [InlineData("Драйвер эн видиа обновлён.", "NVIDIA")]
     public void Known_terms_are_written_in_latin_out_of_the_box(string spoken, string expected) =>
         Assert.Contains(expected, UserDictionary.BuiltIn.Apply(spoken), StringComparison.Ordinal);
+
+    [Theory]
+    [InlineData("Запусти кодекс на этой задаче.", EntityProfile.Technology, "Codex")]
+    [InlineData("Открой клауд код.", EntityProfile.Technology, "Claude Code")]
+    [InlineData("Открой курсор.", EntityProfile.Technology, "Cursor")]
+    [InlineData("Запусти стим.", EntityProfile.Gaming, "Steam")]
+    public void Ambiguous_entities_require_the_matching_profile(
+        string spoken,
+        EntityProfile profile,
+        string expected) =>
+        Assert.Contains(expected, UserDictionary.BuiltIn.Apply(spoken, profile), StringComparison.Ordinal);
+
+    [Theory]
+    [InlineData("Гражданский кодекс нужно перечитать.")]
+    [InlineData("Поставь курсор в конец строки.")]
+    [InlineData("Нужен стимул продолжать игру.")]
+    [InlineData("Это мета-анализ нескольких работ.")]
+    [InlineData("Google Cloud Code работает с облачным проектом.")]
+    public void Negative_context_blocks_ambiguous_brand_repair_even_in_rich_profile(string text) =>
+        Assert.Equal(text, UserDictionary.BuiltIn.Apply(text, EntityProfile.All));
+
+    [Theory]
+    [InlineData("антро пик", "Anthropic")]
+    [InlineData("к лод код", "Claude Code")]
+    [InlineData("гит хаб", "GitHub")]
+    [InlineData("кубер нетес", "Kubernetes")]
+    [InlineData("эн видиа", "NVIDIA")]
+    [InlineData("клодкод", "Claude Code")]
+    [InlineData("Deapsik", "DeepSeek")]
+    public void Catalog_backed_split_and_join_repairs_are_exact(string split, string expected) =>
+        Assert.Equal(expected, UserDictionary.BuiltIn.Apply(split));
+
+    [Theory]
+    [InlineData("anthropic", "Anthropic")]
+    [InlineData("github", "GitHub")]
+    [InlineData("playstation", "PlayStation")]
+    [InlineData("powershell", "PowerShell")]
+    public void Canonical_latin_casing_is_repaired_without_translation(string input, string expected) =>
+        Assert.Equal(expected, UserDictionary.BuiltIn.Apply(input));
 
     [Fact]
     public void The_pipeline_uses_the_built_in_dictionary_by_default()
@@ -78,7 +121,7 @@ public sealed class BuiltInVocabularyTests
         var dictionary = UserDictionary.Parse(
             """{ "terms": [ { "spoken": ["кодекс"], "written": "кодекс" } ] }""");
 
-        Assert.Equal("Гражданский кодекс.", dictionary.Apply("Гражданский кодекс."));
+        Assert.Equal("Гражданский кодекс.", dictionary.Apply("Гражданский кодекс.", EntityProfile.Technology));
         Assert.Contains("GitHub", dictionary.Apply("открой гитхаб"), StringComparison.Ordinal);
     }
 
@@ -113,7 +156,9 @@ public sealed class BuiltInVocabularyTests
             foreach (var spoken in term.Spoken!)
             {
                 Assert.False(string.IsNullOrWhiteSpace(spoken), $"Пустая форма у «{term.Written}».");
-                Assert.True(spoken.Length >= 3, $"Слишком короткая форма «{spoken}» у «{term.Written}».");
+                Assert.True(
+                    spoken.Length >= 3 || string.Equals(spoken, term.Written, StringComparison.OrdinalIgnoreCase),
+                    $"Слишком короткая форма «{spoken}» у «{term.Written}».");
             }
         }
     }
@@ -129,5 +174,25 @@ public sealed class BuiltInVocabularyTests
             .ToArray();
 
         Assert.True(duplicates.Length == 0, $"Дубли в словаре: {string.Join(", ", duplicates)}");
+    }
+
+    [Fact]
+    public void Versioned_catalog_covers_ai_apps_companies_and_games()
+    {
+        Assert.Equal("2", BuiltInVocabulary.Version);
+        var written = BuiltInVocabulary.Terms
+            .Select(term => term.Written)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var expected = new[]
+        {
+            "Claude Code", "Anthropic", "OpenAI", "ChatGPT", "Gemini", "DeepSeek",
+            "GitHub", "Docker", "Kubernetes", "Visual Studio Code", "Microsoft Teams",
+            "Figma", "Notion", "Cloudflare", "Stripe", "NVIDIA", "AMD", "Intel",
+            "Apple", "Microsoft", "Steam", "Epic Games Store", "PlayStation", "Xbox",
+            "Unreal Engine", "Unity", "Minecraft", "Counter-Strike", "Cyberpunk 2077"
+        };
+
+        Assert.All(expected, entity => Assert.Contains(entity, written));
     }
 }

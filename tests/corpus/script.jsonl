@@ -9,16 +9,17 @@
 //
 // Важно: читайте своим обычным голосом и обычным темпом. Корпус, начитанный «дикторски»,
 // измеряет дикторскую речь, а не вашу, и все выводы из него будут неверными.
-{"kind":"set","set":"ru-en-mixed","title":"Русский с английскими терминами","hint":"Главный набор. Именно здесь ломались «гитхаб» и «клод код». Читайте обычно, не выделяя термины голосом."}
-{"kind":"line","id":"ru-en-mixed/001","text":"Закоммить это и запушь в GitHub, только сначала прогони тесты."}
-{"kind":"line","id":"ru-en-mixed/002","text":"Открой pull request и добавь меня в ревьюеры."}
-{"kind":"line","id":"ru-en-mixed/003","text":"Собери Docker образ и подними его локально."}
-{"kind":"line","id":"ru-en-mixed/004","text":"Claude Code сам разберётся, дай ему доступ к папке проекта."}
-{"kind":"line","id":"ru-en-mixed/005","text":"Скрипт на Python падает на второй итерации, посмотри трейс."}
-{"kind":"line","id":"ru-en-mixed/006","text":"Codex предложил вариант получше, давай возьмём его."}
-{"kind":"line","id":"ru-en-mixed/007","text":"Проверь в гитхабе, там в последнем релизе всё описано."}
-{"kind":"line","id":"ru-en-mixed/008","text":"Я собрал докером, но контейнер не стартует."}
-{"kind":"line","id":"ru-en-mixed/009","text":"Верни JSON с полями айди и статус, больше ничего не надо."}
+{"kind":"schema","version":2,"privacy":"private-local-only"}
+{"kind":"set","set":"ru-en-mixed","title":"Русский с английскими терминами","hint":"Главный набор. Именно здесь ломались Claude Code, Anthropic и другие названия. Читайте обычно, не выделяя термины голосом.","expectedCount":60}
+{"kind":"line","id":"ru-en-mixed/001","text":"Закоммить это и запушь в GitHub, только сначала прогони тесты.","entities":["GitHub"]}
+{"kind":"line","id":"ru-en-mixed/002","text":"Открой pull request и добавь меня в ревьюеры.","entities":["pull request"]}
+{"kind":"line","id":"ru-en-mixed/003","text":"Собери Docker образ и подними его локально.","entities":["Docker"]}
+{"kind":"line","id":"ru-en-mixed/004","text":"Claude Code сам разберётся, дай ему доступ к папке проекта.","entities":["Claude Code"]}
+{"kind":"line","id":"ru-en-mixed/005","text":"Скрипт на Python падает на второй итерации, посмотри трейс.","entities":["Python"]}
+{"kind":"line","id":"ru-en-mixed/006","text":"Codex предложил вариант получше, давай возьмём его.","entities":["Codex"]}
+{"kind":"line","id":"ru-en-mixed/007","text":"Проверь в GitHub, там в последнем релизе всё описано.","entities":["GitHub"]}
+{"kind":"line","id":"ru-en-mixed/008","text":"Я собрал Docker, но контейнер не стартует.","entities":["Docker"]}
+{"kind":"line","id":"ru-en-mixed/009","text":"Верни JSON с полями айди и статус, больше ничего не надо.","entities":["JSON"]}
 {"kind":"line","id":"ru-en-mixed/010","text":"Задеплой на прод после того, как пройдёт линтер."}
 {"kind":"line","id":"ru-en-mixed/011","text":"У меня хромает вёрстка на маленьких экранах."}
 {"kind":"line","id":"ru-en-mixed/012","text":"Искусственный интеллект тут ни при чём, это обычный баг в условии."}
@@ -34,8 +35,43 @@
 {"kind":"line","id":"ru-en-mixed/022","text":"Поменяй эндпоинт и не забудь про обратную совместимость."}
 {"kind":"line","id":"ru-en-mixed/023","text":"Тут нода отвалилась по таймауту, а не по памяти."}
 {"kind":"line","id":"ru-en-mixed/024","text":"Прогони бенчмарк ещё раз, я не верю этим цифрам."}
-{"kind":"line","id":"ru-en-mixed/025","text":"Забери ветку, смёрджи в main и удали её."}
-{"kind":"set","set":"ru-numbers","title":"Числа, даты, версии","hint":"Читайте числа так, как реально произносите, а не по цифрам."}
+{"kind":"line","id":"ru-en-mixed/025","text":"Забери ветку, смёрджи в main и удали её.","entities":["main"]}
+{"kind":"line","id":"ru-en-mixed/026","text":"Anthropic выпустила обновление для Claude и Claude Code.","entities":["Anthropic","Claude","Claude Code"]}
+{"kind":"line","id":"ru-en-mixed/027","text":"Сравни ответы OpenAI, ChatGPT и Gemini на одном запросе.","entities":["OpenAI","ChatGPT","Gemini"]}
+{"kind":"line","id":"ru-en-mixed/028","text":"GitHub Copilot открыл подсказку прямо в Visual Studio Code.","entities":["GitHub Copilot","Visual Studio Code"]}
+{"kind":"line","id":"ru-en-mixed/029","text":"После обновления Windows 11 перезапусти PowerShell от обычного пользователя.","entities":["Windows 11","PowerShell"]}
+{"kind":"line","id":"ru-en-mixed/030","text":"Проект написан на C# и собирается на .NET восемь.","entities":["C#",".NET"]}
+{"kind":"line","id":"ru-en-mixed/031","text":"TypeScript проверяет типы до запуска JavaScript в браузере.","entities":["TypeScript","JavaScript"]}
+{"kind":"line","id":"ru-en-mixed/032","text":"Node.js поднимает API, а React рисует клиентскую часть.","entities":["Node.js","API","React"]}
+{"kind":"line","id":"ru-en-mixed/033","text":"Обнови Next.js и проверь сборку через npm.","entities":["Next.js","npm"]}
+{"kind":"line","id":"ru-en-mixed/034","text":"Docker Compose запускает PostgreSQL, Redis и backend одним файлом.","entities":["Docker Compose","PostgreSQL","Redis"]}
+{"kind":"line","id":"ru-en-mixed/035","text":"Kubernetes перезапустил pod после неудачного health check.","entities":["Kubernetes","pod","health check"]}
+{"kind":"line","id":"ru-en-mixed/036","text":"SQLite подходит для локального режима, а PostgreSQL для сервера.","entities":["SQLite","PostgreSQL"]}
+{"kind":"line","id":"ru-en-mixed/037","text":"Unreal Engine собирает сцену дольше, чем Unity.","entities":["Unreal Engine","Unity"]}
+{"kind":"line","id":"ru-en-mixed/038","text":"Игра доступна в Steam и Epic Games Store.","entities":["Steam","Epic Games Store"]}
+{"kind":"line","id":"ru-en-mixed/039","text":"Драйвер NVIDIA конфликтует с последним обновлением CUDA.","entities":["NVIDIA","CUDA"]}
+{"kind":"line","id":"ru-en-mixed/040","text":"На компьютере стоят процессор AMD и графика Radeon.","entities":["AMD","Radeon"]}
+{"kind":"line","id":"ru-en-mixed/041","text":"Intel выпустила новый драйвер для Arc.","entities":["Intel","Arc"]}
+{"kind":"line","id":"ru-en-mixed/042","text":"Версия для PlayStation работает, а сборка для Xbox падает.","entities":["PlayStation","Xbox"]}
+{"kind":"line","id":"ru-en-mixed/043","text":"Отправь ссылку в Discord и продублируй сообщение в Telegram.","entities":["Discord","Telegram"]}
+{"kind":"line","id":"ru-en-mixed/044","text":"Макет лежит в Figma, а требования записаны в Notion.","entities":["Figma","Notion"]}
+{"kind":"line","id":"ru-en-mixed/045","text":"Microsoft Teams завис во время звонка, поэтому открой Zoom.","entities":["Microsoft Teams","Zoom"]}
+{"kind":"line","id":"ru-en-mixed/046","text":"Slack прислал уведомление из Linear о новом issue.","entities":["Slack","Linear","issue"]}
+{"kind":"line","id":"ru-en-mixed/047","text":"Sentry поймал exception, который не появился в обычных logs.","entities":["Sentry","exception","logs"]}
+{"kind":"line","id":"ru-en-mixed/048","text":"Vercel завершил deploy, но Cloudflare ещё держит старый cache.","entities":["Vercel","Cloudflare","deploy","cache"]}
+{"kind":"line","id":"ru-en-mixed/049","text":"Supabase использует PostgreSQL, а Neon предлагает serverless вариант.","entities":["Supabase","PostgreSQL","Neon","serverless"]}
+{"kind":"line","id":"ru-en-mixed/050","text":"Запрос к Stripe вернул webhook с неверной signature.","entities":["Stripe","webhook","signature"]}
+{"kind":"line","id":"ru-en-mixed/051","text":"Electron упаковал desktop приложение через Vite.","entities":["Electron","desktop","Vite"]}
+{"kind":"line","id":"ru-en-mixed/052","text":"WPF окно использует MVVM и dependency injection.","entities":["WPF","MVVM","dependency injection"]}
+{"kind":"line","id":"ru-en-mixed/053","text":"Android Studio собрала приложение на Kotlin и Jetpack Compose.","entities":["Android Studio","Kotlin","Jetpack Compose"]}
+{"kind":"line","id":"ru-en-mixed/054","text":"Xcode подписал iOS сборку для TestFlight.","entities":["Xcode","iOS","TestFlight"]}
+{"kind":"line","id":"ru-en-mixed/055","text":"В Minecraft сервере сломался plugin после обновления Paper.","entities":["Minecraft","plugin","Paper"]}
+{"kind":"line","id":"ru-en-mixed/056","text":"В Counter-Strike два не работает голосовой chat.","entities":["Counter-Strike","chat"]}
+{"kind":"line","id":"ru-en-mixed/057","text":"Cyberpunk 2077 запускается через GOG Galaxy без overlay.","entities":["Cyberpunk 2077","GOG Galaxy","overlay"]}
+{"kind":"line","id":"ru-en-mixed/058","text":"Blender экспортировал модель, а Photoshop открыл texture.","entities":["Blender","Photoshop","texture"]}
+{"kind":"line","id":"ru-en-mixed/059","text":"OBS Studio пишет экран, а DaVinci Resolve монтирует запись.","entities":["OBS Studio","DaVinci Resolve"]}
+{"kind":"line","id":"ru-en-mixed/060","text":"Проверь README, CHANGELOG и LICENSE перед публикацией package.","entities":["README","CHANGELOG","LICENSE","package"]}
+{"kind":"set","set":"ru-numbers","title":"Числа, даты, версии","hint":"Читайте числа так, как реально произносите, а не по цифрам.","expectedCount":15}
 {"kind":"line","id":"ru-numbers/001","text":"Встреча двадцать пятого июля в пятнадцать тридцать."}
 {"kind":"line","id":"ru-numbers/002","text":"Версия два ноль вышла вчера вечером."}
 {"kind":"line","id":"ru-numbers/003","text":"Установщик весит примерно один и две десятых гигабайта."}
@@ -51,7 +87,7 @@
 {"kind":"line","id":"ru-numbers/013","text":"Собрание перенесли с четверга на понедельник, на девять утра."}
 {"kind":"line","id":"ru-numbers/014","text":"Ноль целых пять десятых секунды задержки — это уже заметно."}
 {"kind":"line","id":"ru-numbers/015","text":"Одиннадцать из двенадцати пунктов закрыты."}
-{"kind":"set","set":"ru-clean","title":"Обычная речь","hint":"Тихая комната, обычный темп. Никаких терминов — базовая линия."}
+{"kind":"set","set":"ru-clean","title":"Обычная речь","hint":"Тихая комната, обычный темп. Никаких терминов — базовая линия.","expectedCount":20}
 {"kind":"line","id":"ru-clean/001","text":"Проверь пожалуйста последний отчёт и пришли его мне до вечера."}
 {"kind":"line","id":"ru-clean/002","text":"Я думаю, тут проще всё переделать, чем чинить по кускам."}
 {"kind":"line","id":"ru-clean/003","text":"Давай обсудим это завтра, сегодня у меня уже голова не варит."}
@@ -72,18 +108,18 @@
 {"kind":"line","id":"ru-clean/018","text":"Перечитай внимательно, там ошибка прямо во втором абзаце."}
 {"kind":"line","id":"ru-clean/019","text":"Мне нужно, чтобы это работало быстро и без лишних вопросов."}
 {"kind":"line","id":"ru-clean/020","text":"Ну хорошо, давай попробуем твой вариант."}
-{"kind":"set","set":"ru-commands","title":"Голосовые команды","hint":"Произносите команды слитно с фразой, как в обычной диктовке."}
-{"kind":"line","id":"ru-commands/001","text":"Привет новая строка сегодня разберём два вопроса"}
-{"kind":"line","id":"ru-commands/002","text":"Итак запятая начнём с самого простого точка"}
-{"kind":"line","id":"ru-commands/003","text":"Первое открыть скобку и самое важное закрыть скобку это сроки"}
-{"kind":"line","id":"ru-commands/004","text":"Пиши так двоеточие новая строка проверить логи"}
-{"kind":"line","id":"ru-commands/005","text":"Он сказал кавычки сделаю завтра кавычки и пропал"}
-{"kind":"line","id":"ru-commands/006","text":"Подожди тире это вообще не то что я просил"}
-{"kind":"line","id":"ru-commands/007","text":"Новый абзац теперь по второму пункту"}
-{"kind":"line","id":"ru-commands/008","text":"Ты уверен вопросительный знак я вот совсем нет"}
-{"kind":"line","id":"ru-commands/009","text":"Отлично восклицательный знак наконец-то заработало"}
-{"kind":"line","id":"ru-commands/010","text":"Список новая строка первое тесты новая строка второе сборка"}
-{"kind":"set","set":"ru-fast","title":"Быстрая речь","hint":"Те же по смыслу фразы, но проговаривайте заметно быстрее обычного — так, как говорите, когда торопитесь."}
+{"kind":"set","set":"ru-commands","title":"Голосовые команды","hint":"Произносите команды слитно с фразой, как в обычной диктовке.","expectedCount":10}
+{"kind":"line","id":"ru-commands/001","text":"Привет новая строка сегодня разберём два вопроса","expected":"Привет\nсегодня разберём два вопроса"}
+{"kind":"line","id":"ru-commands/002","text":"Итак запятая начнём с самого простого точка","expected":"Итак, начнём с самого простого."}
+{"kind":"line","id":"ru-commands/003","text":"Первое открыть скобку и самое важное закрыть скобку это сроки","expected":"Первое (и самое важное) это сроки"}
+{"kind":"line","id":"ru-commands/004","text":"Пиши так двоеточие новая строка проверить логи","expected":"Пиши так:\nпроверить логи"}
+{"kind":"line","id":"ru-commands/005","text":"Он сказал кавычки сделаю завтра кавычки и пропал","expected":"Он сказал «сделаю завтра» и пропал"}
+{"kind":"line","id":"ru-commands/006","text":"Подожди тире это вообще не то что я просил","expected":"Подожди — это вообще не то что я просил"}
+{"kind":"line","id":"ru-commands/007","text":"Новый абзац теперь по второму пункту","expected":"\n\nТеперь по второму пункту"}
+{"kind":"line","id":"ru-commands/008","text":"Ты уверен вопросительный знак я вот совсем нет","expected":"Ты уверен? Я вот совсем нет"}
+{"kind":"line","id":"ru-commands/009","text":"Отлично восклицательный знак наконец-то заработало","expected":"Отлично! Наконец-то заработало"}
+{"kind":"line","id":"ru-commands/010","text":"Список новая строка первое тесты новая строка второе сборка","expected":"Список\nпервое тесты\nвторое сборка"}
+{"kind":"set","set":"ru-fast","title":"Быстрая речь","hint":"Те же по смыслу фразы, но проговаривайте заметно быстрее обычного — так, как говорите, когда торопитесь.","expectedCount":15}
 {"kind":"line","id":"ru-fast/001","text":"Короче собери сборку и скинь мне ссылку, я потом посмотрю."}
 {"kind":"line","id":"ru-fast/002","text":"Да не надо ничего переделывать, оставь как есть."}
 {"kind":"line","id":"ru-fast/003","text":"Слушай а давай просто откатим и разберёмся завтра на свежую голову."}
@@ -99,7 +135,7 @@
 {"kind":"line","id":"ru-fast/013","text":"Скинь конфиг, я у себя тоже воспроизведу."}
 {"kind":"line","id":"ru-fast/014","text":"Нет ну это уже перебор, столько времени на одну кнопку."}
 {"kind":"line","id":"ru-fast/015","text":"Ладно понял, тогда закрываем на этом и идём дальше."}
-{"kind":"set","set":"ru-noisy","title":"С фоном","hint":"Включите тот фон, при котором реально диктуете: клавиатура, вентилятор, музыка, разговор в комнате. Не создавайте искусственный шум — нужен ваш обычный."}
+{"kind":"set","set":"ru-noisy","title":"С фоном","hint":"Включите тот фон, при котором реально диктуете: клавиатура, вентилятор, музыка, разговор в комнате. Не создавайте искусственный шум — нужен ваш обычный.","expectedCount":15}
 {"kind":"line","id":"ru-noisy/001","text":"Поставь на паузу, я сейчас отвечу и вернёмся."}
 {"kind":"line","id":"ru-noisy/002","text":"Запиши это куда-нибудь, чтобы не потерялось."}
 {"kind":"line","id":"ru-noisy/003","text":"Мне кажется тут что-то не так с настройками звука."}
@@ -115,7 +151,224 @@
 {"kind":"line","id":"ru-noisy/013","text":"Отчёт за июль готов, отправляю прямо сейчас."}
 {"kind":"line","id":"ru-noisy/014","text":"Мы это уже обсуждали, решение было принято."}
 {"kind":"line","id":"ru-noisy/015","text":"Оставь как есть, потом вернёмся если понадобится."}
-{"kind":"set","set":"ru-longform","title":"Длинные записи","hint":"Одна запись — от минуты до трёх. Здесь проверяется склейка фрагментов на стыках. Читайте абзац целиком, не останавливаясь."}
+{"kind":"set","set":"ru-longform","title":"Длинные записи","hint":"Одна запись — от минуты до трёх. Здесь проверяется склейка, пунктуация и абзацы. Делайте естественные длинные паузы между смысловыми абзацами.","expectedCount":5}
 {"kind":"line","id":"ru-longform/001","text":"Смотри, у меня есть проект локальной диктовки под Windows, и я хочу разобраться, куда его двигать дальше. Сейчас всё работает так: я зажимаю боковую кнопку мыши, говорю, отпускаю, и текст оказывается в том поле, где стоит курсор. Основной движок распознаёт русский, а второй подключается только тогда, когда в тексте появляются английские термины. Мне нравится, что ничего не уходит в облако, но я не уверен, что выжал из этого максимум. Хочется понять, где сейчас реальные потери точности: в самой модели, в настройках, или в том, как я говорю. И ещё отдельный вопрос про интерфейс — капсула выглядит хорошо, но я до сих пор не решил, должна ли она показывать больше информации или наоборот меньше."}
 {"kind":"line","id":"ru-longform/002","text":"Давай я объясню, как я обычно работаю в течение дня. С утра я открываю задачи и смотрю, что осталось со вчера, потому что почти всегда что-то остаётся. Дальше я стараюсь сначала закрыть мелочи, которые висят и раздражают, и только потом браться за что-то большое. Проблема в том, что мелочи имеют свойство разрастаться: начинаешь править одну строчку, а через час переписываешь целый модуль. Поэтому я стал заводить правило — если правка занимает больше получаса, она перестаёт быть мелочью и уходит в отдельную задачу. Это помогает, но не всегда, потому что оценить заранее почти невозможно. Ещё я заметил, что диктовать задачи голосом гораздо быстрее, чем набирать, особенно когда мысль длинная и её надо записать целиком, пока не забыл."}
 {"kind":"line","id":"ru-longform/003","text":"Расскажу, что меня раздражает в большинстве похожих программ. Первое — они почти все требуют интернет, и это сразу отсекает половину сценариев, потому что диктовать хочется в том числе там, где сети нет или где я не хочу ничего никуда отправлять. Второе — русский язык у них почти всегда сделан по остаточному принципу: работает, но заметно хуже английского, и особенно плохо с техническими терминами. Ты говоришь название инструмента, а оно приезжает кириллицей и выглядит нелепо. Третье — интерфейс. Либо огромное окно на пол-экрана, либо вообще ничего не видно и непонятно, идёт запись или нет. Мне нужно что-то маленькое, которое появляется на время диктовки и само исчезает, не требуя от меня ни одного лишнего действия."}
+{"kind":"line","id":"ru-longform/004","text":"Сегодня я хочу спокойно проверить весь путь от нажатия кнопки до появления текста. Сначала важно убедиться, что микрофон начинает слушать достаточно рано и не съедает первый тихий звук. Потом надо посмотреть на окончание фразы: я часто отпускаю кнопку сразу после последнего слова, и приложение не должно терять мягкий согласный или короткое окончание. Следующий слой — распознавание. Русская часть обычно получается приемлемо, но названия компаний и инструментов иногда распадаются на несколько слов или приезжают кириллицей. После этого остаётся пунктуация: запятых не должно быть слишком много, а длинная мысль должна делиться на понятные абзацы только там, где я действительно сделал паузу. В конце я хочу увидеть честный отчёт с цифрами, а не субъективное ощущение, что стало лучше."}
+{"kind":"line","id":"ru-longform/005","text":"Представим обычное рабочее сообщение. Сначала я кратко объясняю контекст задачи и называю проект, над которым сейчас работаю. Затем перечисляю, что уже проверено: сборка проходит, тесты зелёные, установщик запускается, но на реальном микрофоне остаются ошибки. После длинной паузы я перехожу к следующему абзацу и формулирую требования. Нужно точно распознавать русский язык, сохранять английские названия вроде Claude Code и Anthropic, не разрывать слова и не придумывать лишние знаки препинания. Ещё одна пауза отделяет финальный вывод. Изменение можно считать готовым только после повторяемого теста, сравнения с исходной версией и проверки на чистой системе. Если хотя бы один обязательный этап не пройден, результат остаётся кандидатом, а не финальным релизом."}
+{"kind":"set","set":"ru-quiet-phonetics","title":"Тихая речь, шипящие и мягкие звуки","hint":"Говорите заметно тише обычного, но естественно. Не шепчите без голоса: нужны реальные тихие окончания, шипящие и мягкие согласные.","expectedCount":30}
+{"kind":"line","id":"ru-quiet-phonetics/001","text":"Тише, пожалуйста, малыш уже спит."}
+{"kind":"line","id":"ru-quiet-phonetics/002","text":"Щёлкни выключателем и закрой дверь."}
+{"kind":"line","id":"ru-quiet-phonetics/003","text":"Мягкий свет едва заметен вечером."}
+{"kind":"line","id":"ru-quiet-phonetics/004","text":"Слышишь, дождь шуршит по крыше?"}
+{"kind":"line","id":"ru-quiet-phonetics/005","text":"Чуть позже пришлю окончательный ответ."}
+{"kind":"line","id":"ru-quiet-phonetics/006","text":"Жёлтый лист бесшумно лёг на землю."}
+{"kind":"line","id":"ru-quiet-phonetics/007","text":"Цель почти достигнута, осталось немного."}
+{"kind":"line","id":"ru-quiet-phonetics/008","text":"Ночь была тёплой и совершенно тихой."}
+{"kind":"line","id":"ru-quiet-phonetics/009","text":"Пусть запись закончится мягким знаком."}
+{"kind":"line","id":"ru-quiet-phonetics/010","text":"Свежий чай ещё чуть-чуть горячий."}
+{"kind":"line","id":"ru-quiet-phonetics/011","text":"Шесть щенков спрятались под скамьёй."}
+{"kind":"line","id":"ru-quiet-phonetics/012","text":"Беречь чужую тишину совсем не сложно."}
+{"kind":"line","id":"ru-quiet-phonetics/013","text":"Ключ лежит рядом с маленькой чашкой."}
+{"kind":"line","id":"ru-quiet-phonetics/014","text":"Сядь ближе, здесь почти ничего не слышно."}
+{"kind":"line","id":"ru-quiet-phonetics/015","text":"Мышь скользнула за шкаф и исчезла."}
+{"kind":"line","id":"ru-quiet-phonetics/016","text":"Ещё один штрих сделает рисунок точнее."}
+{"kind":"line","id":"ru-quiet-phonetics/017","text":"Дочь тихонько закрыла тонкую тетрадь."}
+{"kind":"line","id":"ru-quiet-phonetics/018","text":"Вещь кажется простой, но сделана тщательно."}
+{"kind":"line","id":"ru-quiet-phonetics/019","text":"Письмо пришло поздним воскресным вечером."}
+{"kind":"line","id":"ru-quiet-phonetics/020","text":"Режь осторожнее, нож очень острый."}
+{"kind":"line","id":"ru-quiet-phonetics/021","text":"Серёжка блестит на мягкой подушке."}
+{"kind":"line","id":"ru-quiet-phonetics/022","text":"Почти неслышный голос дрожал от волнения."}
+{"kind":"line","id":"ru-quiet-phonetics/023","text":"Лишь лёгкий ветер шевелит занавеску."}
+{"kind":"line","id":"ru-quiet-phonetics/024","text":"Тень медленно исчезает в дальней комнате."}
+{"kind":"line","id":"ru-quiet-phonetics/025","text":"Съешь ещё кусочек свежей груши."}
+{"kind":"line","id":"ru-quiet-phonetics/026","text":"Будь внимательнее к каждому окончанию."}
+{"kind":"line","id":"ru-quiet-phonetics/027","text":"Здесь слышен только тихий шелест страниц."}
+{"kind":"line","id":"ru-quiet-phonetics/028","text":"Мелочь может сильно изменить значение."}
+{"kind":"line","id":"ru-quiet-phonetics/029","text":"Печь ещё тёплая, не прикасайся."}
+{"kind":"line","id":"ru-quiet-phonetics/030","text":"Помощь пришла именно в нужный момент."}
+{"kind":"set","set":"boundary-start","title":"Первые звуки и слова","hint":"Нажмите пробел и начинайте говорить сразу, как в обычной работе. Не оставляйте специальную паузу после нажатия.","expectedCount":30}
+{"kind":"line","id":"boundary-start/001","text":"Шёпот слышен даже из соседней комнаты.","boundary":"start","boundaryTarget":"Шёпот"}
+{"kind":"line","id":"boundary-start/002","text":"Щётка лежит на верхней полке.","boundary":"start","boundaryTarget":"Щётка"}
+{"kind":"line","id":"boundary-start/003","text":"Честно говоря, результат меня удивил.","boundary":"start","boundaryTarget":"Честно говоря"}
+{"kind":"line","id":"boundary-start/004","text":"Ждать больше нет никакого смысла.","boundary":"start","boundaryTarget":"Ждать"}
+{"kind":"line","id":"boundary-start/005","text":"Сейчас начнётся самая важная часть.","boundary":"start","boundaryTarget":"Сейчас"}
+{"kind":"line","id":"boundary-start/006","text":"Мягкий голос прозвучал совсем рядом.","boundary":"start","boundaryTarget":"Мягкий голос"}
+{"kind":"line","id":"boundary-start/007","text":"Вчера обновление установилось без ошибок.","boundary":"start","boundaryTarget":"Вчера"}
+{"kind":"line","id":"boundary-start/008","text":"Кстати, я уже проверил эту гипотезу.","boundary":"start","boundaryTarget":"Кстати"}
+{"kind":"line","id":"boundary-start/009","text":"Пожалуйста, сохрани исходную версию файла.","boundary":"start","boundaryTarget":"Пожалуйста"}
+{"kind":"line","id":"boundary-start/010","text":"Тихо включился вентилятор компьютера.","boundary":"start","boundaryTarget":"Тихо"}
+{"kind":"line","id":"boundary-start/011","text":"Быстро открой журнал последних событий.","boundary":"start","boundaryTarget":"Быстро"}
+{"kind":"line","id":"boundary-start/012","text":"Где-то потерялось первое короткое слово.","boundary":"start","boundaryTarget":"Где-то"}
+{"kind":"line","id":"boundary-start/013","text":"Ещё раз проверь начало этой записи.","boundary":"start","boundaryTarget":"Ещё раз"}
+{"kind":"line","id":"boundary-start/014","text":"Именно здесь раньше пропадал первый звук.","boundary":"start","boundaryTarget":"Именно здесь"}
+{"kind":"line","id":"boundary-start/015","text":"Нужно сохранить даже тихое вступление.","boundary":"start","boundaryTarget":"Нужно"}
+{"kind":"line","id":"boundary-start/016","text":"Фраза начинается сразу после нажатия.","boundary":"start","boundaryTarget":"Фраза"}
+{"kind":"line","id":"boundary-start/017","text":"Целый день приложение работало стабильно.","boundary":"start","boundaryTarget":"Целый день"}
+{"kind":"line","id":"boundary-start/018","text":"Лёгкий щелчок не должен считаться речью.","boundary":"start","boundaryTarget":"Лёгкий щелчок"}
+{"kind":"line","id":"boundary-start/019","text":"Рядом кто-то очень тихо разговаривает.","boundary":"start","boundaryTarget":"Рядом"}
+{"kind":"line","id":"boundary-start/020","text":"Дальше идёт обычное длинное предложение.","boundary":"start","boundaryTarget":"Дальше"}
+{"kind":"line","id":"boundary-start/021","text":"Обычно я начинаю говорить без задержки.","boundary":"start","boundaryTarget":"Обычно"}
+{"kind":"line","id":"boundary-start/022","text":"Юрий первым заметил эту ошибку.","boundary":"start","boundaryTarget":"Юрий"}
+{"kind":"line","id":"boundary-start/023","text":"Ясный ответ появился только вечером.","boundary":"start","boundaryTarget":"Ясный ответ"}
+{"kind":"line","id":"boundary-start/024","text":"Хорошо, теперь повторим тот же сценарий.","boundary":"start","boundaryTarget":"Хорошо"}
+{"kind":"line","id":"boundary-start/025","text":"Здесь начинается проверка звонких согласных.","boundary":"start","boundaryTarget":"Здесь"}
+{"kind":"line","id":"boundary-start/026","text":"Сперва запишем короткую спокойную фразу.","boundary":"start","boundaryTarget":"Сперва"}
+{"kind":"line","id":"boundary-start/027","text":"Двести тестов уже завершились успешно.","boundary":"start","boundaryTarget":"Двести"}
+{"kind":"line","id":"boundary-start/028","text":"Обновление готово к повторной проверке.","boundary":"start","boundaryTarget":"Обновление"}
+{"kind":"line","id":"boundary-start/029","text":"Прямо сейчас начинается новая запись.","boundary":"start","boundaryTarget":"Прямо сейчас"}
+{"kind":"line","id":"boundary-start/030","text":"Claude Code правильно написан с первого слова.","entities":["Claude Code"],"boundary":"start","boundaryTarget":"Claude Code"}
+{"kind":"set","set":"boundary-end","title":"Окончания и последние звуки","hint":"Отпускайте пробел сразу после последнего звука, не оставляя специальной тишины. Последнее слово должно сохраниться целиком.","expectedCount":30}
+{"kind":"line","id":"boundary-end/001","text":"Проверка закончилась словом тишь.","boundary":"end","boundaryTarget":"тишь"}
+{"kind":"line","id":"boundary-end/002","text":"Оставь этот параметр включённым.","boundary":"end","boundaryTarget":"включённым"}
+{"kind":"line","id":"boundary-end/003","text":"Сообщение должно завершиться мягко.","boundary":"end","boundaryTarget":"мягко"}
+{"kind":"line","id":"boundary-end/004","text":"Я пришлю окончательный результат позже.","boundary":"end","boundaryTarget":"позже"}
+{"kind":"line","id":"boundary-end/005","text":"Последний символ здесь вопросительный знак.","boundary":"end","boundaryTarget":"знак"}
+{"kind":"line","id":"boundary-end/006","text":"Никого больше не осталось внутри.","boundary":"end","boundaryTarget":"внутри"}
+{"kind":"line","id":"boundary-end/007","text":"Сохрани короткое окончание в слове говорить.","boundary":"end","boundaryTarget":"говорить"}
+{"kind":"line","id":"boundary-end/008","text":"Сегодня тест прошёл особенно успешно.","boundary":"end","boundaryTarget":"успешно"}
+{"kind":"line","id":"boundary-end/009","text":"Тихий голос постепенно стал неслышен.","boundary":"end","boundaryTarget":"неслышен"}
+{"kind":"line","id":"boundary-end/010","text":"Запись обрывалась на слове помощь.","boundary":"end","boundaryTarget":"помощь"}
+{"kind":"line","id":"boundary-end/011","text":"Окно закрылось точно в девять.","boundary":"end","boundaryTarget":"девять"}
+{"kind":"line","id":"boundary-end/012","text":"Сейчас произнесу самое короткое да.","boundary":"end","boundaryTarget":"да"}
+{"kind":"line","id":"boundary-end/013","text":"Не потеряй отрицание в конце нет.","boundary":"end","boundaryTarget":"нет"}
+{"kind":"line","id":"boundary-end/014","text":"Маленький щенок спрятался под кровать.","boundary":"end","boundaryTarget":"кровать"}
+{"kind":"line","id":"boundary-end/015","text":"Этот файл нужно обязательно сохранить.","boundary":"end","boundaryTarget":"сохранить"}
+{"kind":"line","id":"boundary-end/016","text":"Текст завершается названием Anthropic.","entities":["Anthropic"],"boundary":"end","boundaryTarget":"Anthropic"}
+{"kind":"line","id":"boundary-end/017","text":"Команда должна закончиться словами Claude Code.","entities":["Claude Code"],"boundary":"end","boundaryTarget":"Claude Code"}
+{"kind":"line","id":"boundary-end/018","text":"Версия приложения сейчас два один ноль.","boundary":"end","boundaryTarget":"два один ноль"}
+{"kind":"line","id":"boundary-end/019","text":"Нужно расслышать каждое тихое окончание.","boundary":"end","boundaryTarget":"окончание"}
+{"kind":"line","id":"boundary-end/020","text":"Мы вернёмся к этой задаче завтра.","boundary":"end","boundaryTarget":"завтра"}
+{"kind":"line","id":"boundary-end/021","text":"Пусть последним словом будет щёлочь.","boundary":"end","boundaryTarget":"щёлочь"}
+{"kind":"line","id":"boundary-end/022","text":"В отчёте не должно быть личных данных.","boundary":"end","boundaryTarget":"данных"}
+{"kind":"line","id":"boundary-end/023","text":"Проверка завершится после слова семь.","boundary":"end","boundaryTarget":"семь"}
+{"kind":"line","id":"boundary-end/024","text":"Лишнюю паузу добавлять совсем не нужно.","boundary":"end","boundaryTarget":"не нужно"}
+{"kind":"line","id":"boundary-end/025","text":"Последний шипящий звук здесь ж.","boundary":"end","boundaryTarget":"ж"}
+{"kind":"line","id":"boundary-end/026","text":"Я отпускаю кнопку сразу после слова речь.","boundary":"end","boundaryTarget":"речь"}
+{"kind":"line","id":"boundary-end/027","text":"Не обрезай краткое слово вдруг.","boundary":"end","boundaryTarget":"вдруг"}
+{"kind":"line","id":"boundary-end/028","text":"Финальная фраза звучит очень тихо.","boundary":"end","boundaryTarget":"тихо"}
+{"kind":"line","id":"boundary-end/029","text":"Работа с микрофоном должна быть стабильной.","boundary":"end","boundaryTarget":"стабильной"}
+{"kind":"line","id":"boundary-end/030","text":"На этом проверка окончаний полностью завершена.","boundary":"end","boundaryTarget":"завершена"}
+{"kind":"set","set":"translate-positive","title":"Команды перевода — должны сработать","hint":"Произносите всю команду и текст одним обычным высказыванием. Эти сорок примеров обязаны распознаться как перевод.","expectedCount":40}
+{"kind":"line","id":"translate-positive/001","text":"Переведи на английский: привет, как твои дела?","translationCommand":true}
+{"kind":"line","id":"translate-positive/002","text":"Переведи на английский это сообщение для команды.","translationCommand":true}
+{"kind":"line","id":"translate-positive/003","text":"Переведи, пожалуйста, на английский: сборка уже готова.","translationCommand":true}
+{"kind":"line","id":"translate-positive/004","text":"Переведи вот это всё на английский: тесты прошли без ошибок.","translationCommand":true}
+{"kind":"line","id":"translate-positive/005","text":"Переведи следующую фразу на английский: я вернусь через час.","translationCommand":true}
+{"kind":"line","id":"translate-positive/006","text":"Переведи мне на английский сообщение о новой версии.","translationCommand":true}
+{"kind":"line","id":"translate-positive/007","text":"Переведи на немецкий: встреча переносится на завтра.","translationCommand":true}
+{"kind":"line","id":"translate-positive/008","text":"Переведи на французский: спасибо за быструю помощь.","translationCommand":true}
+{"kind":"line","id":"translate-positive/009","text":"Переведи на испанский: приложение работает полностью офлайн.","translationCommand":true}
+{"kind":"line","id":"translate-positive/010","text":"Переведи на китайский: обновление будет доступно вечером.","translationCommand":true}
+{"kind":"line","id":"translate-positive/011","text":"Переведи на японский: сохраните файл перед закрытием.","translationCommand":true}
+{"kind":"line","id":"translate-positive/012","text":"Переведите на английский: мы закончили проверку установщика.","translationCommand":true}
+{"kind":"line","id":"translate-positive/013","text":"Переведите, пожалуйста, этот абзац на английский: результат подтверждён тестами.","translationCommand":true}
+{"kind":"line","id":"translate-positive/014","text":"Переводи на английский: сегодня обсуждаем локальный движок.","translationCommand":true}
+{"kind":"line","id":"translate-positive/015","text":"Переводите на английский: сначала проверьте исходный текст.","translationCommand":true}
+{"kind":"line","id":"translate-positive/016","text":"Сборка уже готова, переведи это на английский.","translationCommand":true}
+{"kind":"line","id":"translate-positive/017","text":"Я отвечу после обеда, переведи на английский.","translationCommand":true}
+{"kind":"line","id":"translate-positive/018","text":"Проверка завершилась успешно; переведи всё на английский.","translationCommand":true}
+{"kind":"line","id":"translate-positive/019","text":"Никаких ошибок больше нет — переведи сообщение на английский.","translationCommand":true}
+{"kind":"line","id":"translate-positive/020","text":"Мы выпустим обновление завтра. Переведи это на английский.","translationCommand":true}
+{"kind":"line","id":"translate-positive/021","text":"Claude Code исправил тесты, переведи это на английский.","entities":["Claude Code"],"translationCommand":true}
+{"kind":"line","id":"translate-positive/022","text":"Anthropic опубликовала отчёт, переведи фразу на английский.","entities":["Anthropic"],"translationCommand":true}
+{"kind":"line","id":"translate-positive/023","text":"OpenAI обновила документацию, переведи сообщение на русский.","entities":["OpenAI"],"translationCommand":true}
+{"kind":"line","id":"translate-positive/024","text":"The build is ready, переведи это на русский.","entities":["build"],"translationCommand":true}
+{"kind":"line","id":"translate-positive/025","text":"Please restart the application, переведи на русский.","entities":["application"],"translationCommand":true}
+{"kind":"line","id":"translate-positive/026","text":"Переведи-ка на английский: тихая запись тоже должна работать.","translationCommand":true}
+{"kind":"line","id":"translate-positive/027","text":"Переведи-ка вот эту фразу на английский: начало не потерялось.","translationCommand":true}
+{"kind":"line","id":"translate-positive/028","text":"Переведи срочно на английский: сервер временно недоступен.","translationCommand":true}
+{"kind":"line","id":"translate-positive/029","text":"Переведи сейчас на английский: я уже отправил исправление.","translationCommand":true}
+{"kind":"line","id":"translate-positive/030","text":"Переведи то, что я сказал, на английский: всё работает стабильно.","translationCommand":true}
+{"kind":"line","id":"translate-positive/031","text":"Переведи всё, что я надиктовал, на английский: никаких облачных сервисов.","translationCommand":true}
+{"kind":"line","id":"translate-positive/032","text":"Переведи этот текст на английский: первая строка готова.","translationCommand":true}
+{"kind":"line","id":"translate-positive/033","text":"Переведи абзац на английский: дальше будет список изменений.","translationCommand":true}
+{"kind":"line","id":"translate-positive/034","text":"Переведи сообщение на немецкий: встреча начнётся в девять.","translationCommand":true}
+{"kind":"line","id":"translate-positive/035","text":"Переведи фразу на французский: увидимся на следующей неделе.","translationCommand":true}
+{"kind":"line","id":"translate-positive/036","text":"Текст проверен, переведи его на испанский.","translationCommand":true}
+{"kind":"line","id":"translate-positive/037","text":"Ответ должен быть коротким, переведи это на английский язык.","translationCommand":true}
+{"kind":"line","id":"translate-positive/038","text":"Переведи по-английски: я получил ваше сообщение.","translationCommand":true}
+{"kind":"line","id":"translate-positive/039","text":"Переведите по-английски: проблема уже устранена.","translationCommand":true}
+{"kind":"line","id":"translate-positive/040","text":"Готово, переведи всё, пожалуйста, на английский.","translationCommand":true}
+{"kind":"set","set":"translate-negative","title":"Команды перевода — не должны сработать","hint":"Читайте как обычный текст. Здесь слово «перевод» или цитата команды не означает просьбу запускать движок.","expectedCount":80}
+{"kind":"line","id":"translate-negative/001","text":"Перевод документа занял почти весь вечер.","translationCommand":false}
+{"kind":"line","id":"translate-negative/002","text":"Я закончил перевод и отправил результат редактору.","translationCommand":false}
+{"kind":"line","id":"translate-negative/003","text":"Он перевёл сообщение вчера утром.","translationCommand":false}
+{"kind":"line","id":"translate-negative/004","text":"Она перевела инструкцию без единой ошибки.","translationCommand":false}
+{"kind":"line","id":"translate-negative/005","text":"Мы переведём этот текст после согласования.","translationCommand":false}
+{"kind":"line","id":"translate-negative/006","text":"Ты переведёшь файл, когда появится время.","translationCommand":false}
+{"kind":"line","id":"translate-negative/007","text":"Нужно перевести договор до пятницы.","translationCommand":false}
+{"kind":"line","id":"translate-negative/008","text":"Перевести такую игру слов почти невозможно.","translationCommand":false}
+{"kind":"line","id":"translate-negative/009","text":"Переводить названия компаний обычно не следует.","translationCommand":false}
+{"kind":"line","id":"translate-negative/010","text":"Я не собираюсь переводить этот абзац повторно.","translationCommand":false}
+{"kind":"line","id":"translate-negative/011","text":"Хороший перевод сохраняет исходный смысл.","translationCommand":false}
+{"kind":"line","id":"translate-negative/012","text":"Автоматический перевод иногда меняет форматирование.","translationCommand":false}
+{"kind":"line","id":"translate-negative/013","text":"Для перевода потребуется отдельный словарь терминов.","translationCommand":false}
+{"kind":"line","id":"translate-negative/014","text":"Качество перевода проверяет человек.","translationCommand":false}
+{"kind":"line","id":"translate-negative/015","text":"Этот перевод оказался точнее предыдущего.","translationCommand":false}
+{"kind":"line","id":"translate-negative/016","text":"После перевода разметка осталась на месте.","translationCommand":false}
+{"kind":"line","id":"translate-negative/017","text":"Перед переводом сохрани исходную версию.","translationCommand":false}
+{"kind":"line","id":"translate-negative/018","text":"Без перевода смысл всё равно понятен.","translationCommand":false}
+{"kind":"line","id":"translate-negative/019","text":"В разделе про перевод есть важное замечание.","translationCommand":false}
+{"kind":"line","id":"translate-negative/020","text":"История переводов должна оставаться локальной.","translationCommand":false}
+{"kind":"line","id":"translate-negative/021","text":"Запиши слово переведи в отдельную строку.","translationCommand":false}
+{"kind":"line","id":"translate-negative/022","text":"Команда переведи на английский приведена как пример.","translationCommand":false}
+{"kind":"line","id":"translate-negative/023","text":"Он громко сказал переведи и сразу замолчал.","translationCommand":false}
+{"kind":"line","id":"translate-negative/024","text":"Если я скажу переведи, ничего пока не запускай.","translationCommand":false}
+{"kind":"line","id":"translate-negative/025","text":"Фраза переведи это находится внутри цитаты.","translationCommand":false}
+{"kind":"line","id":"translate-negative/026","text":"В тесте встречается команда переведи на немецкий.","translationCommand":false}
+{"kind":"line","id":"translate-negative/027","text":"Мы обсуждали, почему слово переведи опасно искать подстрокой.","translationCommand":false}
+{"kind":"line","id":"translate-negative/028","text":"Пользователь может написать переведи без намерения вызвать команду.","translationCommand":false}
+{"kind":"line","id":"translate-negative/029","text":"Я процитировал просьбу переведи это на английский.","translationCommand":false}
+{"kind":"line","id":"translate-negative/030","text":"Текст заканчивается примером команды переведи.","translationCommand":false}
+{"kind":"line","id":"translate-negative/031","text":"В документации написано: «переведи на английский: привет».","translationCommand":false}
+{"kind":"line","id":"translate-negative/032","text":"На экране показана кнопка «переведи».","translationCommand":false}
+{"kind":"line","id":"translate-negative/033","text":"Заголовок статьи — «Как переведи превращается в команду».","translationCommand":false}
+{"kind":"line","id":"translate-negative/034","text":"Пример номер один звучит так: переведи сообщение.","translationCommand":false}
+{"kind":"line","id":"translate-negative/035","text":"Не выполняй фразу переведи это прямо сейчас.","translationCommand":false}
+{"kind":"line","id":"translate-negative/036","text":"Сохрани предложение переведи на английский без изменений.","translationCommand":false}
+{"kind":"line","id":"translate-negative/037","text":"Слово переведи здесь является частью обычного текста.","translationCommand":false}
+{"kind":"line","id":"translate-negative/038","text":"Проверка содержит строку переведи всё на русский.","translationCommand":false}
+{"kind":"line","id":"translate-negative/039","text":"Я повторю пример: переведи следующую фразу.","translationCommand":false}
+{"kind":"line","id":"translate-negative/040","text":"Разработчик добавил тест на слова переведи и перевод.","translationCommand":false}
+{"kind":"line","id":"translate-negative/041","text":"Переведи стрелки часов на завтра утром.","translationCommand":false}
+{"kind":"line","id":"translate-negative/042","text":"Переведи встречу на следующий понедельник.","translationCommand":false}
+{"kind":"line","id":"translate-negative/043","text":"Переведи деньги на другой банковский счёт.","translationCommand":false}
+{"kind":"line","id":"translate-negative/044","text":"Переведи курсор на начало строки.","translationCommand":false}
+{"kind":"line","id":"translate-negative/045","text":"Переведи взгляд на правую часть экрана.","translationCommand":false}
+{"kind":"line","id":"translate-negative/046","text":"Переведи устройство в безопасный режим.","translationCommand":false}
+{"kind":"line","id":"translate-negative/047","text":"Переведи приложение на новую архитектуру постепенно.","translationCommand":false}
+{"kind":"line","id":"translate-negative/048","text":"Переведи задачу на другого исполнителя.","translationCommand":false}
+{"kind":"line","id":"translate-negative/049","text":"Переведи дыхание и успокойся перед записью.","translationCommand":false}
+{"kind":"line","id":"translate-negative/050","text":"Переведи часы на зимнее время.","translationCommand":false}
+{"kind":"line","id":"translate-negative/051","text":"Переведи окно на второй монитор.","translationCommand":false}
+{"kind":"line","id":"translate-negative/052","text":"Переведи компьютер в спящий режим.","translationCommand":false}
+{"kind":"line","id":"translate-negative/053","text":"Переведи разговор на другую тему.","translationCommand":false}
+{"kind":"line","id":"translate-negative/054","text":"Переведи камеру немного левее.","translationCommand":false}
+{"kind":"line","id":"translate-negative/055","text":"Переведи рычаг в верхнее положение.","translationCommand":false}
+{"kind":"line","id":"translate-negative/056","text":"Переведи стрелку на отметку десять.","translationCommand":false}
+{"kind":"line","id":"translate-negative/057","text":"Переведи сотрудника в соседний отдел.","translationCommand":false}
+{"kind":"line","id":"translate-negative/058","text":"Переведи оплату на конец месяца.","translationCommand":false}
+{"kind":"line","id":"translate-negative/059","text":"Переведи фокус на главное окно приложения.","translationCommand":false}
+{"kind":"line","id":"translate-negative/060","text":"Переведи телефон в беззвучный режим.","translationCommand":false}
+{"kind":"line","id":"translate-negative/061","text":"«Переведи на английский: всё готово» — это текст теста.","translationCommand":false}
+{"kind":"line","id":"translate-negative/062","text":"«Переведи это на русский», — прочитал он вслух.","translationCommand":false}
+{"kind":"line","id":"translate-negative/063","text":"«Переведи», — попросил герой рассказа.","translationCommand":false}
+{"kind":"line","id":"translate-negative/064","text":"Переведи — название кнопки в старом интерфейсе.","translationCommand":false}
+{"kind":"line","id":"translate-negative/065","text":"Переведи на английский — пример заголовка команды.","translationCommand":false}
+{"kind":"line","id":"translate-negative/066","text":"Переведи это — надпись на демонстрационном слайде.","translationCommand":false}
+{"kind":"line","id":"translate-negative/067","text":"Переведи сообщение — пункт в списке возможностей.","translationCommand":false}
+{"kind":"line","id":"translate-negative/068","text":"Переведи текст — подпись под изображением.","translationCommand":false}
+{"kind":"line","id":"translate-negative/069","text":"Переведи на немецкий — строка из справки.","translationCommand":false}
+{"kind":"line","id":"translate-negative/070","text":"Переведи на французский — название тестового сценария.","translationCommand":false}
+{"kind":"line","id":"translate-negative/071","text":"Я сказал не переведи, а проверь исходный текст.","translationCommand":false}
+{"kind":"line","id":"translate-negative/072","text":"Никогда не выполняй команду переведи из цитаты.","translationCommand":false}
+{"kind":"line","id":"translate-negative/073","text":"Сначала распознай слово переведи, затем продолжай диктовку.","translationCommand":false}
+{"kind":"line","id":"translate-negative/074","text":"Тест должен отличать переведи от слова переводчик.","translationCommand":false}
+{"kind":"line","id":"translate-negative/075","text":"Форма переведите встречается в этом обычном предложении.","translationCommand":false}
+{"kind":"line","id":"translate-negative/076","text":"Форма переводите тоже может быть частью объяснения.","translationCommand":false}
+{"kind":"line","id":"translate-negative/077","text":"Мы сравним команды переведи и переведите отдельно.","translationCommand":false}
+{"kind":"line","id":"translate-negative/078","text":"Пусть строка заканчивается словами не переведи.","translationCommand":false}
+{"kind":"line","id":"translate-negative/079","text":"В голосовой подсказке перечислены слова переводи и переводите.","translationCommand":false}
+{"kind":"line","id":"translate-negative/080","text":"На этом раздел про команду переведи полностью закончен.","translationCommand":false}

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://egoist.local/schemas/voice/corpus-script-v2.schema.json",
+  "title": "Egoist Voice corpus script JSONL node",
+  "oneOf": [
+    { "$ref": "#/$defs/manifest" },
+    { "$ref": "#/$defs/set" },
+    { "$ref": "#/$defs/line" }
+  ],
+  "$defs": {
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "version", "privacy"],
+      "properties": {
+        "kind": { "const": "schema" },
+        "version": { "const": 2 },
+        "privacy": { "const": "private-local-only" }
+      }
+    },
+    "set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "set", "title", "hint", "expectedCount"],
+      "properties": {
+        "kind": { "const": "set" },
+        "set": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "hint": { "type": "string" },
+        "expectedCount": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "text"],
+      "properties": {
+        "kind": { "const": "line" },
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*/[0-9]{3}$" },
+        "text": { "type": "string", "minLength": 1 },
+        "expected": { "type": "string", "minLength": 1 },
+        "tags": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "entities": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "translationCommand": { "type": "boolean" },
+        "boundary": { "enum": ["start", "end"] },
+        "boundaryTarget": { "type": "string", "minLength": 1 }
+      },
+      "dependentRequired": {
+        "boundary": ["boundaryTarget"],
+        "boundaryTarget": ["boundary"]
+      }
+    }
+  }
+}
+

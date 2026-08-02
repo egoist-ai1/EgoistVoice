@@ -19,18 +19,21 @@ public sealed class ModelManager : IModelManager
     private readonly HttpClient _httpClient;
     private readonly string _modelsRoot;
     private readonly bool _ownsHttpClient;
+    private readonly bool _allowDownload;
     private bool _disposed;
 
     public ModelManager(
         IReadOnlyList<ModelDescriptor> requiredModels,
         string? modelsRoot = null,
-        HttpMessageHandler? httpHandler = null)
+        HttpMessageHandler? httpHandler = null,
+        bool allowDownload = true)
     {
         RequiredModels = requiredModels;
         _modelsRoot = modelsRoot ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "EgoistVoice",
             "Models");
+        _allowDownload = allowDownload;
         CleanupUnsupportedModelKinds();
         _httpClient = httpHandler is null ? new HttpClient() : new HttpClient(httpHandler, disposeHandler: true);
         _httpClient.Timeout = TimeSpan.FromHours(6);
@@ -40,12 +43,12 @@ public sealed class ModelManager : IModelManager
     public event EventHandler<ModelTransferProgress>? ProgressChanged;
     public IReadOnlyList<ModelDescriptor> RequiredModels { get; }
     /// <summary>
-    /// Latched once true. The uncached form stats five files, reads five marker files and parses
-    /// five JSON documents — acceptable during start-up, but it also sat in the dictation hot path
+    /// Latched once true. Optional accuracy metadata must never make core ASR/Whisper readiness
+    /// false; the uncached form stats only production-critical files in the dictation hot path.
     /// and in the download progress callback, which fires several times per second.
     /// </summary>
     public bool AreAllModelsReady =>
-        _allModelsReady || (_allModelsReady = RequiredModels.All(IsMarkerValid));
+        _allModelsReady || (_allModelsReady = RequiredModels.Where(model => !model.Optional).All(IsMarkerValid));
 
     private volatile bool _allModelsReady;
     public ModelTransferProgress? CurrentProgress { get; private set; }
@@ -127,6 +130,13 @@ public sealed class ModelManager : IModelManager
             CleanupSupersededModels(descriptor, finalPath);
             Report(descriptor, ModelTransferStage.Ready, descriptor.SizeBytes, 100, force: true);
             return finalPath;
+        }
+
+        if (!_allowDownload)
+        {
+            throw new FileNotFoundException(
+                $"Required speech model is not installed or verified: {descriptor.Id}. " +
+                "Corpus benchmark is offline-only and will not download it automatically.");
         }
 
         var partialPath = finalPath + ".download";

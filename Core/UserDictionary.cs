@@ -5,6 +5,15 @@ using System.Text.RegularExpressions;
 
 namespace Egoist.Voice.Core;
 
+[Flags]
+public enum EntityProfile
+{
+    General = 1,
+    Technology = 2,
+    Gaming = 4,
+    All = General | Technology | Gaming
+}
+
 /// <summary>
 /// One replacement rule. Either <see cref="Spoken"/> (literal forms, matched with Russian
 /// inflection tolerance) or <see cref="Pattern"/> (a regular expression, for people who want it).
@@ -13,7 +22,9 @@ public sealed record DictionaryTerm(
     [property: JsonPropertyName("spoken")] IReadOnlyList<string>? Spoken,
     [property: JsonPropertyName("written")] string Written,
     [property: JsonPropertyName("pattern")] string? Pattern = null,
-    [property: JsonPropertyName("wholeWord")] bool WholeWord = true);
+    [property: JsonPropertyName("wholeWord")] bool WholeWord = true,
+    [property: JsonIgnore] EntityProfile Profiles = EntityProfile.All,
+    [property: JsonIgnore] IReadOnlyList<string>? BlockWhenTextContains = null);
 
 public sealed record UserDictionaryFile(
     [property: JsonPropertyName("terms")] IReadOnlyList<DictionaryTerm> Terms);
@@ -22,11 +33,10 @@ public sealed record UserDictionaryFile(
 /// Deterministic vocabulary substitution applied after recognition.
 /// </summary>
 /// <remarks>
-/// This is the project's answer to contextual biasing, which is architecturally unavailable:
-/// sherpa-onnx hotwords require a transducer with modified_beam_search, and GigaAM is present there
-/// as a NeMo CTC model. A measured comparison also favours this route — deterministic substitution
-/// achieves the same 1–2 percentage points as neural correction at 0.02 ms instead of 80 ms, and
-/// without the failure mode where the corrector "fixes" text that was already right.
+/// This is the deterministic half of a layered entity path. The current GigaAM Transducer can use
+/// bounded sherpa contextual bias after a corpus gate, while this dictionary canonicalizes only
+/// catalog-backed forms after decoding. Profile-gated aliases keep ambiguous ordinary Russian
+/// words out of the general path, and user rules still win by being compiled last.
 /// </remarks>
 public sealed partial class UserDictionary
 {
@@ -56,7 +66,11 @@ public sealed partial class UserDictionary
 
     /// <summary>Spoken forms, used to widen the mixed-speech suspicion map.</summary>
     public IEnumerable<string> SpokenForms => _terms
-        .Where(term => term.Literal is not null)
+        .Where(term => term.Literal is not null && (term.Profiles & EntityProfile.General) != 0)
+        .Select(term => term.Literal!);
+
+    public IEnumerable<string> SpokenFormsFor(EntityProfile profile) => _terms
+        .Where(term => term.Literal is not null && (term.Profiles & profile) != 0)
         .Select(term => term.Literal!);
 
     /// <summary>
@@ -95,7 +109,10 @@ public sealed partial class UserDictionary
                             PatternTimeout),
                         term.Written,
                         null,
-                        null));
+                        null,
+                        null,
+                        term.Profiles,
+                        term.BlockWhenTextContains));
                 }
                 catch (ArgumentException)
                 {
@@ -115,7 +132,10 @@ public sealed partial class UserDictionary
                     BuildRegex(spoken, term.WholeWord),
                     term.Written,
                     Fold(spoken),
-                    DedupKey(spoken)));
+                    DedupKey(spoken),
+                    SearchNeedle(spoken),
+                    term.Profiles,
+                    term.BlockWhenTextContains));
             }
         }
 
@@ -141,7 +161,7 @@ public sealed partial class UserDictionary
         return new UserDictionary(deduplicated);
     }
 
-    public string Apply(string text)
+    public string Apply(string text, EntityProfile profile = EntityProfile.General)
     {
         if (_terms.Count == 0 || string.IsNullOrEmpty(text))
         {
@@ -150,6 +170,21 @@ public sealed partial class UserDictionary
 
         foreach (var term in _terms)
         {
+            if ((term.Profiles & profile) == 0)
+            {
+                continue;
+            }
+            if (term.BlockWhenTextContains?.Any(marker =>
+                    text.Contains(marker, StringComparison.OrdinalIgnoreCase)) == true)
+            {
+                continue;
+            }
+            if (term.SearchNeedle is { Length: > 0 } needle &&
+                !text.Contains(needle, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             try
             {
                 // A MatchEvaluator, not a replacement string: Regex.Replace would interpret "$1",
@@ -232,7 +267,20 @@ public sealed partial class UserDictionary
     private static string DedupKey(string spoken) =>
         string.Join(' ', spoken.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-    private sealed record CompiledTerm(Regex Expression, string Written, string? Literal, string? DedupKey)
+    private static string SearchNeedle(string spoken)
+    {
+        var separator = spoken.IndexOfAny([' ', '-']);
+        return separator > 0 ? spoken[..separator] : spoken;
+    }
+
+    private sealed record CompiledTerm(
+        Regex Expression,
+        string Written,
+        string? Literal,
+        string? DedupKey,
+        string? SearchNeedle,
+        EntityProfile Profiles,
+        IReadOnlyList<string>? BlockWhenTextContains)
     {
         public int SortLength => Literal?.Length ?? int.MaxValue;
     }

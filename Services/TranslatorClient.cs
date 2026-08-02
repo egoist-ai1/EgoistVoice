@@ -26,12 +26,26 @@ public sealed class TranslatorClient : IDisposable
 
     private static string ModelsDir => Path.Combine(RuntimeDir, "models");
 
-    private readonly HttpClient _health = new() { Timeout = TimeSpan.FromSeconds(5) };
-    private readonly HttpClient _api = new() { Timeout = Timeout.InfiniteTimeSpan };
+    private readonly HttpClient _health;
+    private readonly HttpClient _api;
     private readonly SemaphoreSlim _startLock = new(1, 1);
 
     private Process? _sidecar;
     private nint _job;
+    private int _disposed;
+
+    public TranslatorClient()
+        : this(
+            new HttpClient { Timeout = TimeSpan.FromSeconds(5) },
+            new HttpClient { Timeout = Timeout.InfiniteTimeSpan })
+    {
+    }
+
+    internal TranslatorClient(HttpClient healthClient, HttpClient apiClient)
+    {
+        _health = healthClient;
+        _api = apiClient;
+    }
 
     public static bool RuntimeInstalled => File.Exists(ServerExePath) && FindModel() is not null;
 
@@ -92,6 +106,12 @@ public sealed class TranslatorClient : IDisposable
                 .ConfigureAwait(false);
 
             var json = await response.Content.ReadAsStringAsync(linked.Token).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                AppLog.Write($"Перевод: llama-server вернул HTTP {(int)response.StatusCode}");
+                return null;
+            }
+
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
 
@@ -128,9 +148,46 @@ public sealed class TranslatorClient : IDisposable
             using var response = await _health
                 .GetAsync($"http://127.0.0.1:{SharedPort}/health", cancellationToken)
                 .ConfigureAwait(false);
-            return response.IsSuccessStatusCode;
+            if (!response.IsSuccessStatusCode)
+            {
+                return false;
+            }
+
+            // Один лишь /health недостаточен: любой локальный сервис на общем порту мог бы
+            // получить приватный текст. До POST проверяем, что порт обслуживает HY-MT.
+            using var modelsResponse = await _health
+                .GetAsync($"http://127.0.0.1:{SharedPort}/v1/models", cancellationToken)
+                .ConfigureAwait(false);
+            if (!modelsResponse.IsSuccessStatusCode)
+            {
+                return false;
+            }
+
+            var modelsJson = await modelsResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            return HasExpectedModel(modelsJson);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return false;
+        }
+    }
+
+    internal static bool HasExpectedModel(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (!document.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+            {
+                return false;
+            }
+
+            return data.EnumerateArray().Any(model =>
+                model.TryGetProperty("id", out var id) &&
+                id.ValueKind == JsonValueKind.String &&
+                (id.GetString()?.Contains("HY-MT", StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+        catch (JsonException)
         {
             return false;
         }
@@ -215,6 +272,7 @@ public sealed class TranslatorClient : IDisposable
 
             return Directory.EnumerateFiles(ModelsDir, "*.gguf")
                 .Select(f => new FileInfo(f))
+                .Where(f => f.Name.Contains("HY-MT", StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(f => f.Length)
                 .FirstOrDefault()?.FullName;
         }
@@ -252,6 +310,11 @@ public sealed class TranslatorClient : IDisposable
 
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         try
         {
             if (_sidecar is { HasExited: false })

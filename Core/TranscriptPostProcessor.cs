@@ -35,7 +35,7 @@ public sealed class TranscriptPostProcessor
     public UserDictionary Dictionary { get; }
     public PostProcessingOptions Options { get; }
 
-    public string Process(string text)
+    public string Process(string text, EntityProfile entityProfile = EntityProfile.General)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -47,7 +47,7 @@ public sealed class TranscriptPostProcessor
         // whitespace and capitalization are tidied last, over the final shape of the text.
         if (Options.ApplyDictionary)
         {
-            text = Dictionary.Apply(text);
+            text = Dictionary.Apply(text, entityProfile);
         }
 
         if (Options.ApplyNumberNormalization)

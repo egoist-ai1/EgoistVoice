@@ -154,14 +154,82 @@ public sealed class CorpusScriptTests
     }
 
     [Fact]
+    public void Versioned_script_rejects_wrong_declared_set_count()
+    {
+        var exception = Assert.Throws<InvalidDataException>(() => Parse(
+            """{"kind":"schema","version":2,"privacy":"private-local-only"}""",
+            """{"kind":"set","set":"ru-clean","title":"Обычная","hint":"","expectedCount":2}""",
+            """{"kind":"line","id":"ru-clean/001","text":"Одна фраза"}"""));
+
+        Assert.Contains("объявлено 2, найдено 1", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Versioned_script_requires_private_local_only_policy()
+    {
+        var exception = Assert.Throws<InvalidDataException>(() => Parse(
+            """{"kind":"schema","version":2,"privacy":"public"}""",
+            """{"kind":"set","set":"ru-clean","title":"Обычная","hint":"","expectedCount":1}""",
+            """{"kind":"line","id":"ru-clean/001","text":"Одна фраза"}"""));
+
+        Assert.Contains("private-local-only", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Versioned_script_rejects_unknown_kind_and_unmapped_fields()
+    {
+        Assert.Throws<InvalidDataException>(() => Parse(
+            """{"kind":"schema","version":2,"privacy":"private-local-only"}""",
+            """{"kind":"set","set":"ru-clean","title":"Обычная","hint":"","expectedCount":1}""",
+            """{"kind":"clip","id":"ru-clean/001","text":"Фраза"}"""));
+
+        Assert.Throws<InvalidDataException>(() => Parse(
+            """{"kind":"schema","version":2,"privacy":"private-local-only"}""",
+            """{"kind":"set","set":"ru-clean","title":"Обычная","hint":"","expectedCount":1}""",
+            """{"kind":"line","id":"ru-clean/001","text":"Фраза","privatePath":"C:\\\\voice.wav"}"""));
+    }
+
+    [Fact]
+    public void Unsafe_or_absolute_ids_are_rejected()
+    {
+        var exception = Assert.Throws<InvalidDataException>(() => Parse(
+            """{"kind":"line","id":"../private/001","text":"Фраза"}"""));
+
+        Assert.Contains("corpus id", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Reference_preserves_private_annotations_under_a_versioned_manifest()
+    {
+        var script = Parse(
+            """{"kind":"schema","version":2,"privacy":"private-local-only"}""",
+            """{"kind":"set","set":"ru-en","title":"Смешанная","hint":"","expectedCount":1}""",
+            """{"kind":"line","id":"ru-en/001","text":"антропик","expected":"Anthropic","tags":["mixed"],"entities":["Anthropic"],"translationCommand":false,"boundary":"end","boundaryTarget":"Anthropic"}""");
+
+        var reference = script.BuildReference(_ => true);
+
+        Assert.Contains("corpus-reference", reference, StringComparison.Ordinal);
+        Assert.Contains(script.Fingerprint, reference, StringComparison.Ordinal);
+        Assert.Contains("\"entities\":[\"Anthropic\"]", reference, StringComparison.Ordinal);
+        Assert.Contains("\"translationCommand\":false", reference, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Shipped_script_is_valid_and_every_line_has_a_set_header()
     {
         var path = Path.Combine(RepositoryRoot(), "tests", "corpus", CorpusScript.FileName);
         Assert.True(File.Exists(path), $"Не найден {path}");
 
-        var script = CorpusScript.Parse(File.ReadLines(path));
+        var script = CorpusScript.Load(Path.GetDirectoryName(path)!);
 
         Assert.NotEmpty(script.Lines);
+        Assert.Equal(CorpusScript.CurrentSchemaVersion, script.SchemaVersion);
+        Assert.Equal(CorpusScript.PrivateDataPolicy, script.Privacy);
+        Assert.Equal(350, script.Lines.Count);
+        Assert.Equal(109, script.Lines.Sum(line => line.Entities.Count));
+        Assert.Equal(40, script.Lines.Count(line => line.TranslationCommandExpected is true));
+        Assert.Equal(80, script.Lines.Count(line => line.TranslationCommandExpected is false));
+        Assert.Matches("^[0-9a-f]{64}$", script.Fingerprint);
         foreach (var line in script.Lines)
         {
             Assert.True(

@@ -57,6 +57,7 @@ public partial class MainWindow : Window, IDisposable
     private readonly FeedbackSoundService _sounds = new();
     private readonly CancelKeyWatcher _cancelKey = new();
     private TranscriptPostProcessor _postProcessor = new();
+    private bool _mixedLanguageMode;
 
     // Голосовая команда «переведи …»: локальный переводчик EGOIST (HY-MT1.5).
     private readonly TranslatorClient _translator = new();
@@ -540,9 +541,8 @@ public partial class MainWindow : Window, IDisposable
             var capture = await _audioCapture.StopAsync(cancellationToken);
             trace.Mark(DictationStage.CaptureStopped);
             audioPath = capture.Path;
-            var audioInfo = new FileInfo(audioPath);
             AppLog.Write(
-                $"Audio capture stopped: bytes={audioInfo.Length}, path={audioInfo.Name}, " +
+                $"Audio capture stopped: samples={capture.Samples.Length}, " +
                 $"duration={capture.Duration.TotalSeconds:0.00}s, speech={capture.DetectedSpeech.TotalSeconds:0.00}s, " +
                 $"peak={capture.PeakDecibels:0.0}dBFS");
             trace.Mark(DictationStage.SpeechChecked);
@@ -574,9 +574,18 @@ public partial class MainWindow : Window, IDisposable
                     SetProcessingState(value.Label, value.Percentage);
                 }
             });
-            var result = await _transcription.TranscribeAsync(audioPath, progress, cancellationToken);
+            var result = _transcription is ISampleTranscriptionService sampleTranscription
+                ? await sampleTranscription.TranscribeSamplesAsync(
+                    capture.Samples, capture.SampleRate, cancellationToken)
+                : audioPath is not null
+                    ? await _transcription.TranscribeAsync(audioPath, progress, cancellationToken)
+                    : throw new NotSupportedException("Движок не поддерживает распознавание из памяти.");
             trace.Mark(DictationStage.PrimaryDecoded);
-            var text = _postProcessor.Process(result.Text);
+            var entityProfile = EntityProfilePolicy.ResolveForWindow(
+                _targetWindow,
+                result.Text,
+                _mixedLanguageMode);
+            var text = _postProcessor.Process(result.Text, entityProfile);
             trace.Mark(DictationStage.TextFormatted);
             AppLog.Write($"Transcription complete: characters={text.Length}, elapsed={result.Elapsed.TotalSeconds:0.00}s");
 
@@ -657,8 +666,8 @@ public partial class MainWindow : Window, IDisposable
             _isProcessing = false;
             _cancelKey.Disarm();
 
-            // On cancellation StopAsync throws before returning the path, so the recording used
-            // to survive on disk until the next day's sweep. Ask the capture service for it.
+            // Diagnostic/corpus mode can still return an explicit temporary WAV. Normal dictation
+            // is memory-only, so cancellation normally has no path to resolve or delete.
             audioPath ??= await TryResolveDiscardedRecordingAsync();
             if (audioPath is not null)
             {
@@ -860,6 +869,7 @@ public partial class MainWindow : Window, IDisposable
         var settings = _settingsService.Load();
         var dictionary = _settingsService.LoadDictionary();
         _postProcessor = new TranscriptPostProcessor(dictionary, settings.ToPostProcessingOptions());
+        _mixedLanguageMode = settings.MixedLanguageMode;
         _delivery.RestoreClipboard = settings.RestoreClipboard;
         _sounds.Enabled = settings.SoundFeedback;
         _sounds.Volume = settings.SoundVolume;
@@ -1079,6 +1089,7 @@ public partial class MainWindow : Window, IDisposable
         _sounds.Dispose();
         _audioCapture.Dispose();
         _transcription.Dispose();
+        _translator.Dispose();
         _modelManager.Dispose();
     }
 }

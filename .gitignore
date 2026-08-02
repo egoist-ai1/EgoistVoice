@@ -17,3 +17,8 @@ installer/*.generated.iss
 # в tests/corpus/README.md.
 tests/corpus/**/*.wav
 tests/corpus/reference.jsonl
+
+# Downloaded model payloads and any audio corpus are machine-local/private.
+*.gguf
+*.wav
+Models/

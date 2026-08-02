@@ -92,6 +92,7 @@ public sealed class ReviewRegressionTests
     [InlineData("Он хромает после травмы.")]
     [InlineData("Нужен стимул продолжать.")]
     [InlineData("Интеллигентный человек.")]
+    [InlineData("Сетчатый питон лежит на ветке.")]
     public void Ordinary_russian_words_do_not_trigger_the_fallback(string transcript)
     {
         // Stems like "интел", "хром" and "стим" matched these words as prefixes, and every false

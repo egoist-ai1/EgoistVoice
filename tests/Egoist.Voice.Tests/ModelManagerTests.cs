@@ -192,6 +192,29 @@ public sealed class ModelManagerTests
         }
     }
 
+    [Fact]
+    public async Task Offline_mode_never_starts_a_model_download()
+    {
+        var content = new byte[] { 1, 2, 3, 4 };
+        var descriptor = CreateDescriptor("offline-v1", content);
+        var root = CreateTemporaryDirectory();
+        var handler = new RangeHandler(content);
+        try
+        {
+            using var manager = new ModelManager([descriptor], root, handler, allowDownload: false);
+
+            var exception = await Assert.ThrowsAsync<FileNotFoundException>(() =>
+                manager.EnsureModelAsync(descriptor, null, CancellationToken.None));
+
+            Assert.Contains("offline-only", exception.Message, StringComparison.Ordinal);
+            Assert.Null(handler.RequestedRangeStart);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static string CreateTemporaryDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "egoist-voice-tests", Guid.NewGuid().ToString("N"));

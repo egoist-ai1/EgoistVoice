@@ -1,9 +1,16 @@
 param(
-    [string]$Version = "2.0.0"
+    [string]$Version = ""
 )
 
 $ErrorActionPreference = "Stop"
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $csproj = Join-Path $projectRoot "Egoist.Voice.csproj"
+    $match = [regex]::Match((Get-Content -LiteralPath $csproj -Raw), '<Version>([^<]+)</Version>')
+    if (-not $match.Success) { throw "Не удалось прочитать <Version> из $csproj." }
+    $Version = $match.Groups[1].Value.Trim()
+    Write-Output "версия из проекта: $Version"
+}
 $localRoot = [IO.Path]::GetFullPath($env:LOCALAPPDATA)
 $programsRoot = [IO.Path]::GetFullPath((Join-Path $localRoot "Programs"))
 $dataRoot = [IO.Path]::GetFullPath((Join-Path $localRoot "EgoistVoice"))

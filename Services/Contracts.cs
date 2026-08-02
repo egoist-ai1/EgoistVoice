@@ -5,8 +5,8 @@ public interface IAudioCaptureService : IDisposable
     event EventHandler<float>? LevelChanged;
 
     /// <summary>
-    /// Raw mono samples as they arrive from the device, normalized to −1…1. Used by live
-    /// transcription; raised only while something is subscribed.
+    /// Completed 16 kHz mono session normalized to −1…1. Normal dictation consumes the same
+    /// in-memory array directly; this event exists for optional observers and never causes a WAV.
     /// </summary>
     event EventHandler<float[]>? SamplesAvailable;
 
@@ -16,7 +16,9 @@ public interface IAudioCaptureService : IDisposable
 }
 
 public sealed record AudioCaptureResult(
-    string Path,
+    string? Path,
+    float[] Samples,
+    int SampleRate,
     bool HasSpeech,
     TimeSpan Duration,
     TimeSpan DetectedSpeech,
@@ -122,7 +124,8 @@ public sealed record ModelDescriptor(
     Uri DownloadUri,
     string FileName,
     long SizeBytes,
-    string Sha256);
+    string Sha256,
+    bool Optional = false);
 
 public enum ModelTransferStage
 {

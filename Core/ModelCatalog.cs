@@ -6,6 +6,7 @@ public static class ModelCatalog
 {
     private const string GigaAmRevision = "6888903da215c7735f51101d939f3bfa679fb2b8";
     private const string WhisperRevision = "5359861c739e955e79d9a303bcbc70fb988958b1";
+    private const string OfficialGigaAmRevision = "ec1dc1f01d0d627ab2c0d3acc1e235702300d95e";
     private const string GigaAmBaseUri =
         "https://huggingface.co/Smirnov75/GigaAM-v3-sherpa-onnx/resolve/" + GigaAmRevision + "/";
 
@@ -45,6 +46,20 @@ public static class ModelCatalog
         13_353,
         "7ddf22514c42c531358182c81446a8159771e9921019f09ae743ea622d40221d");
 
+    /// <summary>
+    /// Optional tokenizer metadata used only to build sherpa contextual-bias resources. The core
+    /// ONNX recognizer remains fully functional when this small official artifact is unavailable.
+    /// </summary>
+    public static readonly ModelDescriptor GigaAmTokenizer = new(
+        "gigaam-v3-e2e-rnnt-tokenizer-v1",
+        "GigaAM v3 · контекстный словарь",
+        ModelKind.Speech,
+        new Uri("https://huggingface.co/ai-sage/GigaAM-v3/resolve/" + OfficialGigaAmRevision + "/tokenizer.model"),
+        "tokenizer.model",
+        255_336,
+        "828c12c991019eef952a960661f25a92d6ad279591e2ea466b4aeddf1d20a18a",
+        Optional: true);
+
     public static readonly ModelDescriptor Whisper = new(
         "whisper-large-v3-turbo-q5_0-v1",
         "Whisper Large v3 Turbo",
@@ -55,5 +70,5 @@ public static class ModelCatalog
         "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2");
 
     public static IReadOnlyList<ModelDescriptor> CreateRequiredModels() =>
-        [GigaAmEncoder, GigaAmDecoder, GigaAmJoiner, GigaAmTokens, Whisper];
+        [GigaAmEncoder, GigaAmDecoder, GigaAmJoiner, GigaAmTokens, Whisper, GigaAmTokenizer];
 }

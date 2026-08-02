@@ -18,15 +18,26 @@ internal static class AppLog
     private const long MaxFileBytes = 1_000_000;
 
     private static readonly BlockingCollection<string> Queue = new(new ConcurrentQueue<string>(), 4096);
-    private static readonly string DirectoryPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "EgoistVoice",
-        "Logs");
+    private static readonly AsyncLocal<int> SensitiveScopeDepth = new();
+    private static readonly string DirectoryPath = ResolveDirectoryPath();
 
     private static readonly Thread Worker;
     private static long _writtenBytes = -1;
 
     internal static readonly string FilePath = Path.Combine(DirectoryPath, "app.log");
+
+    internal static bool IsSensitiveDataSuppressed => SensitiveScopeDepth.Value > 0;
+
+    private static string ResolveDirectoryPath()
+    {
+        var isolatedPath = Environment.GetEnvironmentVariable("EGOISTVOICE_LOG_DIRECTORY");
+        return string.IsNullOrWhiteSpace(isolatedPath)
+            ? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "EgoistVoice",
+                "Logs")
+            : Path.GetFullPath(isolatedPath);
+    }
 
     static AppLog()
     {
@@ -43,6 +54,11 @@ internal static class AppLog
     {
         try
         {
+            if (IsSensitiveDataSuppressed)
+            {
+                return;
+            }
+
             var line = $"{DateTimeOffset.Now:O} [{Environment.ProcessId}] {message}{Describe(exception)}";
 
             // Dropping a line under sustained pressure is preferable to blocking a caller that may
@@ -57,6 +73,18 @@ internal static class AppLog
         {
             // Diagnostics must never break dictation.
         }
+    }
+
+    /// <summary>
+    /// Suppresses diagnostics on the current async flow while private corpus audio and transcripts
+    /// are in scope. ASR exceptions can contain the input file path, so merely redacting the outer
+    /// benchmark catch is not sufficient. The scope flows through awaited work and Task.Run, while
+    /// normal interactive diagnostics outside the benchmark remain unchanged.
+    /// </summary>
+    internal static IDisposable SuppressSensitiveData()
+    {
+        SensitiveScopeDepth.Value++;
+        return new SensitiveLogScope();
     }
 
     /// <summary>
@@ -162,6 +190,22 @@ internal static class AppLog
         {
             // A locked or unavailable log file must not escalate. Re-stat on the next write.
             _writtenBytes = -1;
+        }
+    }
+
+    private sealed class SensitiveLogScope : IDisposable
+    {
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            SensitiveScopeDepth.Value = Math.Max(0, SensitiveScopeDepth.Value - 1);
         }
     }
 }

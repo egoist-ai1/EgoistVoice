@@ -1,4 +1,5 @@
 using Egoist.Voice.Core;
+using System.Text.Json;
 using Xunit;
 
 namespace Egoist.Voice.Tests;
@@ -8,16 +9,19 @@ public sealed class TranslateCommandParserTests
     [Fact]
     public void PrefixBareCommand_DefaultsToEnglish()
     {
-        var d = TranslateCommandParser.TryParse("Переведи привет, как дела?");
+        var d = TranslateCommandParser.TryParse("Переведи: привет, как дела?");
         Assert.NotNull(d);
         Assert.Equal("English", d.TargetLanguage);
         Assert.Equal("привет, как дела?", d.Payload);
+        Assert.Equal("Auto", d.Direction.SourceLanguage);
+        Assert.Equal(TranslateCommandPosition.Prefix, d.Position);
+        Assert.Equal(TranslateCommandMatchClass.DefaultTarget, d.MatchClass);
     }
 
     [Fact]
     public void PrefixWithThis_StripsCommandWords()
     {
-        var d = TranslateCommandParser.TryParse("Переведи это я тебя жду у входа.");
+        var d = TranslateCommandParser.TryParse("Переведи это: я тебя жду у входа.");
         Assert.NotNull(d);
         Assert.Equal("я тебя жду у входа.", d.Payload);
         Assert.Equal("English", d.TargetLanguage);
@@ -66,6 +70,8 @@ public sealed class TranslateCommandParserTests
         Assert.NotNull(d);
         Assert.Equal("Japanese", d.TargetLanguage);
         Assert.Equal("Скажи ему, что всё готово", d.Payload);
+        Assert.Equal(TranslateCommandPosition.Suffix, d.Position);
+        Assert.Equal(TranslateCommandMatchClass.ExplicitTarget, d.MatchClass);
     }
 
     [Fact]
@@ -73,8 +79,7 @@ public sealed class TranslateCommandParserTests
     {
         var d = TranslateCommandParser.TryParse("Мне нужно два билета до центра. Переведи это.");
         Assert.NotNull(d);
-        // Точку перед командой съедает разделитель — модель расставит пунктуацию сама.
-        Assert.Equal("Мне нужно два билета до центра", d.Payload);
+        Assert.Equal("Мне нужно два билета до центра.", d.Payload);
     }
 
     [Fact]
@@ -120,7 +125,7 @@ public sealed class TranslateCommandParserTests
     [Fact]
     public void SuffixFillerPozhaluysta_IsStripped()
     {
-        var d = TranslateCommandParser.TryParse("Я задержусь на десять минут, пожалуйста переведи");
+        var d = TranslateCommandParser.TryParse("Я задержусь на десять минут; пожалуйста, переведи");
         Assert.NotNull(d);
         Assert.Equal("Я задержусь на десять минут", d.Payload);
     }
@@ -134,17 +139,16 @@ public sealed class TranslateCommandParserTests
     }
 
     // ── Формы команды ────────────────────────────────────────────────────────────────────────
-    // В диктовке форму глагола не выбирают сознательно, поэтому узнаваться должны все живые.
+    // Командой считаются только повелительные формы. Существительное «перевод», прошедшее
+    // время «перевёл» и инфинитив «перевести» встречаются в обычной диктовке слишком часто.
 
     [Theory]
-    [InlineData("Переведи привет")]
-    [InlineData("Переведите привет")]
-    [InlineData("Переводи привет")]
-    [InlineData("Переводите привет")]
-    [InlineData("Перевести привет")]
-    [InlineData("Перевод привет")]
-    [InlineData("Переведи-ка привет")]
-    [InlineData("Переведика привет")]
+    [InlineData("Переведи: привет")]
+    [InlineData("Переведите: привет")]
+    [InlineData("Переводи: привет")]
+    [InlineData("Переводите: привет")]
+    [InlineData("Переведи-ка: привет")]
+    [InlineData("Переведика: привет")]
     public void CommandForms_AreRecognisedAsPrefix(string text)
     {
         var directive = TranslateCommandParser.TryParse(text);
@@ -153,11 +157,10 @@ public sealed class TranslateCommandParserTests
     }
 
     [Theory]
-    [InlineData("Я закончил документ, а ты перевёл")]
-    [InlineData("Я закончил документ, а ты перевел")]
+    [InlineData("Я закончил документ, переведи")]
+    [InlineData("Я закончил документ, переведите")]
     [InlineData("Я закончил документ, переводи")]
-    [InlineData("Я закончил документ, перевести")]
-    [InlineData("Я закончил документ, перевод")]
+    [InlineData("Я закончил документ, переводите")]
     public void CommandForms_AreRecognisedAsSuffix(string text)
     {
         var directive = TranslateCommandParser.TryParse(text);
@@ -173,6 +176,16 @@ public sealed class TranslateCommandParserTests
         Assert.Null(TranslateCommandParser.TryParse("Это переводной роман, я его читал"));
         Assert.Null(TranslateCommandParser.TryParse("Закажи перевозку на понедельник"));
     }
+
+    [Theory]
+    [InlineData("Перевод денег задержался")]
+    [InlineData("Я закончил перевод")]
+    [InlineData("Перевёл документ вчера")]
+    [InlineData("Я закончил документ, а ты перевёл")]
+    [InlineData("Переведёшь документ завтра")]
+    [InlineData("Перевести документ было сложно")]
+    public void Ordinary_grammar_forms_are_not_commands(string text) =>
+        Assert.Null(TranslateCommandParser.TryParse(text));
 
     // ── Служебные слова между командой и текстом ─────────────────────────────────────────────
 
@@ -268,5 +281,99 @@ public sealed class TranslateCommandParserTests
         // Слово после «на» проверяется по словарю: без этого «переведи на потом» стало бы командой.
         Assert.Null(TranslateCommandParser.TryParse("Переведи на потом эту задачу"));
         Assert.Null(TranslateCommandParser.TryParse("Переведи на другую страницу"));
+    }
+
+    [Theory]
+    [InlineData("Переведи стрелки часов на завтра утром.")]
+    [InlineData("Переведи деньги на другой банковский счёт.")]
+    [InlineData("Переведи курсор на начало строки.")]
+    [InlineData("Переведи разговор на другую тему.")]
+    public void Bare_prefix_without_explicit_boundary_is_not_a_command(string text) =>
+        Assert.Null(TranslateCommandParser.TryParse(text));
+
+    [Fact]
+    public void Mention_ending_in_command_word_is_not_a_suffix_command() =>
+        Assert.Null(TranslateCommandParser.TryParse("Текст заканчивается примером команды переведи."));
+
+    [Fact]
+    public void Example_introduction_before_command_is_not_executed() =>
+        Assert.Null(TranslateCommandParser.TryParse("Я повторю пример: переведи следующую фразу."));
+
+    [Fact]
+    public void Explicit_language_without_colon_preserves_payload_nouns()
+    {
+        var directive = TranslateCommandParser.TryParse(
+            "Переведи на английский это сообщение для команды.");
+
+        Assert.NotNull(directive);
+        Assert.Equal("это сообщение для команды.", directive.Payload);
+    }
+
+    [Fact]
+    public void Locked_command_fixture_meets_recall_and_precision_gate()
+    {
+        var misses = new List<string>();
+        var falsePositives = new List<string>();
+        var positives = 0;
+        var negatives = 0;
+
+        foreach (var line in File.ReadLines(FindProjectFile("tests", "corpus", "script.jsonl")))
+        {
+            if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith("//", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            using var document = JsonDocument.Parse(line);
+            var root = document.RootElement;
+            if (!root.TryGetProperty("translationCommand", out var expectedElement))
+            {
+                continue;
+            }
+
+            var expected = expectedElement.GetBoolean();
+            var id = root.GetProperty("id").GetString() ?? "<unknown>";
+            var text = root.GetProperty("text").GetString() ?? string.Empty;
+            var actual = TranslateCommandParser.TryParse(text) is not null;
+
+            if (expected)
+            {
+                positives++;
+                if (!actual)
+                {
+                    misses.Add(id);
+                }
+            }
+            else
+            {
+                negatives++;
+                if (actual)
+                {
+                    falsePositives.Add(id);
+                }
+            }
+        }
+
+        Assert.Equal(40, positives);
+        Assert.Equal(80, negatives);
+        Assert.True(misses.Count == 0, $"Missed commands: {string.Join(", ", misses)}");
+        Assert.True(falsePositives.Count == 0, $"False commands: {string.Join(", ", falsePositives)}");
+    }
+
+    private static string FindProjectFile(params string[] relativeParts)
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory);
+             directory is not null;
+             directory = directory.Parent)
+        {
+            if (!File.Exists(Path.Combine(directory.FullName, "Egoist.Voice.csproj")))
+            {
+                continue;
+            }
+
+            return Path.Combine([directory.FullName, .. relativeParts]);
+        }
+
+        throw new DirectoryNotFoundException("Egoist Voice project root was not found.");
     }
 }

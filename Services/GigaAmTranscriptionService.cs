@@ -11,17 +11,26 @@ namespace Egoist.Voice.Services;
 public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTranscriptionService
 {
     private const int SampleRate = 16_000;
+    internal static int BenchmarkSampleRate => SampleRate;
+    internal static int BenchmarkDecodeThreads => Math.Clamp(Environment.ProcessorCount * 3 / 4, 2, 12);
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
     private readonly SemaphoreSlim _decodeLock = new(1, 1);
     private readonly IModelManager _modelManager;
     private readonly bool _ownsModelManager;
+    private readonly bool _enableContextualBias;
     private OfflineRecognizer? _recognizer;
     private volatile bool _disposed;
 
-    public GigaAmTranscriptionService(IModelManager? modelManager = null)
+    internal bool ContextualBiasActive { get; private set; }
+    internal int ContextualBiasPhraseCount { get; private set; }
+
+    public GigaAmTranscriptionService(
+        IModelManager? modelManager = null,
+        bool enableContextualBias = false)
     {
         _modelManager = modelManager ?? new ModelManager(ModelCatalog.CreateRequiredModels());
         _ownsModelManager = modelManager is null;
+        _enableContextualBias = enableContextualBias;
     }
 
     public string EngineName => "GigaAM";
@@ -54,20 +63,48 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
                     cancellationToken).ConfigureAwait(false);
             }
 
+            GigaAmHotwordFiles? hotwords = null;
+            if (_enableContextualBias)
+            {
+                try
+                {
+                    var tokenizerPath = await _modelManager.EnsureModelAsync(
+                        ModelCatalog.GigaAmTokenizer, null, cancellationToken).ConfigureAwait(false);
+                    hotwords = await Task.Run(
+                        () => GigaAmHotwordResources.Prepare(
+                            tokenizerPath,
+                            paths[ModelCatalog.GigaAmTokens.Id]),
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception exception)
+                {
+                    // Contextual bias is an optional accuracy layer, never a condition for Russian
+                    // dictation. Offline first start and any tokenizer mismatch keep baseline decode.
+                    AppLog.Write("GigaAM contextual bias unavailable; using baseline decoder", exception);
+                }
+            }
+
             progress?.Report(new ModelProgress("Запускаю GigaAM…", 100));
-            var recognizer = await Task.Run(
+            var initialized = await Task.Run(
                 () => CreateRecognizer(
                     paths[ModelCatalog.GigaAmEncoder.Id],
                     paths[ModelCatalog.GigaAmDecoder.Id],
                     paths[ModelCatalog.GigaAmJoiner.Id],
-                    paths[ModelCatalog.GigaAmTokens.Id]),
+                    paths[ModelCatalog.GigaAmTokens.Id],
+                    hotwords),
                 cancellationToken).ConfigureAwait(false);
 
             // The first two ONNX Runtime invocations pay for graph optimization and
             // arena setup and run several times slower than steady state. Prime them
             // here so the first real dictation does not carry that cost.
-            await Task.Run(() => PrimeRecognizer(recognizer), cancellationToken).ConfigureAwait(false);
-            _recognizer = recognizer;
+            await Task.Run(() => PrimeRecognizer(initialized.Recognizer), cancellationToken).ConfigureAwait(false);
+            ContextualBiasActive = initialized.ContextualBiasActive;
+            ContextualBiasPhraseCount = initialized.PhraseCount;
+            _recognizer = initialized.Recognizer;
         }
         finally
         {
@@ -137,6 +174,7 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
 
     /// <summary>Above this, batching pays for the extra streams held in memory at once.</summary>
     private const int BatchDecodeThreshold = 2;
+    internal static int BenchmarkBatchDecodeThreshold => BatchDecodeThreshold;
 
     private string DecodeChunks(
         float[] samples,
@@ -182,6 +220,7 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
     /// while bounding the peak.
     /// </remarks>
     private const int MaxBatchSize = 6;
+    internal static int BenchmarkMaxBatchSize => MaxBatchSize;
 
     /// <summary>
     /// Hands chunks of a long recording to the engine in bounded groups. The chunks are independent
@@ -272,43 +311,76 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
         return samples.ToArray();
     }
 
-    private static OfflineRecognizer CreateRecognizer(
+    private static GigaAmRecognizerInitialization CreateRecognizer(
         string encoder,
         string decoder,
         string joiner,
-        string tokens) => new(new OfflineRecognizerConfig
+        string tokens,
+        GigaAmHotwordFiles? hotwords)
     {
-        FeatConfig = new FeatureConfig { SampleRate = SampleRate, FeatureDim = 64 },
-        ModelConfig = new OfflineModelConfig
+        OfflineRecognizer Create(GigaAmHotwordFiles? contextual)
         {
-            Tokens = tokens,
-
-            // Three quarters of the logical cores, not half. The old split assumed GigaAM and
-            // Whisper decode simultaneously, which was true when the fallback ran unconditionally;
-            // now the primary engine usually has the machine to itself. Two cores are deliberately
-            // left for the UI thread and the audio callback — starving those trades a faster decode
-            // for a stuttering capsule and dropped audio buffers.
-            NumThreads = Math.Clamp(Environment.ProcessorCount * 3 / 4, 2, 12),
-            Debug = 0,
-
-            // CPU on purpose. The INT8 encoder runs at roughly 50× real time here, and an RNN-T
-            // decoder is autoregressive — it gains far less from a GPU than a CTC model would,
-            // while adding a provider that can fail to initialize on some drivers.
-            Provider = "cpu",
-            Transducer = new OfflineTransducerModelConfig
+            var modelConfig = new OfflineModelConfig
             {
-                Encoder = encoder,
-                Decoder = decoder,
-                Joiner = joiner
+                Tokens = tokens,
+
+                // Three quarters of the logical cores, not half. The old split assumed GigaAM and
+                // Whisper decode simultaneously, which was true when the fallback ran unconditionally;
+                // now the primary engine usually has the machine to itself. Two cores are deliberately
+                // left for the UI thread and the audio callback — starving those trades a faster decode
+                // for a stuttering capsule and dropped audio buffers.
+                NumThreads = Math.Clamp(Environment.ProcessorCount * 3 / 4, 2, 12),
+                Debug = 0,
+
+                // CPU on purpose. The INT8 encoder runs at roughly 50× real time here, and an RNN-T
+                // decoder is autoregressive — it gains far less from a GPU than a CTC model would,
+                // while adding a provider that can fail to initialize on some drivers.
+                Provider = "cpu",
+                Transducer = new OfflineTransducerModelConfig
+                {
+                    Encoder = encoder,
+                    Decoder = decoder,
+                    Joiner = joiner
+                }
+            };
+            if (contextual is not null)
+            {
+                modelConfig.ModelingUnit = "bpe";
+                modelConfig.BpeVocab = contextual.BpeVocabularyPath;
             }
-        },
-        // Beam search rather than greedy. For a transducer this is the cheapest accuracy available:
-        // a few percent relative WER for roughly five to ten percent of the decode time — and the
-        // decode already runs at around fifty times real time, so that time is not felt. Four paths
-        // is the point where the curve flattens; more costs time without buying anything.
-        DecodingMethod = "modified_beam_search",
-        MaxActivePaths = 4
-    });
+
+            return new OfflineRecognizer(new OfflineRecognizerConfig
+            {
+                FeatConfig = new FeatureConfig { SampleRate = SampleRate, FeatureDim = 64 },
+                ModelConfig = modelConfig,
+                // Beam search rather than greedy. For a transducer this is the cheapest accuracy available:
+                // a few percent relative WER for roughly five to ten percent of the decode time — and the
+                // decode already runs at around fifty times real time, so that time is not felt. Four paths
+                // is the point where the curve flattens; more costs time without buying anything.
+                DecodingMethod = "modified_beam_search",
+                MaxActivePaths = 4,
+                HotwordsFile = contextual?.HotwordsPath ?? string.Empty,
+                HotwordsScore = GigaAmHotwordResources.GlobalScore
+            });
+        }
+
+        if (hotwords is null)
+        {
+            return new GigaAmRecognizerInitialization(Create(null), false, 0);
+        }
+
+        try
+        {
+            var recognizer = Create(hotwords);
+            AppLog.Write($"GigaAM contextual bias active: version={GigaAmHotwordResources.Version}, phrases={hotwords.PhraseCount}");
+            return new GigaAmRecognizerInitialization(recognizer, true, hotwords.PhraseCount);
+        }
+        catch (Exception exception)
+        {
+            AppLog.Write("GigaAM rejected contextual resources; using baseline decoder", exception);
+            return new GigaAmRecognizerInitialization(Create(null), false, 0);
+        }
+    }
 
     private static IReadOnlyList<ModelDescriptor> GigaDescriptors =>
         [ModelCatalog.GigaAmEncoder, ModelCatalog.GigaAmDecoder, ModelCatalog.GigaAmJoiner, ModelCatalog.GigaAmTokens];
@@ -364,6 +436,11 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
         }
     }
 }
+
+internal sealed record GigaAmRecognizerInitialization(
+    OfflineRecognizer Recognizer,
+    bool ContextualBiasActive,
+    int PhraseCount);
 
 internal static class AudioSampleReader
 {

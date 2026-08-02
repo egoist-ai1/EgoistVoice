@@ -20,10 +20,11 @@ namespace Egoist.Voice.Services;
 /// </remarks>
 internal sealed class SpeechActivityDetector
 {
-    private const double SpeechRmsThresholdDb = -48;
-    private const double SpeechPeakThresholdDb = -38;
-    private const double MinimumSpeechMilliseconds = 160;
-    private const double MinimumContinuousSpeechMilliseconds = 96;
+    private const double DefaultSpeechRmsThresholdDb = -48;
+    private const double MinimumSpeechMilliseconds = 120;
+    private const double MinimumContinuousSpeechMilliseconds = 60;
+    private double _speechRmsThresholdDb = DefaultSpeechRmsThresholdDb;
+    private double _speechPeakThresholdDb = -38;
 
     /// <summary>Below this the microphone is effectively delivering nothing at all.</summary>
     internal const double SilentSessionPeakDb = -60;
@@ -35,7 +36,7 @@ internal sealed class SpeechActivityDetector
     private double _peakDecibels = -120;
     private double _quietestRmsDecibels = double.PositiveInfinity;
 
-    internal void Reset()
+    internal void Reset(double? noiseFloorDb = null)
     {
         _durationMilliseconds = 0;
         _speechMilliseconds = 0;
@@ -43,6 +44,10 @@ internal sealed class SpeechActivityDetector
         _longestSpeechMilliseconds = 0;
         _peakDecibels = -120;
         _quietestRmsDecibels = double.PositiveInfinity;
+        _speechRmsThresholdDb = noiseFloorDb is { } finite && double.IsFinite(finite)
+            ? Math.Clamp(finite + 8, -56, -42)
+            : DefaultSpeechRmsThresholdDb;
+        _speechPeakThresholdDb = Math.Clamp(_speechRmsThresholdDb + 8, -48, -34);
     }
 
     internal void Process(double rmsAmplitude, double peakAmplitude, double durationMilliseconds)
@@ -58,7 +63,9 @@ internal sealed class SpeechActivityDetector
         _peakDecibels = Math.Max(_peakDecibels, peakDb);
         _quietestRmsDecibels = Math.Min(_quietestRmsDecibels, rmsDb);
 
-        if (rmsDb >= SpeechRmsThresholdDb && peakDb >= SpeechPeakThresholdDb)
+        var sustained = rmsDb >= _speechRmsThresholdDb && peakDb >= _speechRmsThresholdDb + 4;
+        var lowEnergyConsonant = rmsDb >= _speechRmsThresholdDb - 3 && peakDb >= _speechPeakThresholdDb;
+        if (sustained || lowEnergyConsonant)
         {
             _speechMilliseconds += durationMilliseconds;
             _continuousSpeechMilliseconds += durationMilliseconds;

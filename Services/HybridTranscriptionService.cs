@@ -6,20 +6,70 @@ namespace Egoist.Voice.Services;
 public sealed class HybridTranscriptionService : ITranscriptionService, ISampleTranscriptionService
 {
     /// <summary>
-    /// Live phrases go through the primary engine only.
+    /// Full memory-only dictation path. It preserves the same conditional Whisper policy as the
+    /// file compatibility path; memory capture must not silently lose mixed-language accuracy.
     /// </summary>
-    /// <remarks>
-    /// Running the mixed-language fallback per phrase would add its full latency to every pause,
-    /// which defeats the point of live output. English terms are still repaired: the final pass at
-    /// the end of the dictation sees the whole recording and corrects what the live pass produced.
-    /// </remarks>
-    public Task<TranscriptionResult> TranscribeSamplesAsync(
+    public async Task<TranscriptionResult> TranscribeSamplesAsync(
         float[] samples,
         int sampleRate,
-        CancellationToken cancellationToken) =>
-        _gigaAm is ISampleTranscriptionService engine
-            ? engine.TranscribeSamplesAsync(samples, sampleRate, cancellationToken)
-            : throw new NotSupportedException("Основной движок не умеет декодировать из памяти.");
+        CancellationToken cancellationToken)
+    {
+        await WarmUpAsync(null, cancellationToken).ConfigureAwait(false);
+        var giga = await CaptureSampleCandidateAsync(_gigaAm, samples, sampleRate, cancellationToken)
+            .ConfigureAwait(false);
+        var decision = giga.Result is null
+            ? new MixedSpeechDecision(MixedSpeechTrigger.Requested, "primary engine failed")
+            : _mixedSpeech.Inspect(giga.Result.Text, MixedLanguageMode);
+
+        if (!decision.NeedsFallback)
+        {
+            return giga.Result!;
+        }
+
+        AppLog.Write($"Mixed speech suspected ({decision.Trigger}: {decision.Evidence}); refining with Whisper");
+        var warmUp = EnsureWhisperWarmUpStarted(force: true);
+        if (!_whisperReady && _modelManager.AreAllModelsReady)
+        {
+            try
+            {
+                await warmUp.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                AppLog.Write("Whisper warm-up failed; keeping GigaAM result", exception);
+            }
+        }
+
+        if (!_whisperReady)
+        {
+            return giga.Result ?? throw giga.Error ?? new InvalidOperationException("Распознавание не дало результата.");
+        }
+
+        Volatile.Write(ref _lastWhisperUseTicks, Environment.TickCount64);
+        var whisper = await CaptureSampleCandidateAsync(_whisper, samples, sampleRate, cancellationToken)
+            .ConfigureAwait(false);
+        if (giga.Result is null && whisper.Result is null)
+        {
+            throw new AggregateException("Оба движка распознавания завершились ошибкой.", giga.Error!, whisper.Error!);
+        }
+        if (giga.Result is null)
+        {
+            AppLog.Write("Hybrid ASR fell back to Whisper after GigaAM failure", giga.Error);
+            return whisper.Result!;
+        }
+        if (whisper.Result is null)
+        {
+            AppLog.Write("Hybrid ASR kept GigaAM after Whisper failure", whisper.Error);
+            return giga.Result;
+        }
+
+        var selected = _selector.Select(giga.Result.Text, whisper.Result.Text);
+        AppLog.Write(
+            $"Hybrid ASR selected {selected.Engine}: gigaChars={giga.Result.Text.Length}, whisperChars={whisper.Result.Text.Length}");
+        return new TranscriptionResult(
+            selected.Text,
+            giga.Result.Elapsed > whisper.Result.Elapsed ? giga.Result.Elapsed : whisper.Result.Elapsed);
+    }
 
     private readonly ITranscriptionEngine _gigaAm;
     private readonly ITranscriptionEngine _whisper;
@@ -53,10 +103,12 @@ public sealed class HybridTranscriptionService : ITranscriptionService, ISampleT
     /// that an abandoned tray icon does not hold 600 MB overnight.</summary>
     private const long WhisperIdleUnloadMs = 10 * 60 * 1000;
 
-    public HybridTranscriptionService(IModelManager modelManager)
+    public HybridTranscriptionService(
+        IModelManager modelManager,
+        bool enableContextualBias = false)
         : this(
             modelManager,
-            new GigaAmTranscriptionService(modelManager),
+            new GigaAmTranscriptionService(modelManager, enableContextualBias),
             new WhisperTranscriptionService(modelManager),
             new MixedLanguageTranscriptSelector())
     {
@@ -244,6 +296,35 @@ public sealed class HybridTranscriptionService : ITranscriptionService, ISampleT
         catch (Exception exception)
         {
             AppLog.Write($"{engine.EngineName} transcription failed", exception);
+            return new EngineAttempt(null, exception);
+        }
+    }
+
+    private static async Task<EngineAttempt> CaptureSampleCandidateAsync(
+        ITranscriptionEngine engine,
+        float[] samples,
+        int sampleRate,
+        CancellationToken cancellationToken)
+    {
+        if (engine is not ISampleTranscriptionService sampleEngine)
+        {
+            return new EngineAttempt(null, new NotSupportedException($"{engine.EngineName} не поддерживает memory audio."));
+        }
+
+        try
+        {
+            var result = await sampleEngine
+                .TranscribeSamplesAsync(samples, sampleRate, cancellationToken)
+                .ConfigureAwait(false);
+            return new EngineAttempt(result, null);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            AppLog.Write($"{engine.EngineName} memory transcription failed", exception);
             return new EngineAttempt(null, exception);
         }
     }

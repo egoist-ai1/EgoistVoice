@@ -29,7 +29,9 @@ public partial class App : System.Windows.Application
         // Core has no reference to the service layer, so the logging hook is wired here rather
         // than taken as a dependency.
         Core.UserDictionary.AppLogWrite = message => AppLog.Write(message);
-        AppLog.Write($"Startup args=[{string.Join(", ", e.Args)}]");
+        // CLI arguments often contain corpus/audio/output paths. Logging their values would turn a
+        // local benchmark into a path-disclosure channel, so diagnostics keep only the mode/count.
+        AppLog.Write($"Startup mode={(e.Args.FirstOrDefault() ?? "interactive")} argCount={e.Args.Length}");
         DispatcherUnhandledException += (_, args) =>
             AppLog.Write("Dispatcher unhandled exception", args.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
@@ -53,6 +55,13 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        if (e.Args.Length >= 3 && e.Args[0].Equals("--entity-smoke", StringComparison.OrdinalIgnoreCase))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            _ = RunEntitySmokeAsync(e.Args[1], e.Args[2]);
+            return;
+        }
+
         if (e.Args.Length >= 3 && e.Args[0].Equals("--benchmark", StringComparison.OrdinalIgnoreCase))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -63,7 +72,11 @@ public partial class App : System.Windows.Application
         if (e.Args.Length >= 3 && e.Args[0].Equals("--corpus-benchmark", StringComparison.OrdinalIgnoreCase))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            _ = RunCorpusBenchmarkAsync(e.Args[1], e.Args[2], e.Args.Length >= 4 ? e.Args[3] : "hybrid");
+            _ = RunCorpusBenchmarkAsync(
+                e.Args[1],
+                e.Args[2],
+                e.Args.Length >= 4 ? e.Args[3] : "hybrid",
+                e.Args.Length >= 5 ? e.Args[4] : "baseline");
             return;
         }
 
@@ -109,6 +122,13 @@ public partial class App : System.Windows.Application
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _ = RunMicrophoneSmokeAsync(e.Args[1]);
+            return;
+        }
+
+        if (e.Args.Length >= 2 && e.Args[0].Equals("--giga-hotword-smoke", StringComparison.OrdinalIgnoreCase))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            _ = RunGigaHotwordSmokeAsync(e.Args[1]);
             return;
         }
 
@@ -280,6 +300,32 @@ public partial class App : System.Windows.Application
         }
     }
 
+    private async Task RunEntitySmokeAsync(string audioPath, string outputPath)
+    {
+        try
+        {
+            using var sensitiveLogScope = AppLog.SuppressSensitiveData();
+            using var service = CreateTranscriptionService();
+            var result = await service.TranscribeAsync(audioPath, null, CancellationToken.None);
+            var profile = EntityProfilePolicy.Resolve(
+                result.Text,
+                processName: null,
+                isGame: false,
+                technologyRequested: false);
+            var text = new TranscriptPostProcessor(UserDictionary.BuiltIn).Process(result.Text, profile);
+            await File.WriteAllTextAsync(outputPath, text);
+        }
+        catch (Exception exception)
+        {
+            Environment.ExitCode = 1;
+            await File.WriteAllTextAsync(outputPath, $"ERROR: {exception.GetType().Name}");
+        }
+        finally
+        {
+            Shutdown();
+        }
+    }
+
     private async Task RunModelSourceSmokeAsync(string outputPath)
     {
         var lines = new List<string>();
@@ -336,10 +382,10 @@ public partial class App : System.Windows.Application
             capture.Start();
             await Task.Delay(450);
             var captureResult = await capture.StopAsync(CancellationToken.None);
-            var bytes = new FileInfo(captureResult.Path).Length;
-            if (bytes <= 44)
+            var bytes = captureResult.Samples.Length * sizeof(float);
+            if (captureResult.Samples.Length == 0)
             {
-                throw new InvalidDataException("Microphone capture produced an empty WAV file.");
+                throw new InvalidDataException("Microphone capture produced no in-memory samples.");
             }
 
             await File.WriteAllTextAsync(outputPath,
@@ -360,30 +406,100 @@ public partial class App : System.Windows.Application
         }
     }
 
+    private async Task RunGigaHotwordSmokeAsync(string outputPath)
+    {
+        try
+        {
+            int baselineSilenceChars;
+            using (var baseline = new GigaAmTranscriptionService())
+            {
+                await baseline.WarmUpAsync(null, CancellationToken.None);
+                if (baseline.ContextualBiasActive)
+                {
+                    throw new InvalidDataException("Baseline GigaAM unexpectedly enabled contextual bias.");
+                }
+                var baselineResult = await baseline.TranscribeSamplesAsync(
+                    new float[GigaAmTranscriptionService.BenchmarkSampleRate / 2],
+                    GigaAmTranscriptionService.BenchmarkSampleRate,
+                    CancellationToken.None);
+                baselineSilenceChars = baselineResult.Text.Length;
+            }
+
+            int phraseCount;
+            int hotwordSilenceChars;
+            using (var candidate = new GigaAmTranscriptionService(enableContextualBias: true))
+            {
+                await candidate.WarmUpAsync(null, CancellationToken.None);
+                if (!candidate.ContextualBiasActive || candidate.ContextualBiasPhraseCount <= 0)
+                {
+                    throw new InvalidDataException("GigaAM contextual bias fell back to baseline.");
+                }
+                var candidateResult = await candidate.TranscribeSamplesAsync(
+                    new float[GigaAmTranscriptionService.BenchmarkSampleRate / 2],
+                    GigaAmTranscriptionService.BenchmarkSampleRate,
+                    CancellationToken.None);
+                phraseCount = candidate.ContextualBiasPhraseCount;
+                hotwordSilenceChars = candidateResult.Text.Length;
+            }
+
+            await File.WriteAllTextAsync(outputPath,
+                $"PASS{Environment.NewLine}" +
+                $"phrases={phraseCount}{Environment.NewLine}" +
+                $"baselineSilenceChars={baselineSilenceChars}{Environment.NewLine}" +
+                $"hotwordSilenceChars={hotwordSilenceChars}");
+        }
+        catch (Exception exception)
+        {
+            Environment.ExitCode = 1;
+            await File.WriteAllTextAsync(outputPath,
+                $"FAIL{Environment.NewLine}type={exception.GetType().Name}");
+        }
+        finally
+        {
+            Shutdown();
+        }
+    }
+
     /// <summary>
     /// Transcribes an entire corpus and writes WER/CER plus latency percentiles. Runs the whole
     /// corpus even when individual clips fail: a report that stops at the first bad file cannot
     /// be compared against a baseline.
     /// </summary>
-    private async Task RunCorpusBenchmarkAsync(string corpusDirectory, string outputPath, string label)
+    private async Task RunCorpusBenchmarkAsync(
+        string corpusDirectory,
+        string outputPath,
+        string label,
+        string decoderMode)
     {
         try
         {
-            var references = CorpusBenchmark.LoadReferences(corpusDirectory);
-            if (references.Count == 0)
+            label = CorpusBenchmark.ValidateLabel(label);
+            var enableContextualBias = decoderMode.Trim().ToLowerInvariant() switch
             {
-                Environment.ExitCode = 2;
-                await File.WriteAllTextAsync(
-                    outputPath,
-                    $"EMPTY: не найден {CorpusBenchmark.ReferenceFileName} в {corpusDirectory}. " +
-                    "См. tests/corpus/README.md.");
-                return;
-            }
+                "baseline" => false,
+                "hotwords" => true,
+                _ => throw new ArgumentException("Decoder mode must be baseline or hotwords.", nameof(decoderMode))
+            };
+            corpusDirectory = Path.GetFullPath(corpusDirectory);
+            var script = CorpusScript.Load(corpusDirectory);
+            var referenceDocument = CorpusBenchmark.LoadReferenceDocument(corpusDirectory);
+            var inventory = CorpusBenchmark.ValidateAndFingerprint(corpusDirectory, script, referenceDocument);
+            var references = referenceDocument.Entries;
+            var models = ModelCatalog.CreateRequiredModels();
+            var environment = CorpusBenchmark.CaptureEnvironment(models);
+            var parameters = CorpusBenchmark.CaptureParameters(enableContextualBias);
+            var resourcesBefore = BenchmarkResourceSnapshot.Capture();
 
-            using var service = CreateTranscriptionService();
+            // A benchmark must not turn into a hidden network operation. Missing current models are
+            // a typed failure; candidates remain behind their own explicit download gate.
+            using var sensitiveLogScope = AppLog.SuppressSensitiveData();
+            using var service = CreateTranscriptionService(
+                allowModelDownload: false,
+                enableContextualBias: enableContextualBias);
             // Warm-up is excluded from the measurements on purpose: the first decode pays for ONNX
             // graph optimization and would dominate every percentile computed after it.
             await service.WarmUpAsync(null, CancellationToken.None);
+            var postProcessor = new TranscriptPostProcessor(UserDictionary.BuiltIn);
 
             var entries = new List<BenchmarkEntry>(references.Count);
             foreach (var reference in references)
@@ -392,7 +508,7 @@ public partial class App : System.Windows.Application
                 if (!File.Exists(audioPath))
                 {
                     entries.Add(new BenchmarkEntry(
-                        reference.Id, reference.Set, reference.Text, string.Empty, 0, 0, "audio missing"));
+                        reference.Id, reference.Set, reference.Text, string.Empty, 0, 0, "AudioMissing"));
                     continue;
                 }
 
@@ -402,7 +518,14 @@ public partial class App : System.Windows.Application
                 {
                     var result = await service.TranscribeAsync(audioPath, null, CancellationToken.None);
                     trace.Mark(DictationStage.PrimaryDecoded);
-                    var text = TranscriptNormalizer.Normalize(result.Text);
+                    // Benchmark the string users actually receive, including the same built-in
+                    // dictionary and deterministic command/format stages as normal dictation.
+                    var entityProfile = EntityProfilePolicy.Resolve(
+                        result.Text,
+                        processName: null,
+                        isGame: false,
+                        technologyRequested: false);
+                    var text = postProcessor.Process(result.Text, entityProfile);
                     trace.Mark(DictationStage.TextFormatted);
                     entries.Add(new BenchmarkEntry(
                         reference.Id,
@@ -410,16 +533,36 @@ public partial class App : System.Windows.Application
                         reference.Text,
                         text,
                         trace.PerceivedLatency.TotalMilliseconds,
-                        result.Elapsed.TotalMilliseconds));
+                        result.Elapsed.TotalMilliseconds,
+                        ExpectedEntities: reference.Entities,
+                        TranslationCommandExpected: reference.TranslationCommandExpected,
+                        Boundary: reference.Boundary,
+                        BoundaryTarget: reference.BoundaryTarget));
                 }
                 catch (Exception exception)
                 {
+                    AppLog.Write($"Corpus clip failed id={reference.Id} type={exception.GetType().Name}");
                     entries.Add(new BenchmarkEntry(
-                        reference.Id, reference.Set, reference.Text, string.Empty, 0, 0, exception.Message));
+                        reference.Id,
+                        reference.Set,
+                        reference.Text,
+                        string.Empty,
+                        Error: "TranscriptionFailed",
+                        ExpectedEntities: reference.Entities,
+                        TranslationCommandExpected: reference.TranslationCommandExpected,
+                        Boundary: reference.Boundary,
+                        BoundaryTarget: reference.BoundaryTarget));
                 }
             }
 
-            var report = CorpusBenchmark.Summarize(label, entries);
+            var resourcesAfter = BenchmarkResourceSnapshot.Capture();
+            var context = new BenchmarkRunContext(
+                inventory,
+                environment,
+                parameters,
+                resourcesBefore,
+                resourcesAfter);
+            var report = CorpusBenchmark.Summarize(label, entries, context: context);
             CorpusBenchmark.Save(report, outputPath);
             if (entries.Any(entry => entry.Error is not null))
             {
@@ -429,7 +572,24 @@ public partial class App : System.Windows.Application
         catch (Exception exception)
         {
             Environment.ExitCode = 1;
-            await File.WriteAllTextAsync(outputPath, $"ERROR: {exception}");
+            AppLog.Write($"Corpus benchmark failed type={exception.GetType().Name}");
+            var errorCode = exception switch
+            {
+                InvalidDataException => "InvalidCorpus",
+                FileNotFoundException => "RequiredFileOrModelMissing",
+                UnauthorizedAccessException => "AccessDenied",
+                IOException => "InputOutputFailure",
+                _ => "BenchmarkFailed"
+            };
+            try
+            {
+                CorpusBenchmark.SaveFailure(outputPath, label, errorCode);
+            }
+            catch
+            {
+                // There is nowhere safer to persist this failure. The exit code remains the source
+                // of truth and diagnostics still do not receive the private path or exception text.
+            }
         }
         finally
         {
@@ -674,10 +834,14 @@ public partial class App : System.Windows.Application
         base.OnExit(e);
     }
 
-    private static ITranscriptionService CreateTranscriptionService()
+    private static ITranscriptionService CreateTranscriptionService(
+        bool allowModelDownload = true,
+        bool enableContextualBias = false)
     {
-        var manager = new ModelManager(ModelCatalog.CreateRequiredModels());
-        return new OwnedHybridTranscriptionService(manager);
+        var manager = new ModelManager(
+            ModelCatalog.CreateRequiredModels(),
+            allowDownload: allowModelDownload);
+        return new OwnedHybridTranscriptionService(manager, enableContextualBias);
     }
 }
 
@@ -686,10 +850,10 @@ internal sealed class OwnedHybridTranscriptionService : ITranscriptionService
     private readonly IModelManager _manager;
     private readonly HybridTranscriptionService _inner;
 
-    internal OwnedHybridTranscriptionService(IModelManager manager)
+    internal OwnedHybridTranscriptionService(IModelManager manager, bool enableContextualBias = false)
     {
         _manager = manager;
-        _inner = new HybridTranscriptionService(manager);
+        _inner = new HybridTranscriptionService(manager, enableContextualBias);
     }
 
     public Task WarmUpAsync(IProgress<ModelProgress>? progress, CancellationToken cancellationToken) =>

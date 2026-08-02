@@ -125,6 +125,24 @@ public sealed class RecognitionScorerTests
     }
 
     [Fact]
+    public void Baseline_comparison_rejects_missing_or_different_corpus_fingerprint()
+    {
+        var frozen = Report(wer: 0.08, p95: 400, ("ru-clean", 0.05));
+        var missing = frozen with { Corpus = null };
+        var different = frozen with
+        {
+            Corpus = frozen.Corpus! with { Sha256 = new string('b', 64) }
+        };
+
+        Assert.Contains(
+            CorpusBenchmark.CompareToBaseline(frozen, missing),
+            breach => breach.Contains("отсутствует", StringComparison.Ordinal));
+        Assert.Contains(
+            CorpusBenchmark.CompareToBaseline(frozen, different),
+            breach => breach.Contains("не совпадает", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Summary_groups_by_corpus_set_and_skips_failed_clips()
     {
         var entries = new[]
@@ -136,9 +154,11 @@ public sealed class RecognitionScorerTests
 
         var report = CorpusBenchmark.Summarize("hybrid", entries);
 
-        Assert.Single(report.Sets);
+        Assert.Equal(2, report.Sets.Count);
         Assert.Equal("ru-clean", report.Sets[0].Set);
         Assert.Equal(2, report.Sets[0].Clips);
+        Assert.Equal("ru-noisy", report.Sets[1].Set);
+        Assert.Equal(1, report.Sets[1].FailedClips);
         Assert.Equal(1 / 5d, report.WordErrorRate, precision: 6);
         Assert.Equal(3, report.Entries.Count);
     }
@@ -152,5 +172,6 @@ public sealed class RecognitionScorerTests
             p95 / 2,
             p95,
             sets.Select(set => new BenchmarkSetSummary(set.Set, 10, set.Wer, set.Wer / 4)).ToArray(),
-            []);
+            [],
+            Corpus: new CorpusInventory(new string('a', 64), 10, 640, new string('c', 64)));
 }

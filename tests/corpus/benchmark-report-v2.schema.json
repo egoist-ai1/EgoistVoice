@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://egoist.local/schemas/voice/benchmark-report-v2.schema.json",
+  "title": "Egoist Voice aggregate-only corpus benchmark report",
+  "type": "object",
+  "required": [
+    "generatedUtc", "label", "wer", "cer", "p50Ms", "p95Ms", "sets", "entries",
+    "schema", "privacy", "failedClips", "entityAccuracy", "entitiesExpected",
+    "splitErrors", "commandPrecision", "commandRecall", "punctuationF1", "boundaryAccuracy",
+    "corpus", "environment", "parameters", "resources"
+  ],
+  "properties": {
+    "generatedUtc": { "type": "string", "format": "date-time" },
+    "label": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,79}$" },
+    "wer": { "type": "number", "minimum": 0 },
+    "cer": { "type": "number", "minimum": 0 },
+    "p50Ms": { "type": "number", "minimum": 0 },
+    "p95Ms": { "type": "number", "minimum": 0 },
+    "schema": { "const": "egoist.voice.corpus-benchmark/v2" },
+    "privacy": { "const": "aggregate-only-no-transcript" },
+    "failedClips": { "type": "integer", "minimum": 0 },
+    "entityAccuracy": { "type": "number", "minimum": 0, "maximum": 1 },
+    "entitiesExpected": { "type": "integer", "minimum": 0 },
+    "splitErrors": { "type": "integer", "minimum": 0 },
+    "commandPrecision": { "type": "number", "minimum": 0, "maximum": 1 },
+    "commandRecall": { "type": "number", "minimum": 0, "maximum": 1 },
+    "punctuationF1": { "type": "number", "minimum": 0, "maximum": 1 },
+    "boundaryAccuracy": { "type": "number", "minimum": 0, "maximum": 1 },
+    "sets": { "type": "array" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "not": {
+          "anyOf": [
+            { "required": ["reference"] },
+            { "required": ["hypothesis"] },
+            { "required": ["audio"] },
+            { "required": ["text"] }
+          ]
+        }
+      }
+    },
+    "corpus": { "type": ["object", "null"] },
+    "environment": { "type": ["object", "null"] },
+    "parameters": {
+      "type": ["object", "null"],
+      "required": [
+        "pipeline", "inputSampleRateHz", "gigaAmThreads", "gigaAmBatchThreshold",
+        "gigaAmMaxBatchSize", "gigaAmContextualBias", "gigaAmHotwordVersion",
+        "gigaAmHotwordScore", "whisperThreads", "whisperLanguageDetection",
+        "whisperSampling", "whisperNoContext", "mixedLanguageMode",
+        "entityCatalogVersion", "entityProfilePolicy",
+        "applyBuiltInDictionary", "applyVoiceCommands", "applyNumberNormalization",
+        "modelDownloadAllowed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "pipeline": { "const": "HybridTranscriptionService" },
+        "inputSampleRateHz": { "const": 16000 },
+        "gigaAmThreads": { "type": "integer", "minimum": 1 },
+        "gigaAmBatchThreshold": { "type": "integer", "minimum": 1 },
+        "gigaAmMaxBatchSize": { "type": "integer", "minimum": 1 },
+        "gigaAmContextualBias": { "type": "boolean" },
+        "gigaAmHotwordVersion": { "type": ["string", "null"] },
+        "gigaAmHotwordScore": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "whisperThreads": { "type": "integer", "minimum": 1 },
+        "whisperLanguageDetection": { "type": "boolean" },
+        "whisperSampling": { "type": "string", "minLength": 1 },
+        "whisperNoContext": { "type": "boolean" },
+        "mixedLanguageMode": { "type": "boolean" },
+        "entityCatalogVersion": { "type": "string", "minLength": 1 },
+        "entityProfilePolicy": { "type": "string", "minLength": 1 },
+        "applyBuiltInDictionary": { "type": "boolean" },
+        "applyVoiceCommands": { "type": "boolean" },
+        "applyNumberNormalization": { "type": "boolean" },
+        "modelDownloadAllowed": { "const": false }
+      }
+    },
+    "resources": { "type": ["object", "null"] }
+  }
+}
