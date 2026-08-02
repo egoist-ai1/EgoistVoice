@@ -1,8 +1,8 @@
 # Egoist Voice — status
 
-- Last updated: `2026-08-02T16:37:11Z`
+- Last updated: `2026-08-02T19:29:01Z`
 - Version/revision: Published/source version `2.1.0`; Git `main` at `f1f5997`;
-  dirty preserved 2.1.1 candidate plus Voice 2.2 specs/harness.
+  preserved 2.1.1/2.2 work on `v2.2-wip` at `b7281fd`.
 - Stage: `implementation / EV-2205 parser gate complete, formatter active; human quality gates pending`
 
 ## Observable outcome
@@ -20,7 +20,7 @@
   download is in scope.
 - Baseline handoff: [`docs/HANDOFF-2.1.1.md`](./docs/HANDOFF-2.1.1.md); the dirty candidate remains unreleased.
 - Current self-contained continuation:
-  [`docs/changes/2026-08-02T161158Z-resume-handoff.md`](./docs/changes/2026-08-02T161158Z-resume-handoff.md).
+  [`docs/changes/2026-08-02T192901Z-ev-2200-repository-safety-net.md`](./docs/changes/2026-08-02T192901Z-ev-2200-repository-safety-net.md).
 - Программный план до финальных установщиков:
   [`PROGRAM-PLAN.md`](../egoist-translator/docs/program/PROGRAM-PLAN.md).
   Первый шаг новой сессии: [`docs/KICKOFF.md`](./docs/KICKOFF.md).
@@ -61,21 +61,18 @@
 
 ## Next safe action
 
-1. `EV-2200` — зафиксировать текущие ~68 изменённых файлов в ветке `v2.2-wip`.
-   Проверить `.gitignore` до `git add`: WAV, приватный корпус и модели в
-   историю не попадают. `main` остаётся на `f1f5997`. Выполняется **первым**.
-2. Finish EV-2205 protected-span normalization, conservative duplicate
+1. Finish EV-2205 protected-span normalization, conservative duplicate
    punctuation and pause-confirmed paragraph formatting; add idempotence tests.
    Зависимостей от Translator нет — можно вести сразу после `EV-2200`.
-3. `EV-2211` — конвейер иконки; параллельно, как только пользователь положит
+2. `EV-2211` — конвейер иконки; параллельно, как только пользователь положит
    исходный растр 1024×1024 в `assets/brand/`.
-4. `EV-2206` — после того как Translator выполнит решение D1 (мультитаргет
+3. `EV-2206` — после того как Translator выполнит решение D1 (мультитаргет
    `net8.0;net10.0` для `Contracts`/`Client`) и закроет `T008`. Не ссылаться
    на несовместимые бинарники и не поднимать Voice до `net10.0`.
-5. `EV-2207` → `EV-2208` → `EV-2212`.
-6. `EV-2209` упаковка → `EV-2214` оснастка → `EV-2213` независимость
+4. `EV-2207` → `EV-2208` → `EV-2212`.
+5. `EV-2209` упаковка → `EV-2214` оснастка → `EV-2213` независимость
    совместно с Translator `T020`.
-7. **Действие пользователя, которое агент выполнить не может:** записать
+6. **Действие пользователя, которое агент выполнить не может:** записать
    приватный корпус `EV-2201` (350 клипов) и прогнать парные гейты
    `EV-2202`/`EV-2203` до любого измеренного утверждения о точности и до
    финального релиза.
@@ -84,6 +81,7 @@
 
 | Date (UTC) | Check | Result | Evidence |
 | --- | --- | --- | --- |
+| 2026-08-02 | EV-2200 repository safety net | pass | Branch `v2.2-wip` at `b7281fd`; `main` remains `f1f5997`; 99 changed/new files preserved; no GGUF/WAV/private-key extensions staged. |
 | 2026-08-02 | Release unit/integration suite | pass | Fresh `466/466`; app and tests built in Release. |
 | 2026-08-02 | Locked translation-command gate | pass | `40/40` positives, `80/80` negatives; focused parser suite `82/82`. |
 | 2026-08-02 | `git diff --check` | pass | No whitespace errors; only LF→CRLF notices. |
@@ -126,11 +124,9 @@
 - Translator's shared assemblies currently target `net10.0`; Voice targets
   `net8.0-windows`. EV-2206 is blocked until a compatible target or explicit
   multi-target contract/client is built and verified.
-- **Dirty candidate не зафиксирован в Git.** Около 68 изменённых файлов поверх
-  `f1f5997` существуют только в рабочем каталоге примерно с 27 июля; один
-  `git checkout` или `git clean` уничтожает их безвозвратно. Снимается тикетом
-  `EV-2200` (коммит в ветку `v2.2-wip`) первым же шагом. Tag, packaging и
-  publish по-прежнему не разрешены.
+- Candidate work is now recoverable on local branch `v2.2-wip` at `b7281fd`;
+  `main` and release 2.1.0 remain untouched. Tag, packaging and publish remain
+  unapproved.
 - Existing `manage-project-history.ps1` does not parse under Windows PowerShell 5.1 because its UTF-8-without-BOM em dash is decoded incorrectly; continuity checkpoints use installed PowerShell 7.6.4 after recording the expected 5.1 failure.
 
 ## Durable context

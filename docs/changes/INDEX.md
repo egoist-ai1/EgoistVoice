@@ -4,6 +4,7 @@
 
 ## Recent notes
 
+- [2026-08-02T192901Z-ev-2200-repository-safety-net](./2026-08-02T192901Z-ev-2200-repository-safety-net.md)
 - [2026-08-02T163711Z-program-amendment-and-delivery-plan](./2026-08-02T163711Z-program-amendment-and-delivery-plan.md)
 - [2026-08-02T161158Z-resume-handoff](./2026-08-02T161158Z-resume-handoff.md)
 - [2026-08-01T223138Z-ev-2204-entity-profiles](./2026-08-01T223138Z-ev-2204-entity-profiles.md)
@@ -13,15 +14,10 @@
 - [2026-08-01T210153Z-ev-2201-corpus-harness](./2026-08-01T210153Z-ev-2201-corpus-harness.md)
 - [2026-08-01T200545Z-voice-translation-contract-alignment](./2026-08-01T200545Z-voice-translation-contract-alignment.md)
 - [2026-08-01T195245Z-voice-22-ticket-breakdown](./2026-08-01T195245Z-voice-22-ticket-breakdown.md)
-- [2026-08-01T193809Z-voice-22-draft](./2026-08-01T193809Z-voice-22-draft.md)
-- [2026-07-31T170435Z-continuity-baseline](./2026-07-31T170435Z-continuity-baseline.md)
 
 ## Archive
 
-- No archived notes yet.
+- [2026/08](./archive/2026/08/) — 1 notes
+- [2026/07](./archive/2026/07/) — 1 notes
 
-Hot set: 11. Archived: 0.
-
-> Запись от `2026-08-02T163711Z` добавлена вручную: документы готовились в
-> окружении без PowerShell, генератор не запускался. Перегенерируйте индекс
-> в первой Windows-сессии.
+Hot set: 10. Archived: 2.
