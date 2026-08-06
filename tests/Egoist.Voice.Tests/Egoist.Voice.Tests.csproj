@@ -9,6 +9,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Egoist.Voice.csproj" />
+    <Reference Include="Egoist.Translation.Contracts">
+      <HintPath>..\..\vendor\translation-client\1.0.0\net8.0\Egoist.Translation.Contracts.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Egoist.Translation.Client">
+      <HintPath>..\..\vendor\translation-client\1.0.0\net8.0\Egoist.Translation.Client.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>

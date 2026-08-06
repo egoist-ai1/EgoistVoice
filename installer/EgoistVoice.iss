@@ -108,6 +108,18 @@ const
   DisabledTextColor = $00787070;
   AccentColor = $003426FF;
 
+type
+  TEgoistSystemTime = record
+    Year: Word;
+    Month: Word;
+    DayOfWeek: Word;
+    Day: Word;
+    Hour: Word;
+    Minute: Word;
+    Second: Word;
+    Milliseconds: Word;
+  end;
+
 var
   BrandSurface: TPanel;
   HeaderIcon: TBitmapImage;
@@ -129,6 +141,9 @@ var
   FootnoteLabel: TNewStaticText;
   IsInstallStarted: Boolean;
   IsInstallFinished: Boolean;
+
+procedure GetSystemTime(var SystemTime: TEgoistSystemTime);
+  external 'GetSystemTime@kernel32.dll stdcall';
 
 function CreateRoundRectRgn(Left, Top, Right, Bottom, Width, Height: Integer): Integer;
   external 'CreateRoundRectRgn@gdi32.dll stdcall';
@@ -527,6 +542,78 @@ begin
   DelTree(ExpandConstant('{localappdata}\EgoistVoice\Temp'), True, True, True);
 end;
 
+function JsonEscape(Value: String): String;
+var
+  Index: Integer;
+  CodeUnit: Integer;
+begin
+  { SaveStringToFile is available in the pinned Inno compiler. Keep the file
+    byte-safe ASCII by emitting every non-ASCII UTF-16 code unit as JSON \uXXXX. }
+  Result := '';
+  for Index := 1 to Length(Value) do
+  begin
+    CodeUnit := Ord(Value[Index]);
+    if Value[Index] = '\' then
+      Result := Result + '\\'
+    else if Value[Index] = '"' then
+      Result := Result + '\"'
+    else if (CodeUnit < 32) or (CodeUnit > 126) then
+      Result := Result + Format('\u%.4x', [CodeUnit])
+    else
+      Result := Result + Value[Index];
+  end;
+end;
+
+function SharedEngineOwnerPath: String;
+begin
+  Result := ExpandConstant('{localappdata}\EGOIST\TranslationEngine\owners\egoist-voice.owner.json');
+end;
+
+function GetUtcTimestamp: String;
+var
+  SystemTime: TEgoistSystemTime;
+begin
+  GetSystemTime(SystemTime);
+  Result := Format('%.4d-%.2d-%.2dT%.2d:%.2d:%.2dZ', [
+    SystemTime.Year,
+    SystemTime.Month,
+    SystemTime.Day,
+    SystemTime.Hour,
+    SystemTime.Minute,
+    SystemTime.Second]);
+end;
+
+procedure RegisterSharedEngineOwner;
+var
+  OwnerRoot: String;
+  OwnerJson: String;
+  ClaimedUtc: String;
+begin
+  OwnerRoot := ExtractFileDir(SharedEngineOwnerPath);
+  if not ForceDirectories(OwnerRoot) then
+    RaiseException('Не удалось зарегистрировать Egoist Voice как владельца общего движка.');
+
+  ClaimedUtc := GetUtcTimestamp;
+  OwnerJson :=
+    '{"schemaVersion":1,' +
+    '"ownerId":"egoist-voice",' +
+    '"ownerVersion":"{#MyAppVersion}",' +
+    '"ownerInstallPath":"' + JsonEscape(ExpandConstant('{app}')) + '",' +
+    '"ownerUninstallKey":"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{79A42D80-A0E3-45CA-BBBC-E6B2E48EBBE2}_is1",' +
+    '"contractVersion":"v1",' +
+    '"minEngineVersion":"1.0.0",' +
+    '"claimedUtc":"' + ClaimedUtc + '"}';
+
+  if not SaveStringToFile(SharedEngineOwnerPath, OwnerJson, False) then
+    RaiseException('Не удалось записать owner-файл общего движка.');
+end;
+
+procedure RemoveSharedEngineOwner;
+begin
+  { Удаляем только собственный owner-файл. Host, модель и чужие owners не трогаем. }
+  DeleteFile(SharedEngineOwnerPath);
+end;
+
 function StopRunningApplication: Boolean;
 var
   ResultCode: Integer;
@@ -552,7 +639,9 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssInstall then
-    CleanupLegacyState;
+    CleanupLegacyState
+  else if CurStep = ssPostInstall then
+    RegisterSharedEngineOwner;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
@@ -561,6 +650,7 @@ begin
   begin
     if not StopRunningApplication then
       RaiseException('Не удалось корректно завершить Egoist Voice. Закройте приложение и повторите удаление.');
+    RemoveSharedEngineOwner;
     CleanupLegacyState;
   end;
 end;

@@ -4,6 +4,7 @@
 
 ## Recent notes
 
+- [2026-08-06T190639Z-ev-2206-voice-220-test-build](./2026-08-06T190639Z-ev-2206-voice-220-test-build.md)
 - [2026-08-02T192901Z-ev-2200-repository-safety-net](./2026-08-02T192901Z-ev-2200-repository-safety-net.md)
 - [2026-08-02T163711Z-program-amendment-and-delivery-plan](./2026-08-02T163711Z-program-amendment-and-delivery-plan.md)
 - [2026-08-02T161158Z-resume-handoff](./2026-08-02T161158Z-resume-handoff.md)
@@ -13,11 +14,10 @@
 - [2026-08-01T213947Z-corrected-model-architecture](./2026-08-01T213947Z-corrected-model-architecture.md)
 - [2026-08-01T210153Z-ev-2201-corpus-harness](./2026-08-01T210153Z-ev-2201-corpus-harness.md)
 - [2026-08-01T200545Z-voice-translation-contract-alignment](./2026-08-01T200545Z-voice-translation-contract-alignment.md)
-- [2026-08-01T195245Z-voice-22-ticket-breakdown](./2026-08-01T195245Z-voice-22-ticket-breakdown.md)
 
 ## Archive
 
-- [2026/08](./archive/2026/08/) — 1 notes
+- [2026/08](./archive/2026/08/) — 2 notes
 - [2026/07](./archive/2026/07/) — 1 notes
 
-Hot set: 10. Archived: 2.
+Hot set: 10. Archived: 3.

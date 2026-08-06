@@ -595,30 +595,30 @@ public partial class MainWindow : Window, IDisposable
                 return;
             }
 
-            // Голосовая команда «переведи …» / «… переведи на немецкий»: текст
-            // уходит в локальный переводчик, вставляется уже перевод. При
-            // недоступном переводчике вставляем оригинал без слова-команды —
-            // потерять надиктованное хуже, чем вставить его без перевода.
+            // Голосовая команда «переведи …» / «… переведи на немецкий» идёт
+            // только через проверенный current-user Engine Host. При ошибке
+            // ничего не вставляем: оригинал нельзя выдавать за успешный перевод.
             var directive = TranslateCommandParser.TryParse(text);
             if (directive is not null)
             {
                 AppLog.Write($"Команда перевода: → {directive.TargetLanguage}, {directive.Payload.Length} симв.");
                 SetProcessingState("Перевожу", null);
-                var translated = await _translator.TranslateAsync(
+                var translation = await _translator.TranslateAsync(
                     directive.Payload,
                     directive.TargetLanguage,
                     label => Dispatcher.Invoke(() => SetProcessingState(label, null)),
                     cancellationToken);
 
-                if (translated is not null)
+                if (translation.Succeeded)
                 {
-                    text = translated;
+                    text = translation.Text!;
                     AppLog.Write($"Перевод готов: {text.Length} симв.");
                 }
                 else
                 {
-                    AppLog.Write("Переводчик недоступен — вставляю оригинал без команды");
-                    text = directive.Payload;
+                    AppLog.Write($"Перевод не вставлен: {translation.Failure}");
+                    ShowError(translation.UserMessage);
+                    return;
                 }
             }
 

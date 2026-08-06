@@ -19,7 +19,9 @@
 - GigaAM contextual bias uses a pinned optional official SentencePiece model to
   generate exact Sherpa BPE resources. It is a paired-corpus candidate, not the
   interactive default; any integrity/native failure returns to baseline.
-- Translator client optionally talks to verified local HY-MT service on port 47821 and owns sidecar/Job Object lifecycle when started.
+- Translation commands use the hash-pinned shared `net8.0` client over the
+  current-user named pipe. Voice may start the installed Host, but never owns,
+  kills or logs its source/result payload.
 - Installer packages self-contained .NET/native runtimes while large speech models live under user-local storage and survive upgrade.
 
 ## Целевые рамки и разделяемый движок (решения 2026-08-02)
@@ -28,9 +30,8 @@
   `Egoist.Translation.Contracts` и `.Client` становятся мультитаргетными
   `net8.0;net10.0`. Voice ссылается только на них и никогда на `Core` или
   `EngineHost`.
-- Порт `47821` — унаследованный путь доверия. Он заменяется защищённым
-  named-pipe клиентом в `EV-2206` и удаляется только после доказанного
-  паритета.
+- Порт `47821` и прямой HTTP chat-completions удалены из достижимого Voice
+  пути. `EV-2206` использует только проверенный current-user named pipe.
 - Разделяемый движок перевода живёт в
   `%LOCALAPPDATA%\EGOIST\TranslationEngine\v1\` и принадлежит обоим
   приложениям через реестр владельцев. Установщик Voice пишет и удаляет

@@ -1,397 +1,376 @@
 using System.Diagnostics;
 using System.IO;
-using System.Net.Http;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Text.Json;
+using Egoist.Translation.Client;
+using Egoist.Translation.Contracts;
 
 namespace Egoist.Voice.Services;
 
+public enum TranslationFailureKind
+{
+    None,
+    EngineMissing,
+    EngineBusy,
+    Timeout,
+    UnsupportedLanguage,
+    IncompatibleEngine,
+    ModelInvalid,
+    Cancelled,
+    Failed
+}
+
+public sealed record VoiceTranslationOutcome(
+    string? Text,
+    TranslationFailureKind Failure,
+    string UserMessage)
+{
+    public bool Succeeded => Failure == TranslationFailureKind.None && !string.IsNullOrWhiteSpace(Text);
+
+    public static VoiceTranslationOutcome Success(string text) =>
+        new(text, TranslationFailureKind.None, "Перевод готов");
+
+    public static VoiceTranslationOutcome Error(TranslationFailureKind failure, string message) =>
+        new(null, failure, message);
+}
+
+internal interface ITranslationEngineGateway : IDisposable
+{
+    Task<EngineStatusSnapshot> EnsureAvailableAsync(CancellationToken cancellationToken);
+
+    Task<TranslationResult> TranslateAsync(
+        TranslationRequest request,
+        CancellationToken cancellationToken);
+}
+
 /// <summary>
-/// Клиент локального переводчика (HY-MT1.5-7B через llama-server из комплекта
-/// EGOIST Translator). Конвенция EGOIST: общий порт 47821 — кто первым поднял
-/// сервер (переводчик или диктовка), тот им и владеет, второй просто ходит по
-/// HTTP. Если сервер не запущен, но рантайм установлен
-/// (%LOCALAPPDATA%\EgoistTranslator), клиент поднимает сайдкар сам и привязывает
-/// его к Job Object — процесс с моделью гарантированно умирает вместе с нами.
+/// Privacy-safe Voice adapter for the shared current-user Engine Host. Source
+/// text is framed only after the named-pipe handshake and model identity pass.
+/// Voice never owns or kills the shared host because Translator may use it.
 /// </summary>
 public sealed class TranslatorClient : IDisposable
 {
-    public const int SharedPort = 47821;
+    private static readonly IReadOnlyDictionary<string, string> TargetLanguages =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["English"] = TranslationLanguages.English,
+            ["Russian"] = TranslationLanguages.Russian,
+            ["Chinese"] = "zh",
+            ["French"] = "fr",
+            ["German"] = "de",
+            ["Spanish"] = "es",
+            ["Portuguese"] = "pt",
+            ["Japanese"] = "ja",
+            ["Korean"] = "ko",
+            ["Italian"] = "it",
+            ["Turkish"] = "tr",
+            ["Ukrainian"] = "uk",
+            ["Polish"] = "pl",
+        };
 
-    private static readonly string RuntimeDir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EgoistTranslator");
-
-    private static string ServerExePath => Path.Combine(RuntimeDir, "llama", "llama-server.exe");
-
-    private static string ModelsDir => Path.Combine(RuntimeDir, "models");
-
-    private readonly HttpClient _health;
-    private readonly HttpClient _api;
-    private readonly SemaphoreSlim _startLock = new(1, 1);
-
-    private Process? _sidecar;
-    private nint _job;
+    private readonly ITranslationEngineGateway _gateway;
     private int _disposed;
 
     public TranslatorClient()
-        : this(
-            new HttpClient { Timeout = TimeSpan.FromSeconds(5) },
-            new HttpClient { Timeout = Timeout.InfiniteTimeSpan })
+        : this(new SharedTranslationEngineGateway())
     {
     }
 
-    internal TranslatorClient(HttpClient healthClient, HttpClient apiClient)
+    internal TranslatorClient(ITranslationEngineGateway gateway)
     {
-        _health = healthClient;
-        _api = apiClient;
+        _gateway = gateway ?? throw new ArgumentNullException(nameof(gateway));
     }
 
-    public static bool RuntimeInstalled => File.Exists(ServerExePath) && FindModel() is not null;
-
-    /// <summary>
-    /// Переводит текст; null — переводчик недоступен (вызывающий вставляет
-    /// оригинал). Прогресс медленных стадий отдаётся в <paramref name="status"/>.
-    /// </summary>
-    public async Task<string?> TranslateAsync(
+    public async Task<VoiceTranslationOutcome> TranslateAsync(
         string text,
         string targetLanguage,
         Action<string> status,
         CancellationToken cancellationToken)
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
+        ArgumentNullException.ThrowIfNull(status);
+
+        if (!TargetLanguages.TryGetValue(targetLanguage, out var targetCode))
+        {
+            return VoiceTranslationOutcome.Error(
+                TranslationFailureKind.UnsupportedLanguage,
+                "Этот язык пока не входит в офлайн-пакет");
+        }
+
         try
         {
-            if (!await IsHealthyAsync(cancellationToken).ConfigureAwait(false))
+            status("Проверяю движок");
+            var engine = await _gateway.EnsureAvailableAsync(cancellationToken).ConfigureAwait(false);
+            status(StatusLabel(engine.State));
+
+            var result = await _gateway.TranslateAsync(new TranslationRequest
             {
-                if (!RuntimeInstalled)
-                {
-                    AppLog.Write("Перевод: рантайм EGOIST Translator не установлен (scripts\\install-model.ps1)");
-                    return null;
-                }
+                SourceText = text,
+                SourceLanguage = TranslationLanguages.Auto,
+                TargetLanguage = targetCode,
+                Profile = TranslationProfile.NaturalMessage,
+                Format = text.Contains('\n', StringComparison.Ordinal)
+                    ? TranslationFormat.Paragraphs
+                    : TranslationFormat.Plain,
+                Priority = RequestPriority.Interactive,
+                DeadlineMs = 60_000,
+                ContextKey = "egoist-voice-dictation",
+            }, cancellationToken).ConfigureAwait(false);
 
-                status("Запускаю переводчик");
-                if (!await EnsureServerAsync(cancellationToken).ConfigureAwait(false))
-                {
-                    return null;
-                }
-            }
-
-            status("Перевожу");
-
-            var payload = JsonSerializer.Serialize(new
-            {
-                model = "hy-mt",
-                messages = new[]
-                {
-                    new
-                    {
-                        role = "user",
-                        content = $"Translate the following segment into {targetLanguage}, without additional explanation.\n\n{text}",
-                    },
-                },
-                temperature = 0.3,
-                top_p = 0.6,
-                top_k = 20,
-                repeat_penalty = 1.05,
-                max_tokens = Math.Clamp(text.Length * 2, 256, 4096),
-                stream = false,
-            });
-
-            using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            linked.CancelAfter(TimeSpan.FromSeconds(60));
-
-            using var content = new StringContent(payload, Encoding.UTF8, "application/json");
-            using var response = await _api
-                .PostAsync($"http://127.0.0.1:{SharedPort}/v1/chat/completions", content, linked.Token)
-                .ConfigureAwait(false);
-
-            var json = await response.Content.ReadAsStringAsync(linked.Token).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
-            {
-                AppLog.Write($"Перевод: llama-server вернул HTTP {(int)response.StatusCode}");
-                return null;
-            }
-
-            using var document = JsonDocument.Parse(json);
-            var root = document.RootElement;
-
-            if (root.TryGetProperty("choices", out var choices) &&
-                choices.ValueKind == JsonValueKind.Array &&
-                choices.GetArrayLength() > 0 &&
-                choices[0].TryGetProperty("message", out var message) &&
-                message.TryGetProperty("content", out var body) &&
-                body.ValueKind == JsonValueKind.String)
-            {
-                var translated = body.GetString()?.Trim();
-                return string.IsNullOrWhiteSpace(translated) ? null : translated;
-            }
-
-            AppLog.Write($"Перевод: неожиданный ответ llama-server ({json[..Math.Min(json.Length, 200)]})");
-            return null;
+            return string.IsNullOrWhiteSpace(result.Text)
+                ? VoiceTranslationOutcome.Error(TranslationFailureKind.Failed, "Движок вернул пустой перевод")
+                : VoiceTranslationOutcome.Success(result.Text.Trim());
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            AppLog.Write("Перевод: тайм-аут ожидания модели");
-            return null;
+            throw;
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (TranslationEngineException exception)
         {
-            AppLog.Write("Перевод не удался", exception);
-            return null;
+            var failure = MapFailure(exception.Error.Code);
+            AppLog.Write($"Перевод не выполнен: {exception.Error.Code}; retryable={exception.Error.Retryable}");
+            return VoiceTranslationOutcome.Error(failure.Kind, failure.Message);
+        }
+        catch (Exception)
+        {
+            AppLog.Write("Перевод не выполнен: unexpected local engine failure");
+            return VoiceTranslationOutcome.Error(TranslationFailureKind.Failed, "Не удалось выполнить перевод");
         }
     }
 
-    private async Task<bool> IsHealthyAsync(CancellationToken cancellationToken)
+    internal static bool SupportsTarget(string targetLanguage) =>
+        TargetLanguages.ContainsKey(targetLanguage);
+
+    private static string StatusLabel(EngineState state) => state switch
     {
-        try
-        {
-            using var response = await _health
-                .GetAsync($"http://127.0.0.1:{SharedPort}/health", cancellationToken)
-                .ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
-            {
-                return false;
-            }
+        EngineState.Verifying => "Проверяю модель",
+        EngineState.Loading => "Запускаю модель",
+        EngineState.Ready => "Перевожу",
+        EngineState.Sleeping => "Пробуждаю модель",
+        EngineState.Repairing => "Восстанавливаю движок",
+        _ => "Перевожу",
+    };
 
-            // Один лишь /health недостаточен: любой локальный сервис на общем порту мог бы
-            // получить приватный текст. До POST проверяем, что порт обслуживает HY-MT.
-            using var modelsResponse = await _health
-                .GetAsync($"http://127.0.0.1:{SharedPort}/v1/models", cancellationToken)
-                .ConfigureAwait(false);
-            if (!modelsResponse.IsSuccessStatusCode)
-            {
-                return false;
-            }
-
-            var modelsJson = await modelsResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            return HasExpectedModel(modelsJson);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            return false;
-        }
-    }
-
-    internal static bool HasExpectedModel(string json)
+    private static (TranslationFailureKind Kind, string Message) MapFailure(ProtocolErrorCode code) => code switch
     {
-        try
-        {
-            using var document = JsonDocument.Parse(json);
-            if (!document.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
-            {
-                return false;
-            }
-
-            return data.EnumerateArray().Any(model =>
-                model.TryGetProperty("id", out var id) &&
-                id.ValueKind == JsonValueKind.String &&
-                (id.GetString()?.Contains("HY-MT", StringComparison.OrdinalIgnoreCase) ?? false));
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-    }
-
-    private async Task<bool> EnsureServerAsync(CancellationToken cancellationToken)
-    {
-        await _startLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            if (await IsHealthyAsync(cancellationToken).ConfigureAwait(false))
-            {
-                return true;
-            }
-
-            if (_sidecar is null || _sidecar.HasExited)
-            {
-                Spawn();
-            }
-
-            // Q8_0 (~8 ГБ) грузится в VRAM десятки секунд; на этот порт мог
-            // одновременно встать и EGOIST Translator — тогда наш сайдкар умрёт
-            // на bind, а health всё равно позеленеет. Это тоже успех.
-            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(150);
-            while (DateTime.UtcNow < deadline)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (await IsHealthyAsync(cancellationToken).ConfigureAwait(false))
-                {
-                    return true;
-                }
-
-                await Task.Delay(500, cancellationToken).ConfigureAwait(false);
-            }
-
-            AppLog.Write("Перевод: llama-server не поднялся за 150 секунд");
-            return false;
-        }
-        finally
-        {
-            _startLock.Release();
-        }
-    }
-
-    private void Spawn()
-    {
-        var model = FindModel();
-        if (model is null)
-        {
-            return;
-        }
-
-        var psi = new ProcessStartInfo
-        {
-            FileName = ServerExePath,
-            Arguments = $"-m \"{model}\" --host 127.0.0.1 --port {SharedPort} -c 8192 -ngl 99 --no-webui --jinja",
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            WorkingDirectory = Path.GetDirectoryName(ServerExePath) ?? "",
-        };
-
-        _sidecar?.Dispose();
-        _sidecar = Process.Start(psi);
-        if (_sidecar is null)
-        {
-            AppLog.Write("Перевод: не удалось запустить llama-server");
-            return;
-        }
-
-        AppLog.Write($"Перевод: llama-server запущен, PID {_sidecar.Id}, порт {SharedPort}");
-        AssignToJob(_sidecar);
-    }
-
-    private static string? FindModel()
-    {
-        try
-        {
-            if (!Directory.Exists(ModelsDir))
-            {
-                return null;
-            }
-
-            return Directory.EnumerateFiles(ModelsDir, "*.gguf")
-                .Select(f => new FileInfo(f))
-                .Where(f => f.Name.Contains("HY-MT", StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(f => f.Length)
-                .FirstOrDefault()?.FullName;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private void AssignToJob(Process process)
-    {
-        if (_job == 0)
-        {
-            _job = JobNative.CreateJobObjectW(0, null);
-            if (_job != 0)
-            {
-                var info = new JobNative.JOBOBJECT_EXTENDED_LIMIT_INFORMATION
-                {
-                    BasicLimitInformation = { LimitFlags = JobNative.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE },
-                };
-
-                JobNative.SetInformationJobObject(
-                    _job,
-                    JobNative.JobObjectExtendedLimitInformation,
-                    ref info,
-                    (uint)Marshal.SizeOf<JobNative.JOBOBJECT_EXTENDED_LIMIT_INFORMATION>());
-            }
-        }
-
-        if (_job != 0 && !JobNative.AssignProcessToJobObject(_job, process.Handle))
-        {
-            AppLog.Write($"Перевод: AssignProcessToJobObject не удался ({Marshal.GetLastWin32Error()})");
-        }
-    }
+        ProtocolErrorCode.EngineMissing =>
+            (TranslationFailureKind.EngineMissing, "Установите общий пакет перевода"),
+        ProtocolErrorCode.EngineBusy =>
+            (TranslationFailureKind.EngineBusy, "Движок занят — повторите через несколько секунд"),
+        ProtocolErrorCode.Timeout =>
+            (TranslationFailureKind.Timeout, "Перевод не успел завершиться"),
+        ProtocolErrorCode.Cancelled =>
+            (TranslationFailureKind.Cancelled, "Перевод отменён"),
+        ProtocolErrorCode.IncompatibleClient =>
+            (TranslationFailureKind.IncompatibleEngine, "Обновите общий движок перевода"),
+        ProtocolErrorCode.ModelMismatch =>
+            (TranslationFailureKind.ModelInvalid, "Модель перевода не прошла проверку"),
+        ProtocolErrorCode.AmbiguousLanguage =>
+            (TranslationFailureKind.UnsupportedLanguage, "Не удалось определить язык исходного текста"),
+        _ =>
+            (TranslationFailureKind.Failed, "Не удалось выполнить перевод"),
+    };
 
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        if (Interlocked.Exchange(ref _disposed, 1) == 0)
         {
-            return;
+            _gateway.Dispose();
+        }
+    }
+}
+
+internal sealed class SharedTranslationEngineGateway : ITranslationEngineGateway
+{
+    private static readonly IReadOnlySet<string> TrustedModelHashes =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "5c3fe0b1408a5ceb0143184ef247b11b579c525f4b02b060e6c851bb76fef1a4",
+            "d98fe604dec1f28f58f80d7d560f7177e584d3b8e5835862687660e5ff97cb40",
+        };
+
+    private readonly SemaphoreSlim _startGate = new(1, 1);
+    private readonly NamedPipeTranslationClient _client;
+    private int _disposed;
+
+    public SharedTranslationEngineGateway(string? pipeName = null)
+    {
+        _client = new NamedPipeTranslationClient(
+            "egoist-voice",
+            typeof(SharedTranslationEngineGateway).Assembly.GetName().Version?.ToString(3) ?? "2.2.0",
+            TrustedModelHashes,
+            pipeName);
+    }
+
+    public async Task<EngineStatusSnapshot> EnsureAvailableAsync(CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        try
+        {
+            return await _client.GetStatusAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (TranslationEngineException exception) when (exception.Error.Code == ProtocolErrorCode.EngineMissing)
+        {
+        }
+
+        await _startGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            try
+            {
+                return await _client.GetStatusAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (TranslationEngineException exception) when (exception.Error.Code == ProtocolErrorCode.EngineMissing)
+            {
+            }
+
+            var command = ResolveHostCommand() ?? throw EngineMissing("Shared translation host is not installed.");
+            using var process = Process.Start(command);
+            if (process is null)
+            {
+                throw EngineMissing("Shared translation host could not be started.");
+            }
+
+            var deadline = Stopwatch.StartNew();
+            while (deadline.Elapsed < TimeSpan.FromSeconds(8))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    return await _client.GetStatusAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (TranslationEngineException exception) when (exception.Error.Code == ProtocolErrorCode.EngineMissing)
+                {
+                    await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            throw new TranslationEngineException(new ProtocolError
+            {
+                Code = ProtocolErrorCode.Timeout,
+                Message = "Shared translation host did not become available in time.",
+                Retryable = true,
+            });
+        }
+        finally
+        {
+            _startGate.Release();
+        }
+    }
+
+    public Task<TranslationResult> TranslateAsync(
+        TranslationRequest request,
+        CancellationToken cancellationToken) =>
+        _client.TranslateAsync(request, cancellationToken);
+
+    internal static string? ResolveCurrentSharedHostDirectory(string hostRoot)
+    {
+        var pointerPath = Path.Combine(hostRoot, "current.json");
+        if (!File.Exists(pointerPath))
+        {
+            return null;
         }
 
         try
         {
-            if (_sidecar is { HasExited: false })
+            using var document = JsonDocument.Parse(File.ReadAllBytes(pointerPath), new JsonDocumentOptions
             {
-                _sidecar.Kill(entireProcessTree: true);
+                AllowTrailingCommas = false,
+                CommentHandling = JsonCommentHandling.Disallow,
+                MaxDepth = 8,
+            });
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object ||
+                root.EnumerateObject().Count() != 6 ||
+                root.GetProperty("schemaVersion").GetInt32() != 1)
+            {
+                return null;
             }
-        }
-        catch
-        {
-            // Job Object добьёт при закрытии хэндла
-        }
 
-        _sidecar?.Dispose();
-        if (_job != 0)
-        {
-            JobNative.CloseHandle(_job);
-            _job = 0;
-        }
+            var generationId = root.GetProperty("generationId").GetString();
+            var relativePath = root.GetProperty("relativePath").GetString();
+            if (!IsSafeSegment(generationId) ||
+                !string.Equals(relativePath, $"generations/{generationId}", StringComparison.Ordinal))
+            {
+                return null;
+            }
 
-        _health.Dispose();
-        _api.Dispose();
-        _startLock.Dispose();
+            var fullHostRoot = Path.GetFullPath(hostRoot);
+            var generationRoot = Path.GetFullPath(Path.Combine(hostRoot, "generations", generationId!));
+            return generationRoot.StartsWith(fullHostRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                ? generationRoot
+                : null;
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or JsonException or
+            InvalidOperationException or KeyNotFoundException)
+        {
+            return null;
+        }
     }
 
-    /// <summary>Job Object: сайдкар с моделью умирает вместе с приложением, включая крэш.</summary>
-    private static class JobNative
+    private static ProcessStartInfo? ResolveHostCommand()
     {
-        internal const uint JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000;
-        internal const int JobObjectExtendedLimitInformation = 9;
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct IO_COUNTERS
+        var hostRoot = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "EGOIST", "TranslationEngine", "v1", "host");
+        var candidates = new[]
         {
-            public ulong ReadOperationCount, WriteOperationCount, OtherOperationCount;
-            public ulong ReadTransferCount, WriteTransferCount, OtherTransferCount;
+            Path.Combine(AppContext.BaseDirectory, "engine-host"),
+            ResolveCurrentSharedHostDirectory(hostRoot),
+            hostRoot,
+        };
+
+        foreach (var directory in candidates)
+        {
+            if (directory is null)
+            {
+                continue;
+            }
+
+            var executable = Path.Combine(directory, "Egoist.Translation.EngineHost.exe");
+            if (File.Exists(executable))
+            {
+                return HiddenStartInfo(executable, directory);
+            }
+
+            var assembly = Path.Combine(directory, "Egoist.Translation.EngineHost.dll");
+            if (File.Exists(assembly))
+            {
+                var startInfo = HiddenStartInfo("dotnet", directory);
+                startInfo.ArgumentList.Add(assembly);
+                return startInfo;
+            }
         }
 
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct JOBOBJECT_BASIC_LIMIT_INFORMATION
+        return null;
+    }
+
+    private static ProcessStartInfo HiddenStartInfo(string fileName, string workingDirectory) => new()
+    {
+        FileName = fileName,
+        WorkingDirectory = workingDirectory,
+        UseShellExecute = false,
+        CreateNoWindow = true,
+        WindowStyle = ProcessWindowStyle.Hidden,
+    };
+
+    private static TranslationEngineException EngineMissing(string message) => new(new ProtocolError
+    {
+        Code = ProtocolErrorCode.EngineMissing,
+        Message = message,
+        Retryable = true,
+    });
+
+    private static bool IsSafeSegment(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && value.Length <= 80 && value is not ("." or "..") &&
+        value.All(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '-');
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) == 0)
         {
-            public long PerProcessUserTimeLimit;
-            public long PerJobUserTimeLimit;
-            public uint LimitFlags;
-            public nuint MinimumWorkingSetSize;
-            public nuint MaximumWorkingSetSize;
-            public uint ActiveProcessLimit;
-            public nuint Affinity;
-            public uint PriorityClass;
-            public uint SchedulingClass;
+            _startGate.Dispose();
         }
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION
-        {
-            public JOBOBJECT_BASIC_LIMIT_INFORMATION BasicLimitInformation;
-            public IO_COUNTERS IoInfo;
-            public nuint ProcessMemoryLimit;
-            public nuint JobMemoryLimit;
-            public nuint PeakProcessMemoryUsed;
-            public nuint PeakJobMemoryUsed;
-        }
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        internal static extern nint CreateJobObjectW(nint lpJobAttributes, string? lpName);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        internal static extern bool SetInformationJobObject(
-            nint hJob, int jobObjectInfoClass,
-            ref JOBOBJECT_EXTENDED_LIMIT_INFORMATION lpJobObjectInfo, uint cbJobObjectInfoLength);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        internal static extern bool AssignProcessToJobObject(nint hJob, nint hProcess);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        internal static extern bool CloseHandle(nint hObject);
     }
 }

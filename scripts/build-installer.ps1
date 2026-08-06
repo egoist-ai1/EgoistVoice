@@ -29,12 +29,42 @@ $solution = Join-Path $projectRoot "Egoist.Voice.sln"
 $project = Join-Path $projectRoot "Egoist.Voice.csproj"
 $installerScriptSource = Join-Path $projectRoot "installer\EgoistVoice.iss"
 $installerScript = Join-Path $projectRoot "installer\EgoistVoice.generated.iss"
+$translationVendorRoot = Join-Path $projectRoot "vendor\translation-client\1.0.0"
+$translationManifestPath = Join-Path $translationVendorRoot "manifest.json"
 
 if (-not $staging.StartsWith($releaseRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "Unsafe staging path: $staging"
 }
 if (-not $modelStaging.StartsWith($releaseRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "Unsafe model staging path: $modelStaging"
+}
+
+# EV-2206 is an independent, pinned consumer. Refuse a changed/missing client
+# before compilation so Voice can never silently float to sibling source output.
+if (-not (Test-Path -LiteralPath $translationManifestPath -PathType Leaf)) {
+    throw "Pinned translation client manifest is missing: $translationManifestPath"
+}
+$translationManifest = Get-Content -LiteralPath $translationManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+if ($translationManifest.schemaVersion -ne 1 -or
+    $translationManifest.artifactVersion -ne "1.0.0" -or
+    $translationManifest.targetFramework -ne "net8.0" -or
+    @($translationManifest.files).Count -ne 2) {
+    throw "Pinned translation client manifest has an unsupported shape."
+}
+$translationBinaryRoot = [System.IO.Path]::GetFullPath((Join-Path $translationVendorRoot "net8.0"))
+foreach ($entry in @($translationManifest.files)) {
+    if ($entry.name -notin @("Egoist.Translation.Client.dll", "Egoist.Translation.Contracts.dll")) {
+        throw "Unexpected translation client artifact: $($entry.name)"
+    }
+    $binary = [System.IO.Path]::GetFullPath((Join-Path $translationBinaryRoot $entry.name))
+    if (-not $binary.StartsWith($translationBinaryRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) -or
+        -not (Test-Path -LiteralPath $binary -PathType Leaf)) {
+        throw "Pinned translation client binary is missing or unsafe: $binary"
+    }
+    if ((Get-Item -LiteralPath $binary).Length -ne [long]$entry.bytes -or
+        (Get-FileHash -Algorithm SHA256 -LiteralPath $binary).Hash.ToLowerInvariant() -ne [string]$entry.sha256) {
+        throw "Pinned translation client checksum mismatch: $binary"
+    }
 }
 
 New-Item -ItemType Directory -Force $releaseRoot | Out-Null
@@ -56,6 +86,12 @@ dotnet publish $project `
     -p:Version=$Version `
     -o $staging
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE" }
+
+foreach ($translationAssembly in @("Egoist.Translation.Client.dll", "Egoist.Translation.Contracts.dll")) {
+    if (-not (Test-Path -LiteralPath (Join-Path $staging $translationAssembly) -PathType Leaf)) {
+        throw "Published Voice payload is missing $translationAssembly"
+    }
+}
 
 # The target is Windows x64 only. Removing foreign native runtimes and unused
 # satellite resources reduces install size and surface area without changing

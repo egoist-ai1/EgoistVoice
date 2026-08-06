@@ -1,9 +1,9 @@
 # Egoist Voice — status
 
-- Last updated: `2026-08-02T19:29:01Z`
-- Version/revision: Published/source version `2.1.0`; Git `main` at `f1f5997`;
-  preserved 2.1.1/2.2 work on `v2.2-wip` at `b7281fd`.
-- Stage: `implementation / EV-2205 parser gate complete, formatter active; human quality gates pending`
+- Last updated: `2026-08-06T19:06:39Z`
+- Version/revision: Published version remains `2.1.0`; source/local test build is
+  `2.2.0`; work is preserved on `v2.2-wip` (pre-task checkpoint `f4984f6`).
+- Stage: `local test build / EV-2206 pass; offline ASR setup built; user field test next`
 
 ## Observable outcome
 
@@ -11,8 +11,10 @@
 
 ## Current milestone
 
-- Active ticket: [`EV-2205`](./docs/tickets/EV-2205-commands-and-formatting.md)
-  — strict translation/voice commands and conservative human-like formatting.
+- Current release slice: [`EV-2206`](./docs/tickets/EV-2206-shared-translation-client.md)
+  is implemented and independently accepted locally. Voice now uses the
+  protected shared Engine and an owner-safe installer; the user field-tests
+  the built candidate next.
 - Approved spec: [`docs/specs/001-voice-2.2-accuracy-offline-translation.md`](./docs/specs/001-voice-2.2-accuracy-offline-translation.md),
   approved on 2026-08-01 and corrected by the user's `Продолжай` on 2026-08-02.
 - Approved breakdown: [`docs/tickets/README.md`](./docs/tickets/README.md);
@@ -20,7 +22,7 @@
   download is in scope.
 - Baseline handoff: [`docs/HANDOFF-2.1.1.md`](./docs/HANDOFF-2.1.1.md); the dirty candidate remains unreleased.
 - Current self-contained continuation:
-  [`docs/changes/2026-08-02T192901Z-ev-2200-repository-safety-net.md`](./docs/changes/2026-08-02T192901Z-ev-2200-repository-safety-net.md).
+  [`docs/changes/2026-08-06T190639Z-ev-2206-voice-220-test-build.md`](./docs/changes/2026-08-06T190639Z-ev-2206-voice-220-test-build.md).
 - Программный план до финальных установщиков:
   [`PROGRAM-PLAN.md`](../egoist-translator/docs/program/PROGRAM-PLAN.md).
   Первый шаг новой сессии: [`docs/KICKOFF.md`](./docs/KICKOFF.md).
@@ -58,21 +60,29 @@
   suffixes require a completed-clause boundary; command mentions remain text.
 - The locked command fixture passes 40/40 positives and 80/80 adversarial
   negatives. Payload nouns and terminal sentence punctuation are preserved.
+- Replaced the legacy trusted-port/HTTP/sidecar path with the hash-pinned
+  `net8.0` shared Contracts/Client artifact and current-user named pipe.
+  Voice starts an installed shared Host when needed but never owns or kills it.
+- Translation failures are typed and fail closed: the original dictated text
+  is no longer silently inserted as if it were a successful translation.
+  Unsupported offline languages are rejected before source text is framed.
+- Voice setup now registers/removes only
+  `owners\egoist-voice.owner.json`; it never deletes the shared Engine tree or
+  Translator's owner. The build verifies exact client DLL sizes/hashes.
+- Built the unsigned `2.2.0` offline-ASR installer with the exact GigaAM and
+  Whisper payload: `1,283,478,780` bytes, SHA-256
+  `9cdea920583a7d04efa8b54bb420e4bc2941ff8c78b6a7665a53390da89cc4fe`.
+  It was not executed on the development host. Independent review passed.
 
 ## Next safe action
 
-1. Finish EV-2205 protected-span normalization, conservative duplicate
-   punctuation and pause-confirmed paragraph formatting; add idempotence tests.
-   Зависимостей от Translator нет — можно вести сразу после `EV-2200`.
-2. `EV-2211` — конвейер иконки; параллельно, как только пользователь положит
-   исходный растр 1024×1024 в `assets/brand/`.
-3. `EV-2206` — после того как Translator выполнит решение D1 (мультитаргет
-   `net8.0;net10.0` для `Contracts`/`Client`) и закроет `T008`. Не ссылаться
-   на несовместимые бинарники и не поднимать Voice до `net10.0`.
-4. `EV-2207` → `EV-2208` → `EV-2212`.
-5. `EV-2209` упаковка → `EV-2214` оснастка → `EV-2213` независимость
+1. Пользователь устанавливает и проверяет три локальных пакета: shared Engine,
+   Translator и Voice 2.2.0; модель перевода активируется в Translator.
+2. После обратной связи — завершить оставшийся EV-2205 formatting slice.
+3. `EV-2207` → `EV-2208` → `EV-2212`.
+4. `EV-2209` full-MT packaging → `EV-2214` оснастка → `EV-2213` независимость
    совместно с Translator `T020`.
-6. **Действие пользователя, которое агент выполнить не может:** записать
+5. **Для измеренного финального SHIP, не для текущего field test:** записать
    приватный корпус `EV-2201` (350 клипов) и прогнать парные гейты
    `EV-2202`/`EV-2203` до любого измеренного утверждения о точности и до
    финального релиза.
@@ -81,6 +91,9 @@
 
 | Date (UTC) | Check | Result | Evidence |
 | --- | --- | --- | --- |
+| 2026-08-06 | EV-2206 independent outcome review | pass-local | Pinned net8 named-pipe client, shared-host non-ownership, fail-closed delivery, bounded language tier, owner-safe ISS and vendor-integrity build gate accepted. |
+| 2026-08-06 | Voice 2.2.0 guarded unsigned setup | pass-local | 1,283,478,780 bytes; SHA-256 `9cdea9...cc4fe`; exact 900,364,167-byte ASR model payload; 466/466 tests; installer compiled but was not executed. |
+| 2026-08-06 | Voice Release build | pass | 0 warnings, 0 errors; changed-file format clean. |
 | 2026-08-02 | EV-2200 repository safety net | pass | Branch `v2.2-wip` at `b7281fd`; `main` remains `f1f5997`; 99 changed/new files preserved; no GGUF/WAV/private-key extensions staged. |
 | 2026-08-02 | Release unit/integration suite | pass | Fresh `466/466`; app and tests built in Release. |
 | 2026-08-02 | Locked translation-command gate | pass | `40/40` positives, `80/80` negatives; focused parser suite `82/82`. |
@@ -114,16 +127,19 @@
   device removal and 30-minute endurance are not yet run. EV-2203 compatibility
   is complete but its paired quality verdict is HOLD; EV-2204 deterministic
   implementation is complete but its private accuracy verdict is pending;
-  EV-2205 is active and EV-2206…EV-2210 remain dependency-gated. No final 2.2.0
+  EV-2205 has a residual formatting slice; EV-2206 is locally complete;
+  EV-2207…EV-2210 retain their remaining gates. No final public 2.2.0 `SHIP`
   claim is possible before microphone, corpus, packaging, clean-machine and
   independent EV-2210 gates.
 - EV-2205 is only partially complete: `TranscriptNormalizer`,
   `TranscriptFormatter`, voice formatting commands and GigaAM chunk paragraph
   joining still require the conservative/idempotent implementation and tests
   described in the active ticket.
-- Translator's shared assemblies currently target `net10.0`; Voice targets
-  `net8.0-windows`. EV-2206 is blocked until a compatible target or explicit
-  multi-target contract/client is built and verified.
+- Voice consumes exact project-local `net8.0` shared client artifacts and stays
+  independently buildable. Updating them requires a new manifest/hash review.
+- The Voice test installer contains complete offline ASR but not the 1.78 GiB
+  MT model; translation requires the separate shared Engine setup and model
+  activation through Translator. EV-2209 retains the single full-MT bundle.
 - Candidate work is now recoverable on local branch `v2.2-wip` at `b7281fd`;
   `main` and release 2.1.0 remain untouched. Tag, packaging and publish remain
   unapproved.

@@ -1,6 +1,6 @@
 # EV-2206 — replace fixed-port translation with the shared host client
 
-- Status: `PROPOSED — requires ticket approval`
+- Status: `IMPLEMENTED LOCALLY — independent pass; installed/coexistence VM gate pending`
 - Specification: [`Voice 2.2`](../specs/001-voice-2.2-accuracy-offline-translation.md)
 - Depends on: `EV-2205`; Translator `T002` Contracts artifact and `T008` real
   Engine Host translation/conformance artifact
@@ -56,3 +56,18 @@ that merely owns port 47821, and it returns typed recoverable failures.
 
 The normal spoken-command path translates through the verified host and all
 legacy fixed-port/source-text logging paths are unreachable.
+
+## Local checkpoint — 2026-08-06
+
+- Voice stays on `net8.0-windows` and consumes exact project-local
+  Contracts/Client `1.0.0` DLLs under a hash-bound manifest.
+- The current-user named-pipe client starts an installed shared Host but never
+  owns/kills it. Port `47821`, `/health` and chat-completions are absent from
+  reachable Voice translation source.
+- Typed failures return before delivery; untranslated payload is never inserted
+  as a successful translation. The offline language tier is bounded before
+  framing.
+- Release build `0/0`, tests `466/466`, changed-file format pass, independent
+  review `pass`.
+- The Voice installer registers/removes only `egoist-voice.owner.json`; actual
+  install/uninstall coexistence remains the EV-2213/EV-2214 VM gate.

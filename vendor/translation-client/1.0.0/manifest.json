@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "artifactVersion": "1.0.0",
+  "sourceProject": "egoist-translator",
+  "sourceCommit": "e04f25f9541f0467d454afc65dc8da174e7e2b5e",
+  "targetFramework": "net8.0",
+  "protocol": {
+    "major": 1,
+    "minor": 0,
+    "transport": "current-user named pipe",
+    "maxFrameBytes": 1048576
+  },
+  "files": [
+    {
+      "name": "Egoist.Translation.Client.dll",
+      "bytes": 24064,
+      "sha256": "f0d0bcaa5f1363d81cb7f81f71125c8254214469ad8e68a021dc4f368379c127"
+    },
+    {
+      "name": "Egoist.Translation.Contracts.dll",
+      "bytes": 56320,
+      "sha256": "c5f01a14acebef9b4803ddd0f4952b54b2ca60ce8e8fd9cb496b966e9a6fb9fc"
+    }
+  ]
+}

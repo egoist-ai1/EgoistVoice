@@ -28,6 +28,19 @@ public sealed class ReleaseContractTests
     }
 
     [Fact]
+    public void InstallerOwnsOnlyItsSharedEngineMarker()
+    {
+        var installer = File.ReadAllText(Path.Combine(RepositoryRoot(), "installer", "EgoistVoice.iss"));
+
+        Assert.Contains("egoist-voice.owner.json", installer, StringComparison.Ordinal);
+        Assert.Contains("RegisterSharedEngineOwner", installer, StringComparison.Ordinal);
+        Assert.Contains("RemoveSharedEngineOwner", installer, StringComparison.Ordinal);
+        Assert.Contains("DeleteFile(SharedEngineOwnerPath)", installer, StringComparison.Ordinal);
+        Assert.DoesNotContain("egoist-translator.owner.json", installer, StringComparison.Ordinal);
+        Assert.DoesNotContain("DelTree(ExpandConstant('{localappdata}\\EGOIST\\TranslationEngine", installer, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CorpusSchemasAndRunner_KeepTheOfflinePrivacyContract()
     {
         var root = RepositoryRoot();

@@ -7,7 +7,9 @@
   ASR → target/utterance entity profile → deterministic canonicalization →
   normalization → safe clipboard/keystroke delivery.
 - Esc cancels; rejected/quiet/short audio receives explicit state; sensitive password targets suppress copy/insert.
-- Tray settings control triggers, sound, dictionaries and engine behavior; optional voice command routes text through verified local translator.
+- Tray settings control triggers, sound and dictionaries; an explicit voice
+  translation command routes text through the pinned current-user shared Engine
+  client and fails closed before delivery on any translation error.
 
 ## Implementation map
 
@@ -18,6 +20,10 @@
 - `Core/BuiltInVocabulary.cs` owns canonical names and exact observed aliases;
   `Services/EntityProfilePolicy.cs` enables only justified technology/gaming
   ambiguities. `UserDictionary` preserves user-last precedence and regex limits.
+- `Services/TranslatorClient.cs` owns the pinned named-pipe adapter, shared Host
+  discovery/start without ownership, target-tier mapping and typed failures.
+- `installer/EgoistVoice.iss` owns only `egoist-voice.owner.json`; shared Host,
+  model and other product owners are outside Voice uninstall scope.
 - `tests/Egoist.Voice.Tests/` owns source contracts; `tests/corpus/` describes private benchmark workflow.
 - `scripts/` owns installer, release smoke, visual capture and operational helpers.
 - `docs/HANDOFF-2.1.1.md` is the current predecessor to `STATUS.md`; historical detail remains linked, not copied.

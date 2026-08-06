@@ -19,6 +19,10 @@
 - `EV-2205`: typed strict translation-command parsing passes the locked 40/80
   fixture. Protected-span normalization and pause-confirmed formatting remain
   the active implementation slice.
+- `EV-2206`: protected shared-host client is implemented and independently
+  accepted locally; the old port/HTTP/sidecar path is gone.
+- Voice `2.2.0` split-package field build is ready: offline ASR is inside Voice,
+  while shared Engine/model are installed separately for this test cycle.
 - Preserve the current dirty 2.1.1 candidate as the tested baseline; do not publish or silently fold it into a release.
 
 ## Next
@@ -26,10 +30,8 @@
 - Finish EV-2205 with idempotent code/URL/placeholder preservation, strict
   formatting commands and paragraphs only on confirmed pause + sentence
   boundaries.
-- `EV-2206` → `EV-2208`: способ совместимости зафиксирован решением D1 —
-  Translator делает `Contracts` и `Client` мультитаргетными `net8.0;net10.0`,
-  Voice остаётся на `net8.0-windows`. Затем защищённый клиент общего движка,
-  честный UX и измеренное распределение ресурсов.
+- User field test of the three unsigned local setups, then `EV-2207` →
+  `EV-2208`: honest recovery UX and measured resource arbitration.
 - `EV-2209`: Full Offline packaging and owner-safe shared-component lifecycle.
 
 ## Амендмент 002 — облик и независимость

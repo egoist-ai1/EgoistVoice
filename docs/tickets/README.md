@@ -14,10 +14,10 @@ of deterministic capture/context/formatting work.
 | 3 | [EV-2203](./EV-2203-asr-candidate-gate.md) | Candidate implemented; HOLD baseline pending paired corpus | Contextual-bias gate on current GigaAM + Whisper stack | EV-2202 deterministic checks |
 | 4 | [EV-2204](./EV-2204-entity-accurate-asr.md) | Implemented; private accuracy gate pending | Safe RU/EN entity registry and repair | EV-2203 baseline decision |
 | 5 | [EV-2205](./EV-2205-commands-and-formatting.md) | Active | Precise commands, punctuation and long-form layout | EV-2202, EV-2204 deterministic path |
-| 6 | [EV-2206](./EV-2206-shared-translation-client.md) | Approved; pending | Protected Engine Host v1 client replaces fixed-port trust | EV-2205; Translator T002 contract + T008 host artifact |
+| 6 | [EV-2206](./EV-2206-shared-translation-client.md) | Implemented locally; independent pass | Protected Engine Host v1 client replaces fixed-port trust; VM coexistence pending | Translator T002 contract + T008 host artifact |
 | 7 | [EV-2207](./EV-2207-translation-ux.md) | Approved; pending | Honest, accessible translation and recovery states | EV-2206 |
 | 8 | [EV-2208](./EV-2208-resource-arbitration.md) | Approved; pending | ASR/MT lifecycle meets latency and memory budgets | EV-2204, EV-2206 |
-| 9 | [EV-2209](./EV-2209-full-offline-packaging.md) | Approved; pending | Full Offline installer and owner-safe shared runtime | EV-2207, EV-2208; Translator T010 pinned engine pack |
+| 9 | [EV-2209](./EV-2209-full-offline-packaging.md) | Local split-package field build ready; single full-MT bundle pending | Full Offline installer and owner-safe shared runtime | EV-2207, EV-2208; Translator T010 pinned engine pack |
 | 10 | [EV-2210](./EV-2210-release-gate.md) | Approved; pending independent gate | Independently verified local 2.2.0 artifact | EV-2201…EV-2209 |
 
 ## Амендмент 002 — облик и независимость (утверждён 2026-08-02)

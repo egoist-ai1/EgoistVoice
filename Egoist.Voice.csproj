@@ -23,9 +23,9 @@
     <NoWarn>$(NoWarn);WFAC010</NoWarn>
     <AssemblyName>Egoist.Voice</AssemblyName>
     <RootNamespace>Egoist.Voice</RootNamespace>
-    <Version>2.1.0</Version>
-    <AssemblyVersion>2.1.0.0</AssemblyVersion>
-    <FileVersion>2.1.0.0</FileVersion>
+    <Version>2.2.0</Version>
+    <AssemblyVersion>2.2.0.0</AssemblyVersion>
+    <FileVersion>2.2.0.0</FileVersion>
     <Company>EGOIST</Company>
     <Product>Egoist Voice</Product>
     <Description>Быстрая локальная русская диктовка для Windows</Description>
@@ -38,6 +38,25 @@
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime.Cuda" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime.Vulkan" Version="1.9.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      EV-2206 deliberately consumes a hash-pinned net8 client artifact. Voice
+      remains independently buildable and never references the Translator
+      sibling source tree or a floating package feed.
+    -->
+    <Reference Include="Egoist.Translation.Contracts">
+      <HintPath>vendor\translation-client\1.0.0\net8.0\Egoist.Translation.Contracts.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Egoist.Translation.Client">
+      <HintPath>vendor\translation-client\1.0.0\net8.0\Egoist.Translation.Client.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Content Include="vendor\translation-client\1.0.0\manifest.json"
+             Link="translation-client\manifest.json"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
