@@ -1,6 +1,6 @@
 # EV-2209 — package Voice 2.2 Full Offline
 
-- Status: `PROPOSED — requires ticket approval`
+- Status: `ACTIVE — local source/package gates pass; clean-VM lifecycle pending EV-2214/EV-2213`
 - Specification: [`Voice 2.2`](../specs/001-voice-2.2-accuracy-offline-translation.md)
 - Depends on: `EV-2207`, `EV-2208`; pinned Translator `T010` owner-safe
   engine/model pack
@@ -52,3 +52,21 @@ cannot break the other owner.
 
 A version-candidate Full Offline installer passes the complete ownership and
 offline lifecycle without publishing or declaring 2.2.0 final.
+
+## Local acceptance evidence
+
+- Voice consumes the exact Translator-produced Engine 1.0.0 bundle manifest,
+  rejects missing/unsafe/undeclared/hash-mismatched files, and installs Host ->
+  exact Q8/runtime pack -> `egoist-voice` owner.
+- Inno's 2.1 GB ceiling is handled internally with native disk spanning, then
+  a versioned .NET Framework bootstrap embeds the inner EXE and every BIN
+  slice into one outer EXE. No ASR model or CUDA/Vulkan/CPU payload was
+  removed. Footer, manifest and every embedded segment are SHA-256 verified
+  before launch; receipt schema 3 binds their bytes, offsets and hashes.
+- Final one-file package: `3,191,770,964` bytes, SHA-256
+  `eb2b2323ee8f77e234956711ab7b8eaf20fc5c2cd318e6380e87cb59eac14b9c`.
+  Voice tests: `479/479` pass. Outer PE identity is `2.2.0.0` / `2.2.0`.
+  Independent source and artifact reviews returned `pass` for unsigned local
+  field testing.
+- Installers were not executed on the development host. Clean Windows 10/11,
+  offline start and ownership matrix remain explicitly pending EV-2214/EV-2213.

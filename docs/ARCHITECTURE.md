@@ -35,7 +35,21 @@
 - Разделяемый движок перевода живёт в
   `%LOCALAPPDATA%\EGOIST\TranslationEngine\v1\` и принадлежит обоим
   приложениям через реестр владельцев. Установщик Voice пишет и удаляет
-  **только** `owners\egoist-voice.owner.json`.
+  **только** `owners\egoist-voice.owner.json`. Full Offline setup consumes the
+  exact Translator bundle and commits Host -> Q8/runtime pack -> owner; reuse
+  requires complete manifest/hash/file-set verification. Because the preserved
+  ASR + GPU + MT payload exceeds Inno's single-file ceiling, Inno creates
+  private build-time slices. A small versioned bootstrap embeds them into one
+  outer EXE, verifies footer/manifest and every segment SHA-256 before launch,
+  checks temporary-drive space, forwards arguments, waits for completion and
+  removes its task-owned extraction directory.
+- GitHub delivery reuses those exact private Inno files without recompressing
+  or changing product bytes. `EgoistVoiceWebBootstrap` prefers a complete
+  colocated set for Full Offline use; otherwise it downloads from one pinned
+  release tag into a versioned user-local cache, resumes `.part` files when
+  GitHub honors Range, restricts redirects to HTTPS GitHub asset hosts and
+  launches Inno only after declared size and SHA-256 pass. Success removes the
+  online cache; download or install failure preserves it for retry.
 - ASR-модели Voice остаются в `%LOCALAPPDATA%\EgoistVoice\Models` и в каталог
   разделяемого движка не переезжают.
 - Диктовка не зависит от перевода: при любом состоянии движка, включая его

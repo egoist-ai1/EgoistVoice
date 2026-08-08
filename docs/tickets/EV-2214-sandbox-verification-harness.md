@@ -1,6 +1,6 @@
 # EV-2214 — оснастка проверки установщика Voice
 
-- Status: `APPROVED — inactive until EV-2209`
+- Status: `READY — EV-2209 package prerequisite passed; harness and guest runs not implemented`
 - Specification: [Амендмент 002](../specs/002-voice-2.2-brand-ui-and-independence.md);
   нормативная матрица —
   [`SANDBOX-TEST-MATRIX.md`](../../../egoist-translator/docs/program/SANDBOX-TEST-MATRIX.md)

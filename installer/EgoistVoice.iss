@@ -7,6 +7,9 @@
 #ifndef ModelSourceDir
   #define ModelSourceDir "..\artifacts\release\model-staging"
 #endif
+#ifndef EngineBundleDir
+  #define EngineBundleDir "..\..\egoist-translator\dist\engine-bundle-1.0.0"
+#endif
 #ifndef MyAppVersion
   #define MyAppVersion "2.1.0"
 #endif
@@ -32,7 +35,10 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 OutputDir={#OutputDir}
-OutputBaseFilename=EgoistVoice-Setup-{#MyAppVersion}-win-x64
+#ifndef OutputBaseFilename
+#define OutputBaseFilename "EgoistVoice-Setup-" + MyAppVersion + "-inner"
+#endif
+OutputBaseFilename={#OutputBaseFilename}
 SetupIconFile=..\assets\EgoistVoice.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}
@@ -46,6 +52,11 @@ WizardResizable=no
 ShowLanguageDialog=no
 Compression=lzma2/ultra64
 SolidCompression=yes
+; The inner Inno package is disk-spanned because its payload exceeds Inno's
+; 2.1 GB single-file limit. build-installer.ps1 embeds the inner EXE and every
+; BIN slice into one checksum-verifiable Egoist Voice bootstrap EXE.
+DiskSpanning=yes
+DiskSliceSize=2100000000
 CloseApplications=yes
 RestartApplications=no
 UninstallLogMode=overwrite
@@ -67,6 +78,13 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
 Source: "..\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ModelSourceDir}\*"; DestDir: "{localappdata}\EgoistVoice\Models"; Flags: ignoreversion recursesubdirs createallsubdirs onlyifdoesntexist
+Source: "{#EngineBundleDir}\*.ps1"; DestDir: "{app}\setup\translation-engine"; Flags: ignoreversion
+Source: "{#EngineBundleDir}\manifests\*"; DestDir: "{app}\setup\translation-engine\manifests"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#EngineBundleDir}\THIRD-PARTY-NOTICES.json"; DestDir: "{app}\setup\translation-engine"; Flags: ignoreversion
+Source: "{#EngineBundleDir}\engine-bundle-manifest.json"; DestDir: "{app}\setup\translation-engine"; Flags: ignoreversion
+Source: "{#EngineBundleDir}\notices\*"; DestDir: "{app}\setup\translation-engine\notices"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#EngineBundleDir}\host-payload\*"; DestDir: "{tmp}\egoist-translation-engine\host-payload"; Flags: ignoreversion recursesubdirs createallsubdirs deleteafterinstall
+Source: "{#EngineBundleDir}\offline-pack\*"; DestDir: "{tmp}\egoist-translation-engine\offline-pack"; Flags: ignoreversion recursesubdirs createallsubdirs deleteafterinstall
 
 [InstallDelete]
 Type: filesandordirs; Name: "{app}\*"; Check: IsSafeAppDirectory
@@ -108,18 +126,6 @@ const
   DisabledTextColor = $00787070;
   AccentColor = $003426FF;
 
-type
-  TEgoistSystemTime = record
-    Year: Word;
-    Month: Word;
-    DayOfWeek: Word;
-    Day: Word;
-    Hour: Word;
-    Minute: Word;
-    Second: Word;
-    Milliseconds: Word;
-  end;
-
 var
   BrandSurface: TPanel;
   HeaderIcon: TBitmapImage;
@@ -142,13 +148,16 @@ var
   IsInstallStarted: Boolean;
   IsInstallFinished: Boolean;
 
-procedure GetSystemTime(var SystemTime: TEgoistSystemTime);
-  external 'GetSystemTime@kernel32.dll stdcall';
 
 function CreateRoundRectRgn(Left, Top, Right, Bottom, Width, Height: Integer): Integer;
   external 'CreateRoundRectRgn@gdi32.dll stdcall';
 function SetWindowRgn(Wnd, Rgn: Integer; Redraw: Boolean): Integer;
   external 'SetWindowRgn@user32.dll stdcall';
+
+function QuotePowerShellArgument(Value: String): String;
+begin
+  Result := '"' + Value + '"';
+end;
 procedure ApplyRoundedPanel(PanelControl: TPanel; Radius: Integer);
 var
   Region: Integer;
@@ -191,19 +200,48 @@ procedure SetProgress(Current, Total: Integer);
 var
   AvailableWidth: Integer;
   ProgressWidth: Integer;
+  ScaleDivisor: Integer;
+  ScaledCurrent: Integer;
+  ScaledTotal: Integer;
+  Percent: Integer;
 begin
   AvailableWidth := ProgressTrack.ClientWidth;
   if (Total <= 0) or (Current <= 0) then
-    ProgressWidth := 0
+  begin
+    ProgressWidth := 0;
+    Percent := 0;
+  end
   else
-    ProgressWidth := (AvailableWidth * Current) div Total;
+  begin
+    { CurProgressChanged uses 32-bit Integer values. Scale before multiplying so
+      multi-gigabyte embedded payloads cannot overflow the progress calculation. }
+    ScaleDivisor := (Total div 1000000) + 1;
+    ScaledCurrent := Current div ScaleDivisor;
+    ScaledTotal := Total div ScaleDivisor;
+    if ScaledTotal <= 0 then
+      ScaledTotal := 1;
+    if Current >= Total then
+    begin
+      ProgressWidth := AvailableWidth;
+      Percent := 100;
+    end
+    else
+    begin
+      ProgressWidth := (AvailableWidth * ScaledCurrent) div ScaledTotal;
+      Percent := (100 * ScaledCurrent) div ScaledTotal;
+    end;
+  end;
   if (Current > 0) and (ProgressWidth < ScaleX(3)) then
     ProgressWidth := ScaleX(3);
+  if ProgressWidth < 0 then
+    ProgressWidth := 0;
   if ProgressWidth > AvailableWidth then
     ProgressWidth := AvailableWidth;
   ProgressFill.Width := ProgressWidth;
+  if Percent > 100 then
+    Percent := 100;
   if (Total > 0) and (Current > 0) then
-    PercentLabel.Caption := IntToStr((Current * 100) div Total) + '%'
+    PercentLabel.Caption := IntToStr(Percent) + '%'
   else
     PercentLabel.Caption := '';
 end;
@@ -542,78 +580,6 @@ begin
   DelTree(ExpandConstant('{localappdata}\EgoistVoice\Temp'), True, True, True);
 end;
 
-function JsonEscape(Value: String): String;
-var
-  Index: Integer;
-  CodeUnit: Integer;
-begin
-  { SaveStringToFile is available in the pinned Inno compiler. Keep the file
-    byte-safe ASCII by emitting every non-ASCII UTF-16 code unit as JSON \uXXXX. }
-  Result := '';
-  for Index := 1 to Length(Value) do
-  begin
-    CodeUnit := Ord(Value[Index]);
-    if Value[Index] = '\' then
-      Result := Result + '\\'
-    else if Value[Index] = '"' then
-      Result := Result + '\"'
-    else if (CodeUnit < 32) or (CodeUnit > 126) then
-      Result := Result + Format('\u%.4x', [CodeUnit])
-    else
-      Result := Result + Value[Index];
-  end;
-end;
-
-function SharedEngineOwnerPath: String;
-begin
-  Result := ExpandConstant('{localappdata}\EGOIST\TranslationEngine\owners\egoist-voice.owner.json');
-end;
-
-function GetUtcTimestamp: String;
-var
-  SystemTime: TEgoistSystemTime;
-begin
-  GetSystemTime(SystemTime);
-  Result := Format('%.4d-%.2d-%.2dT%.2d:%.2d:%.2dZ', [
-    SystemTime.Year,
-    SystemTime.Month,
-    SystemTime.Day,
-    SystemTime.Hour,
-    SystemTime.Minute,
-    SystemTime.Second]);
-end;
-
-procedure RegisterSharedEngineOwner;
-var
-  OwnerRoot: String;
-  OwnerJson: String;
-  ClaimedUtc: String;
-begin
-  OwnerRoot := ExtractFileDir(SharedEngineOwnerPath);
-  if not ForceDirectories(OwnerRoot) then
-    RaiseException('Не удалось зарегистрировать Egoist Voice как владельца общего движка.');
-
-  ClaimedUtc := GetUtcTimestamp;
-  OwnerJson :=
-    '{"schemaVersion":1,' +
-    '"ownerId":"egoist-voice",' +
-    '"ownerVersion":"{#MyAppVersion}",' +
-    '"ownerInstallPath":"' + JsonEscape(ExpandConstant('{app}')) + '",' +
-    '"ownerUninstallKey":"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{79A42D80-A0E3-45CA-BBBC-E6B2E48EBBE2}_is1",' +
-    '"contractVersion":"v1",' +
-    '"minEngineVersion":"1.0.0",' +
-    '"claimedUtc":"' + ClaimedUtc + '"}';
-
-  if not SaveStringToFile(SharedEngineOwnerPath, OwnerJson, False) then
-    RaiseException('Не удалось записать owner-файл общего движка.');
-end;
-
-procedure RemoveSharedEngineOwner;
-begin
-  { Удаляем только собственный owner-файл. Host, модель и чужие owners не трогаем. }
-  DeleteFile(SharedEngineOwnerPath);
-end;
-
 function StopRunningApplication: Boolean;
 var
   ResultCode: Integer;
@@ -637,20 +603,59 @@ begin
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResultCode: Integer;
+  Parameters: String;
 begin
   if CurStep = ssInstall then
     CleanupLegacyState
   else if CurStep = ssPostInstall then
-    RegisterSharedEngineOwner;
+  begin
+    ResultCode := -1;
+    Parameters := '-NoProfile -ExecutionPolicy Bypass -File ' +
+      QuotePowerShellArgument(ExpandConstant('{app}\setup\translation-engine\invoke-engine-bootstrap.ps1')) +
+      ' -Action InstallOwner -OwnerId egoist-voice' +
+      ' -OwnerVersion {#MyAppVersion} -EngineVersion 1.0.0' +
+      ' -OwnerInstallPath ' + QuotePowerShellArgument(ExpandConstant('{app}')) +
+      ' -OwnerUninstallKey ' + QuotePowerShellArgument('HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{79A42D80-A0E3-45CA-BBBC-E6B2E48EBBE2}_is1') +
+      ' -HostPayload ' + QuotePowerShellArgument(ExpandConstant('{tmp}\egoist-translation-engine\host-payload')) +
+      ' -LocalPackRoot ' + QuotePowerShellArgument(ExpandConstant('{tmp}\egoist-translation-engine\offline-pack')) +
+      ' -LogPath ' + QuotePowerShellArgument(ExpandConstant('{localappdata}\EGOIST\TranslationEngine\state\setup-voice.log'));
+    if (not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+      Parameters, '', SW_HIDE, ewWaitUntilTerminated, ResultCode)) or
+      (ResultCode <> 0) then
+    begin
+      MsgBox('Не удалось установить проверенный офлайн-движок (код ' +
+        IntToStr(ResultCode) + '). Подробности: ' +
+        ExpandConstant('{localappdata}\EGOIST\TranslationEngine\state\setup-voice.log'),
+        mbError, MB_OK);
+      Abort;
+    end;
+  end;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  ResultCode: Integer;
+  Parameters: String;
 begin
   if CurUninstallStep = usUninstall then
   begin
     if not StopRunningApplication then
-      RaiseException('Не удалось корректно завершить Egoist Voice. Закройте приложение и повторите удаление.');
-    RemoveSharedEngineOwner;
+    begin
+      MsgBox('Не удалось корректно завершить Egoist Voice. Закройте приложение и повторите удаление.', mbError, MB_OK);
+      Abort;
+    end;
+    ResultCode := -1;
+    Parameters := '-NoProfile -ExecutionPolicy Bypass -File ' +
+      QuotePowerShellArgument(ExpandConstant('{app}\setup\translation-engine\invoke-engine-bootstrap.ps1')) +
+      ' -Action RemoveOwner -OwnerId egoist-voice -CleanupIfLast' +
+      ' -LogPath ' + QuotePowerShellArgument(ExpandConstant('{localappdata}\EGOIST\TranslationEngine\state\setup-voice.log'));
+    if (not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+      Parameters, '', SW_HIDE, ewWaitUntilTerminated, ResultCode)) or
+      (ResultCode <> 0) then
+      MsgBox('Egoist Voice будет удалён, но общий движок сохранён fail-closed (код ' +
+        IntToStr(ResultCode) + ').', mbInformation, MB_OK);
     CleanupLegacyState;
   end;
 end;

@@ -1,6 +1,6 @@
 # Release notes
 
-- Published/source version is `2.1.0`; see root `CHANGELOG.md`.
-- The local 2.1.1 candidate is not a release and must not receive a release note until installer/clean-machine gates pass.
+- [`2.2.0-preview.1`](./2.2.0-preview.1.md) — public unsigned field-test candidate with web/offline delivery.
+- Stable `2.1.0` — see the root [`CHANGELOG.md`](../../CHANGELOG.md).
 
-Create one user-facing note per future shipped version and link its verification evidence.
+A preview note records exact evidence and known gaps without granting the final `SHIP` status owned by `EV-2210`.

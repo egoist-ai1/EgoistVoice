@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">Egoist Voice — локальная диктовка для Windows</title>
+  <desc id="desc">Чёрно-красная обложка Egoist Voice с гранёным микрофоном и звуковой волной.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07080b"/>
+      <stop offset="0.58" stop-color="#101218"/>
+      <stop offset="1" stop-color="#08090c"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ff334f" stop-opacity="0.34"/>
+      <stop offset="0.54" stop-color="#ff334f" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#ff334f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wave" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff334f" stop-opacity="0"/>
+      <stop offset="0.2" stop-color="#ff667a"/>
+      <stop offset="0.5" stop-color="#ff334f"/>
+      <stop offset="0.8" stop-color="#ff667a"/>
+      <stop offset="1" stop-color="#ff334f" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="softGlow" x="-30%" y="-100%" width="160%" height="300%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000" flood-opacity="0.62"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#background)"/>
+  <circle cx="1005" cy="310" r="330" fill="url(#glow)"/>
+  <path d="M0 538 C240 486 410 620 676 552 C920 490 1060 566 1280 512 L1280 640 L0 640 Z" fill="#0c0d12"/>
+  <path d="M0 539 C238 487 409 620 677 552 C921 490 1060 566 1280 512" fill="none" stroke="#3a1119" stroke-width="2"/>
+
+  <g transform="translate(86 84)">
+    <text x="0" y="0" dominant-baseline="hanging" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="4.6" fill="#ff5269">EGOIST AI ONE</text>
+    <text x="0" y="74" dominant-baseline="hanging" font-family="Segoe UI, Arial, sans-serif" font-size="74" font-weight="760" letter-spacing="-2.6" fill="#f7f8fb">Egoist Voice</text>
+    <text x="0" y="172" dominant-baseline="hanging" font-family="Segoe UI, Arial, sans-serif" font-size="31" font-weight="600" fill="#d8dbe2">Говорите. Текст уже там.</text>
+    <text x="0" y="224" dominant-baseline="hanging" font-family="Segoe UI, Arial, sans-serif" font-size="21" fill="#9ca3af">Локальная русская диктовка и голосовой перевод</text>
+    <text x="0" y="258" dominant-baseline="hanging" font-family="Segoe UI, Arial, sans-serif" font-size="21" fill="#9ca3af">для Windows 10/11 — без облачного распознавания.</text>
+
+    <g transform="translate(0 344)" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="1.2">
+      <rect width="132" height="42" rx="21" fill="#171a21" stroke="#3b404b"/>
+      <circle cx="22" cy="21" r="5" fill="#ff334f"/>
+      <text x="39" y="26" fill="#e7e9ee">OFFLINE ASR</text>
+      <rect x="148" width="106" height="42" rx="21" fill="#171a21" stroke="#3b404b"/>
+      <text x="174" y="26" fill="#e7e9ee">RU + EN</text>
+      <rect x="270" width="178" height="42" rx="21" fill="#171a21" stroke="#3b404b"/>
+      <text x="294" y="26" fill="#e7e9ee">VOICE TRANSLATE</text>
+    </g>
+  </g>
+
+  <g transform="translate(760 78)" filter="url(#shadow)">
+    <rect x="0" y="0" width="438" height="446" rx="44" fill="#0d0f14" stroke="#252832" stroke-width="2"/>
+    <rect x="22" y="22" width="394" height="402" rx="30" fill="#090a0e" stroke="#381018"/>
+    <g transform="translate(119 44)">
+      <path d="M100 8 C143 8 166 31 166 70 V119 C166 162 141 189 100 189 C59 189 34 162 34 119 V70 C34 31 57 8 100 8 Z" fill="#f22f49" stroke="#310b12" stroke-width="7"/>
+      <path d="M100 8 L100 189 L61 174 L34 119 L34 70 L61 23 Z" fill="#ff5268" opacity="0.82"/>
+      <path d="M100 8 L139 23 L166 70 L166 119 L139 174 L100 189 L126 119 L124 70 Z" fill="#b80e28" opacity="0.86"/>
+      <path d="M34 70 L100 70 L61 23 M100 70 L166 70 L139 23 M34 119 L100 119 L61 174 M100 119 L166 119 L139 174 M100 8 L100 189" fill="none" stroke="#ff8292" stroke-opacity="0.25" stroke-width="2"/>
+      <path d="M19 111 C19 180 52 213 100 213 C148 213 181 180 181 111" fill="none" stroke="#ff3b55" stroke-width="15" stroke-linecap="round"/>
+      <path d="M100 213 V246 M65 249 H135" fill="none" stroke="#ff3b55" stroke-width="15" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(48 288)">
+      <rect width="342" height="76" rx="38" fill="#111318" stroke="#5d1723"/>
+      <circle cx="38" cy="38" r="15" fill="#251016" stroke="#ff334f"/>
+      <path d="M34 32 v8 a4 4 0 0 0 8 0 v-8 M31 39 a7 7 0 0 0 14 0 M38 46 v5" fill="none" stroke="#ffb8c2" stroke-width="2" stroke-linecap="round"/>
+      <path d="M72 38 C80 16 88 61 97 38 S113 14 122 38 S139 57 148 38 S165 11 174 38 S190 66 199 38 S216 18 225 38 S242 56 251 38 S267 24 276 38" fill="none" stroke="url(#wave)" stroke-width="3" stroke-linecap="round" filter="url(#softGlow)"/>
+      <text x="294" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="600" fill="#f4f5f7">0:27</text>
+    </g>
+    <text x="219" y="400" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="600" letter-spacing="2" fill="#737b89">LOCAL · PRIVATE · FAST</text>
+  </g>
+</svg>

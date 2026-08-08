@@ -1,5 +1,13 @@
 # История изменений
 
+## 2.2.0 Preview 1 — публичный field-test candidate
+
+- Добавлен компактный web/offline bootstrapper: он предпочитает локальные payload-файлы, иначе скачивает их из закреплённого GitHub Release, возобновляет `.part` через HTTP Range и проверяет SHA-256 до запуска установки.
+- Full Offline payload включает GigaAM, условный Whisper, CUDA/Vulkan/CPU runtime и точный shared Translation Engine 1.0.0 с HY-MT2 Q8.
+- Диктовка остаётся независимой от состояния движка перевода; owner-safe установка и удаление не затрагивают другой EGOIST-продукт.
+- Исправлены наблюдавшиеся варианты `Egoist Voice` / `EGOIST Translator`, inline-пунктуация и сохранение `Vue.js`, `example.com`, `config.json`.
+- Это unsigned preview: clean Windows Sandbox/Hyper-V lifecycle и финальный `EV-2210 SHIP` ещё не пройдены. Полные доказательства и SHA-256 — в [`docs/releases/2.2.0-preview.1.md`](docs/releases/2.2.0-preview.1.md).
+
 ## Следующее исправление — локальный кандидат
 
 Полный статус кандидата, отличие от опубликованной 2.1.0, доказательства и

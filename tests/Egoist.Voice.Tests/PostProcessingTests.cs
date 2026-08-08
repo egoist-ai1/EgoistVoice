@@ -184,6 +184,36 @@ public sealed class PostProcessingTests
             processor.Apply("Смотри. Открыть скобку. важно. Закрыть скобку. дальше"));
     }
 
+    [Fact]
+    public void Inline_punctuation_command_gets_spacing_and_sentence_casing()
+    {
+        var processor = new TranscriptPostProcessor(UserDictionary.BuiltIn);
+
+        Assert.Equal(
+            "Исправь. И пробела нет.",
+            processor.Process("исправь точка и пробела нет."));
+    }
+
+    [Fact]
+    public void Point_as_an_ordinary_noun_is_not_treated_as_punctuation()
+    {
+        var processor = new VoiceCommandProcessor();
+        const string text = "Проверь точка входа и точка доступа.";
+
+        Assert.Equal(text, processor.Apply(text));
+    }
+
+    [Theory]
+    [InlineData("открой вью джиэс", "Открой Vue.js")]
+    [InlineData("перейди на example.com", "Перейди на example.com")]
+    [InlineData("сохрани config.json", "Сохрани config.json")]
+    public void Sentence_casing_does_not_corrupt_dotted_identifiers(string spoken, string expected)
+    {
+        var processor = new TranscriptPostProcessor(UserDictionary.BuiltIn);
+
+        Assert.Equal(expected, processor.Process(spoken));
+    }
+
     // ── Конвейер целиком ─────────────────────────────────────────────────────
 
     [Fact]
@@ -198,6 +228,16 @@ public sealed class PostProcessingTests
         Assert.Contains("Docker", result, StringComparison.Ordinal);
         Assert.Contains("25", result, StringComparison.Ordinal);
         Assert.Contains(Environment.NewLine, result, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Pipeline_repairs_the_reported_product_name_variants()
+    {
+        var processor = new TranscriptPostProcessor(UserDictionary.BuiltIn);
+
+        Assert.Equal(
+            "Установи Egoist Voice и EGOIST Translator.",
+            processor.Process("установи Egist Voice и Egast-translate."));
     }
 
     [Fact]

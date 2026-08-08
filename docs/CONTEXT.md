@@ -1,6 +1,6 @@
 # Egoist Voice — durable context
 
-Last reviewed: `2026-08-02`
+Last reviewed: `2026-08-07`
 
 This file routes a new task to verified project truth. It is not a transcript
 and does not authorize skipping ticket or release gates.
@@ -21,6 +21,9 @@ and does not authorize skipping ticket or release gates.
 | `CTX-010` | `active` | `decision` | `project:egoist-voice` | Амендмент 002 утверждён 2026-08-02: иконка (`EV-2211`), состояния перевода в интерфейсе (`EV-2212`), оснастка (`EV-2214`) и независимость (`EV-2213`). `EV-2210` не выдаёт `SHIP` без них. | [`Амендмент 002`](./specs/002-voice-2.2-brand-ui-and-independence.md) | [`tickets README`](./tickets/README.md) | `2026-08-02` | `none` |
 | `CTX-011` | `active` | `constraint` | `project:egoist-voice` | Диктовка не зависит от перевода: при любом состоянии движка, включая полностью отсутствующий, запись, распознавание и вставка текста продолжают работать. Это отдельно проверяемое свойство. | [`EV-2212`](./tickets/EV-2212-ui-refresh.md) | [`Амендмент 002`](./specs/002-voice-2.2-brand-ui-and-independence.md) | `2026-08-02` | `none` |
 | `CTX-012` | `active` | `fact` | `project:egoist-voice` | EV-2206 consumes exact project-local `net8.0` Contracts/Client DLLs through a hash-bound manifest and only the current-user named pipe. Voice starts but never owns/kills the shared Host; translation failures return before text delivery. | [`EV-2206`](./tickets/EV-2206-shared-translation-client.md) | [`EV-2206 test-build note`](./changes/2026-08-06T190639Z-ev-2206-voice-220-test-build.md) | `2026-08-06` | `none` |
+| `CTX-013` | `superseded-by-CTX-014` | `fact` | `project:egoist-voice` | EV-2209 Full Offline local package embeds both ASR models, CUDA/Vulkan/CPU and the exact shared Engine 1.0.0/Q8/b10219 bundle. Host/pack commit before owner and exact installed assets may be reused. The checksum-bound delivery is one launch EXE plus two adjacent BIN slices; 478/478 tests and independent artifact review pass for unsigned field test, while exact VM install/coexistence remains not-run. | [`EV-2209`](./tickets/EV-2209-full-offline-packaging.md) | [`Full Offline note`](./changes/2026-08-07T215832Z-voice-full-offline-field-candidate.md) | `2026-08-07` | `none` |
+| `CTX-014` | `active` | `fact` | `project:egoist-voice` | Corrected EV-2209 delivery is one `3,191,770,964`-byte outer EXE with PE version 2.2.0.0/2.2.0. It embeds both ASR models, CUDA/Vulkan/CPU and exact Engine 1.0.0/Q8/b10219; manifest and every segment are SHA-256 verified before launch. PowerShell path quoting and large progress are corrected; 479/479 tests pass. Exact VM install/coexistence remains not-run. | [`EV-2209`](./tickets/EV-2209-full-offline-packaging.md) | [`one-file correction note`](./changes/2026-08-07T230344Z-one-file-installer-runtime-fix.md) | `2026-08-07` | `none` |
+| `CTX-015` | `active` | `decision` | `project:egoist-voice` | Public preview delivery composes the exact CTX-014 embedded files as GitHub-compatible assets: one small web/offline bootstrapper plus three files under 2 GiB. Colocated files provide Full Offline installation; otherwise downloads are pinned to one release tag, resumable, hash-verified and fail closed before Inno launch. This delivery decision does not grant EV-2210 SHIP. | [`2.2.0-preview.1 release note`](./releases/2.2.0-preview.1.md) | [`web/offline delivery note`](./changes/2026-08-07T235957Z-web-offline-github-delivery.md) | `2026-08-07` | `none` |
 
 ## Promotion candidates
 

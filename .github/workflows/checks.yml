@@ -1,0 +1,35 @@
+name: checks
+
+on:
+  push:
+    branches: [main, v2.2-wip]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Windows test suite
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Install .NET 8 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore .\Egoist.Voice.sln
+
+      - name: Test release configuration
+        run: dotnet test .\Egoist.Voice.sln -c Release --no-restore --logger "console;verbosity=normal"

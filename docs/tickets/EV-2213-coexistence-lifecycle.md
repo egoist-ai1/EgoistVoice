@@ -1,6 +1,6 @@
 # EV-2213 — независимость и жизненный цикл
 
-- Status: `APPROVED — inactive until EV-2209 и EV-2214`
+- Status: `ACTIVE — owner-safe source/fixture gates pass; exact VM matrix waits on EV-2214`
 - Specification: [Амендмент 002](../specs/002-voice-2.2-brand-ui-and-independence.md) §2.3;
   нормативный контракт —
   [`COEXISTENCE-CONTRACT.md`](../../../egoist-translator/docs/program/COEXISTENCE-CONTRACT.md)

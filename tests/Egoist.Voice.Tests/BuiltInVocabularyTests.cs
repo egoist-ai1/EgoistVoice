@@ -23,6 +23,11 @@ public sealed class BuiltInVocabularyTests
     [InlineData("Открой андроид студио.", "Android Studio")]
     [InlineData("Запусти контр страйк.", "Counter-Strike")]
     [InlineData("Драйвер эн видиа обновлён.", "NVIDIA")]
+    [InlineData("Установи Egist Voice.", "Egoist Voice")]
+    [InlineData("Запусти Эгaist Voice.", "Egoist Voice")]
+    [InlineData("Запусти Эгоист войс.", "Egoist Voice")]
+    [InlineData("Собери Egast-translate.", "EGOIST Translator")]
+    [InlineData("Открой эгоист translate.", "EGOIST Translator")]
     public void Known_terms_are_written_in_latin_out_of_the_box(string spoken, string expected) =>
         Assert.Contains(expected, UserDictionary.BuiltIn.Apply(spoken), StringComparison.Ordinal);
 
@@ -179,7 +184,7 @@ public sealed class BuiltInVocabularyTests
     [Fact]
     public void Versioned_catalog_covers_ai_apps_companies_and_games()
     {
-        Assert.Equal("2", BuiltInVocabulary.Version);
+        Assert.Equal("3", BuiltInVocabulary.Version);
         var written = BuiltInVocabulary.Terms
             .Select(term => term.Written)
             .ToHashSet(StringComparer.Ordinal);
@@ -190,7 +195,8 @@ public sealed class BuiltInVocabularyTests
             "GitHub", "Docker", "Kubernetes", "Visual Studio Code", "Microsoft Teams",
             "Figma", "Notion", "Cloudflare", "Stripe", "NVIDIA", "AMD", "Intel",
             "Apple", "Microsoft", "Steam", "Epic Games Store", "PlayStation", "Xbox",
-            "Unreal Engine", "Unity", "Minecraft", "Counter-Strike", "Cyberpunk 2077"
+            "Unreal Engine", "Unity", "Minecraft", "Counter-Strike", "Cyberpunk 2077",
+            "Egoist Voice", "EGOIST Translator"
         };
 
         Assert.All(expected, entity => Assert.Contains(entity, written));

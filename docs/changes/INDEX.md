@@ -4,6 +4,9 @@
 
 ## Recent notes
 
+- [2026-08-07T235957Z-web-offline-github-delivery](./2026-08-07T235957Z-web-offline-github-delivery.md)
+- [2026-08-07T230344Z-one-file-installer-runtime-fix](./2026-08-07T230344Z-one-file-installer-runtime-fix.md)
+- [2026-08-07T215832Z-voice-full-offline-field-candidate](./2026-08-07T215832Z-voice-full-offline-field-candidate.md)
 - [2026-08-06T190639Z-ev-2206-voice-220-test-build](./2026-08-06T190639Z-ev-2206-voice-220-test-build.md)
 - [2026-08-02T192901Z-ev-2200-repository-safety-net](./2026-08-02T192901Z-ev-2200-repository-safety-net.md)
 - [2026-08-02T163711Z-program-amendment-and-delivery-plan](./2026-08-02T163711Z-program-amendment-and-delivery-plan.md)
@@ -11,13 +14,10 @@
 - [2026-08-01T223138Z-ev-2204-entity-profiles](./2026-08-01T223138Z-ev-2204-entity-profiles.md)
 - [2026-08-01T222453Z-ev-2203-contextual-bias-hold](./2026-08-01T222453Z-ev-2203-contextual-bias-hold.md)
 - [2026-08-01T215051Z-ev-2202-wasapi-memory-capture](./2026-08-01T215051Z-ev-2202-wasapi-memory-capture.md)
-- [2026-08-01T213947Z-corrected-model-architecture](./2026-08-01T213947Z-corrected-model-architecture.md)
-- [2026-08-01T210153Z-ev-2201-corpus-harness](./2026-08-01T210153Z-ev-2201-corpus-harness.md)
-- [2026-08-01T200545Z-voice-translation-contract-alignment](./2026-08-01T200545Z-voice-translation-contract-alignment.md)
 
 ## Archive
 
-- [2026/08](./archive/2026/08/) — 2 notes
-- [2026/07](./archive/2026/07/) — 1 notes
+- [2026/08](./archive/2026/08/) - 5 notes
+- [2026/07](./archive/2026/07/) - 1 notes
 
-Hot set: 10. Archived: 3.
+Hot set: 10. Archived: 6.

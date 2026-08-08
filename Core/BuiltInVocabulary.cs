@@ -17,7 +17,7 @@ namespace Egoist.Voice.Core;
 /// </remarks>
 public static class BuiltInVocabulary
 {
-    public const string Version = "2";
+    public const string Version = "3";
 
     /// <summary>
     /// The dictionary sorts aliases by length, so a longer entity always wins over a contained one.
@@ -25,6 +25,24 @@ public static class BuiltInVocabulary
     /// </summary>
     public static IReadOnlyList<DictionaryTerm> Terms { get; } =
     [
+        // ── EGOIST product names reported by the user's own dictation ───────
+        new(
+            [
+                "эгоист войс", "эгист войс", "егоист войс", "эгаист войс", "эгейст войс",
+                "эгоист voice", "эгист voice", "егоист voice", "эгаист voice",
+                "эгaist voice", "эгаist voice", "egoist voice", "egist voice", "egast voice"
+            ],
+            "Egoist Voice"),
+        new(
+            [
+                "эгоист транслейтор", "эгист транслейтор", "эгаист транслейтор",
+                "эгоист транслейт", "эгист транслейт", "эгаст транслейт",
+                "эгоист translate", "эгист translate", "эгаст translate",
+                "эгaist translate", "эгаist translate", "egoist translator", "egoist translate",
+                "egist translate", "egast translate"
+            ],
+            "EGOIST Translator"),
+
         // ── AI and local assistants ──────────────────────────────────────────
         new(["клод код", "клодкод", "клод коуд", "к лод код", "claude code"], "Claude Code"),
         new(["клод", "к лод", "claude"], "Claude"),

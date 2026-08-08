@@ -61,6 +61,9 @@
 
   <ItemGroup>
     <Compile Remove="tests\**\*.cs" />
+    <Compile Remove="installer\EgoistVoiceBootstrap.cs" />
+    <Compile Remove="installer\EgoistVoiceWebBootstrap.cs" />
+    <Compile Remove="installer\EgoistVoiceWebBootstrap.Manifest.cs" />
     <EmbeddedResource Remove="tests\**\*" />
     <None Remove="tests\**\*" />
   </ItemGroup>

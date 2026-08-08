@@ -103,7 +103,7 @@ if ($ArchivedNotes.Count -eq 0) {
   } | Sort-Object Name -Descending
   foreach ($Group in $Groups) {
     $ArchiveLink = "./archive/$($Group.Name.Replace('\', '/'))/"
-    $Lines.Add("- [$($Group.Name.Replace('\', '/'))]($ArchiveLink) — $($Group.Count) notes")
+    $Lines.Add("- [$($Group.Name.Replace('\', '/'))]($ArchiveLink) - $($Group.Count) notes")
   }
 }
 $Lines.Add("")

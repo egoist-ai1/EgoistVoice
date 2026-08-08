@@ -2,7 +2,8 @@
     # Пусто — значит взять версию из Egoist.Voice.csproj. Раньше здесь стояло «2.0.0»
     # литералом, и после подъёма версии в проекте установщик молча продолжал собираться
     # под старым именем и со старым AppVersion.
-    [string]$Version = ""
+    [string]$Version = "",
+    [string]$TranslationEngineBundleRoot = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,12 +18,26 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     $Version = $match.Groups[1].Value.Trim()
     Write-Output "версия из проекта: $Version"
 }
+if ($Version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') {
+    throw "Bootstrap requires a three-part numeric application version: $Version"
+}
 $releaseRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot "artifacts\release"))
 $staging = [System.IO.Path]::GetFullPath((Join-Path $releaseRoot "installer-staging"))
 $modelStaging = [System.IO.Path]::GetFullPath((Join-Path $releaseRoot "model-staging"))
+$spanStaging = [System.IO.Path]::GetFullPath((Join-Path $releaseRoot "voice-span-staging"))
 $modelSourceRoot = [System.IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA "EgoistVoice\Models"))
 $installer = Join-Path $releaseRoot "EgoistVoice-Setup-$Version-win-x64.exe"
 $checksum = "$installer.sha256"
+$buildReceipt = "$installer.build.json"
+$innerInstallerBaseName = "EgoistVoice-Setup-$Version-inner"
+$innerInstaller = Join-Path $spanStaging "$innerInstallerBaseName.exe"
+$innerSlicePattern = "$innerInstallerBaseName-*.bin"
+$bootstrapSource = Join-Path $projectRoot "installer\EgoistVoiceBootstrap.cs"
+$bootstrapStub = Join-Path $spanStaging "EgoistVoiceBootstrap.stub.exe"
+$bootstrapAssemblyInfo = Join-Path $spanStaging "EgoistVoiceBootstrap.AssemblyInfo.cs"
+$singleFileBuilder = Join-Path $projectRoot "scripts\New-EgoistVoiceSingleFile.ps1"
+$singleFileVerifier = Join-Path $projectRoot "scripts\Test-EgoistVoiceSingleFile.ps1"
+$bootstrapCompiler = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 $cudaCache = Join-Path $env:TEMP "egoist-voice-cuda13"
 $cudaBin = Join-Path $cudaCache "nvidia\cu13\bin\x86_64"
 $solution = Join-Path $projectRoot "Egoist.Voice.sln"
@@ -32,11 +47,21 @@ $installerScript = Join-Path $projectRoot "installer\EgoistVoice.generated.iss"
 $translationVendorRoot = Join-Path $projectRoot "vendor\translation-client\1.0.0"
 $translationManifestPath = Join-Path $translationVendorRoot "manifest.json"
 
+if ([string]::IsNullOrWhiteSpace($TranslationEngineBundleRoot)) {
+    $TranslationEngineBundleRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot "..\egoist-translator\dist\engine-bundle-1.0.0"))
+} else {
+    $TranslationEngineBundleRoot = [System.IO.Path]::GetFullPath($TranslationEngineBundleRoot)
+}
+$engineBundleManifestPath = Join-Path $TranslationEngineBundleRoot "engine-bundle-manifest.json"
+
 if (-not $staging.StartsWith($releaseRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "Unsafe staging path: $staging"
 }
 if (-not $modelStaging.StartsWith($releaseRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "Unsafe model staging path: $modelStaging"
+}
+if (-not $spanStaging.StartsWith($releaseRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "Unsafe span staging path: $spanStaging"
 }
 
 # EV-2206 is an independent, pinned consumer. Refuse a changed/missing client
@@ -67,6 +92,47 @@ foreach ($entry in @($translationManifest.files)) {
     }
 }
 
+# EV-2209 consumes a completed, hash-pinned Translator artifact. Voice never
+# reaches into Translator source and never accepts an unversioned "latest".
+if (-not (Test-Path -LiteralPath $engineBundleManifestPath -PathType Leaf)) {
+    throw "Pinned translation engine bundle is missing: $engineBundleManifestPath. Build the Translator bundle first."
+}
+$engineBundleManifest = Get-Content -LiteralPath $engineBundleManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+if ([int]$engineBundleManifest.schemaVersion -ne 1 -or
+    [string]$engineBundleManifest.engineVersion -ne "1.0.0" -or
+    [string]$engineBundleManifest.selectedModelId -ne "hy-mt2-1.8b-q8_0" -or
+    [string]$engineBundleManifest.runtimeId -ne "llama-b10219-vulkan-win-x64") {
+    throw "Pinned translation engine bundle has an incompatible identity."
+}
+$declaredBundleFiles = @{}
+foreach ($entry in @($engineBundleManifest.files)) {
+    $relative = ([string]$entry.path).Replace('/', [System.IO.Path]::DirectorySeparatorChar)
+    if ([string]::IsNullOrWhiteSpace($relative) -or [System.IO.Path]::IsPathRooted($relative) -or $relative.Contains('..')) {
+        throw "Pinned translation engine bundle contains an unsafe path."
+    }
+    $file = [System.IO.Path]::GetFullPath((Join-Path $TranslationEngineBundleRoot $relative))
+    if (-not $file.StartsWith($TranslationEngineBundleRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) -or
+        -not (Test-Path -LiteralPath $file -PathType Leaf)) {
+        throw "Pinned translation engine bundle file is missing or unsafe: $relative"
+    }
+    if ((Get-Item -LiteralPath $file).Length -ne [long]$entry.bytes -or
+        (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant() -ne ([string]$entry.sha256).ToLowerInvariant()) {
+        throw "Pinned translation engine bundle checksum mismatch: $relative"
+    }
+    $declaredBundleFiles[$relative.ToLowerInvariant()] = $true
+}
+$actualBundleFiles = @(Get-ChildItem -LiteralPath $TranslationEngineBundleRoot -Recurse -File | Where-Object { $_.FullName -ne $engineBundleManifestPath })
+if ($actualBundleFiles.Count -ne $declaredBundleFiles.Count) {
+    throw "Pinned translation engine bundle contains an undeclared or missing file."
+}
+foreach ($file in $actualBundleFiles) {
+    $relative = $file.FullName.Substring($TranslationEngineBundleRoot.TrimEnd('\').Length + 1).ToLowerInvariant()
+    if (-not $declaredBundleFiles.ContainsKey($relative)) {
+        throw "Pinned translation engine bundle contains an undeclared file: $relative"
+    }
+}
+$engineBundleManifestSha256 = (Get-FileHash -LiteralPath $engineBundleManifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
+
 New-Item -ItemType Directory -Force $releaseRoot | Out-Null
 if (Test-Path -LiteralPath $staging) {
     Remove-Item -LiteralPath $staging -Recurse -Force
@@ -74,6 +140,10 @@ if (Test-Path -LiteralPath $staging) {
 if (Test-Path -LiteralPath $modelStaging) {
     Remove-Item -LiteralPath $modelStaging -Recurse -Force
 }
+if (Test-Path -LiteralPath $spanStaging) {
+    Remove-Item -LiteralPath $spanStaging -Recurse -Force
+}
+New-Item -ItemType Directory -Path $spanStaging -Force | Out-Null
 
 dotnet test $solution -c Release
 if ($LASTEXITCODE -ne 0) { throw "dotnet test failed with exit code $LASTEXITCODE" }
@@ -190,7 +260,9 @@ dotnet tool restore --tool-manifest (Join-Path $projectRoot ".config\dotnet-tool
 if ($LASTEXITCODE -ne 0) { throw "dotnet tool restore failed with exit code $LASTEXITCODE" }
 
 $env:DOTNET_ROLL_FORWARD = "Major"
-Remove-Item -LiteralPath $installer, $checksum -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $installer, $checksum, $buildReceipt -Force -ErrorAction SilentlyContinue
+Get-ChildItem -LiteralPath $releaseRoot -Filter "EgoistVoice-Setup-*-win-x64-*.bin" -File -ErrorAction SilentlyContinue |
+    Remove-Item -Force
 $utf8Strict = [System.Text.UTF8Encoding]::new($false, $true)
 $utf8WithBom = [System.Text.UTF8Encoding]::new($true)
 $installerScriptText = [System.IO.File]::ReadAllText($installerScriptSource, $utf8Strict)
@@ -274,7 +346,9 @@ try {
         "/Qp" `
         "/DSourceDir=$staging" `
         "/DModelSourceDir=$modelStaging" `
-        "/DOutputDir=$releaseRoot" `
+        "/DEngineBundleDir=$TranslationEngineBundleRoot" `
+        "/DOutputDir=$spanStaging" `
+        "/DOutputBaseFilename=$innerInstallerBaseName" `
         "/DMyAppVersion=$Version" `
         $installerScript
     if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
@@ -284,21 +358,121 @@ finally {
     Remove-Item -LiteralPath $installerScript -Force -ErrorAction SilentlyContinue
 }
 
-if (-not (Test-Path -LiteralPath $installer)) {
-    throw "Installer was not created: $installer"
+if (-not (Test-Path -LiteralPath $innerInstaller)) {
+    throw "Inner installer was not created: $innerInstaller"
 }
 
+$innerSlices = @(
+    Get-ChildItem -LiteralPath $spanStaging -Filter $innerSlicePattern -File |
+        Sort-Object Name
+)
+if ($innerSlices.Count -eq 0) {
+    throw "Disk-spanning inner installer did not produce any payload slices: $innerSlicePattern"
+}
+
+$innerFiles = @((Get-Item -LiteralPath $innerInstaller)) + $innerSlices
+if (-not (Test-Path -LiteralPath $bootstrapCompiler -PathType Leaf)) {
+    throw "Windows .NET Framework bootstrap compiler is missing: $bootstrapCompiler"
+}
+foreach ($requiredBootstrapFile in @($bootstrapSource, $singleFileBuilder, $singleFileVerifier)) {
+    if (-not (Test-Path -LiteralPath $requiredBootstrapFile -PathType Leaf)) {
+        throw "Single-file bootstrap source is missing: $requiredBootstrapFile"
+    }
+}
+
+$bootstrapAssemblyInfoText = @"
+using System.Reflection;
+[assembly: AssemblyTitle("Egoist Voice Installer")]
+[assembly: AssemblyDescription("Full Offline Egoist Voice installer bootstrap")]
+[assembly: AssemblyCompany("EGOIST")]
+[assembly: AssemblyProduct("Egoist Voice")]
+[assembly: AssemblyVersion("$Version.0")]
+[assembly: AssemblyFileVersion("$Version.0")]
+[assembly: AssemblyInformationalVersion("$Version")]
+"@
+[System.IO.File]::WriteAllText(
+    $bootstrapAssemblyInfo,
+    $bootstrapAssemblyInfoText,
+    (New-Object System.Text.UTF8Encoding($false)))
+
+& $bootstrapCompiler `
+    /nologo `
+    /target:winexe `
+    /platform:x64 `
+    /optimize+ `
+    "/out:$bootstrapStub" `
+    "/win32icon:$(Join-Path $projectRoot 'assets\EgoistVoice.ico')" `
+    /reference:System.dll `
+    /reference:System.Drawing.dll `
+    /reference:System.Windows.Forms.dll `
+    $bootstrapSource `
+    $bootstrapAssemblyInfo
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $bootstrapStub -PathType Leaf)) {
+    throw "Egoist Voice bootstrap compilation failed with exit code $LASTEXITCODE"
+}
+$bootstrapVersionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($bootstrapStub)
+if ($bootstrapVersionInfo.FileVersion -ne "$Version.0" -or
+    $bootstrapVersionInfo.ProductVersion -ne $Version -or
+    $bootstrapVersionInfo.ProductName -ne "Egoist Voice") {
+    throw "Egoist Voice bootstrap PE version identity is inconsistent."
+}
+
+$packResult = & $singleFileBuilder `
+    -StubPath $bootstrapStub `
+    -PayloadFiles @($innerFiles.FullName) `
+    -LaunchFileName ([System.IO.Path]::GetFileName($innerInstaller)) `
+    -OutputPath $installer
+if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) {
+    throw "Single-file installer was not created: $installer"
+}
+$verifiedPackage = & $singleFileVerifier -Path $installer -PassThru
+if ($verifiedPackage.LaunchFile -ne [System.IO.Path]::GetFileName($innerInstaller) -or
+    @($verifiedPackage.Entries).Count -ne $innerFiles.Count) {
+    throw "Single-file installer verification returned the wrong embedded payload identity."
+}
+
+$embeddedEntries = @(
+    foreach ($entry in @($verifiedPackage.Entries)) {
+        [ordered]@{
+            name = [string]$entry.Name
+            bytes = [long]$entry.Length
+            sha256 = [string]$entry.Sha256
+            offset = [long]$entry.Offset
+        }
+    }
+)
 $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $installer).Hash.ToLowerInvariant()
-Set-Content -LiteralPath $checksum -Value "$hash  $(Split-Path -Leaf $installer)" -Encoding ascii
+Set-Content -LiteralPath $checksum -Value "$hash  $([System.IO.Path]::GetFileName($installer))" -Encoding ascii
+[System.IO.File]::WriteAllText($buildReceipt, (([ordered]@{
+    schemaVersion = 3
+    applicationVersion = $Version
+    engineVersion = [string]$engineBundleManifest.engineVersion
+    engineBundleManifestSha256 = $engineBundleManifestSha256
+    selectedModelId = [string]$engineBundleManifest.selectedModelId
+    deliveryMode = "embedded-inno-bootstrap"
+    installerBytes = (Get-Item -LiteralPath $installer).Length
+    installerSha256 = $hash
+    embeddedPayloadBytes = [long]$verifiedPackage.EmbeddedPayloadBytes
+    embeddedPayloadFiles = $embeddedEntries
+    embeddedManifestSha256 = [string]$packResult.ManifestSha256
+    bootstrapStubSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $bootstrapStub).Hash.ToLowerInvariant()
+    bootstrapCompiler = $bootstrapCompiler
+    bootstrapFileVersion = [string]$bootstrapVersionInfo.FileVersion
+    bootstrapProductVersion = [string]$bootstrapVersionInfo.ProductVersion
+    signed = $false
+    installerExecutedOnDevelopmentHost = $false
+} | ConvertTo-Json -Depth 5) + "`n"), (New-Object System.Text.UTF8Encoding($false)))
 
 Get-ChildItem -LiteralPath $releaseRoot -File |
     Where-Object {
         $_.Name -like "EgoistVoice-Setup-*-win-x64.exe*" -and
         $_.FullName -ne $installer -and
-        $_.FullName -ne $checksum
+        $_.FullName -ne $checksum -and
+        $_.FullName -ne $buildReceipt
     } |
     Remove-Item -Force
 
 Remove-Item -LiteralPath $staging -Recurse -Force
 Remove-Item -LiteralPath $modelStaging -Recurse -Force
-Get-Item -LiteralPath $installer, $checksum | Select-Object FullName, Length
+Remove-Item -LiteralPath $spanStaging -Recurse -Force
+Get-Item -LiteralPath @($installer, $checksum, $buildReceipt) | Select-Object FullName, Length

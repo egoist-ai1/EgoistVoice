@@ -17,12 +17,18 @@
   and profile-aware entity repair are implemented; private voice/endurance and
   paired quality gates remain release requirements.
 - `EV-2205`: typed strict translation-command parsing passes the locked 40/80
-  fixture. Protected-span normalization and pause-confirmed formatting remain
-  the active implementation slice.
+  fixture. User-observed product-name, inline punctuation and dotted-identifier
+  regressions are fixed; protected-span normalization and pause-confirmed
+  paragraph formatting remain the wider active slice.
 - `EV-2206`: protected shared-host client is implemented and independently
   accepted locally; the old port/HTTP/sidecar path is gone.
-- Voice `2.2.0` split-package field build is ready: offline ASR is inside Voice,
-  while shared Engine/model are installed separately for this test cycle.
+- Voice `2.2.0` Full Offline field package is ready: both ASR models, GPU/CPU
+  runtimes and the exact shared Engine/Q8 pack are inside one integrity-checked
+  outer EXE. Internal Inno slices never leave build staging. Exact VM execution
+  is not-run.
+- Public `v2.2.0-preview.1` delivery exposes those same internal files as
+  GitHub-compatible assets behind a hash-pinned web/offline bootstrapper. This
+  is a field-test channel, not `EV-2210 SHIP`; stable remains `2.1.0`.
 - Preserve the current dirty 2.1.1 candidate as the tested baseline; do not publish or silently fold it into a release.
 
 ## Next
@@ -30,9 +36,9 @@
 - Finish EV-2205 with idempotent code/URL/placeholder preservation, strict
   formatting commands and paragraphs only on confirmed pause + sentence
   boundaries.
-- User field test of the three unsigned local setups, then `EV-2207` →
-  `EV-2208`: honest recovery UX and measured resource arbitration.
-- `EV-2209`: Full Offline packaging and owner-safe shared-component lifecycle.
+- User field test of the unsigned Full Offline Voice/Translator candidates.
+- `EV-2214` guest harness -> `EV-2213`/Translator `T020` exact coexistence
+  matrix; then `EV-2207` -> `EV-2208` for recovery UX/resource arbitration.
 
 ## Амендмент 002 — облик и независимость
 

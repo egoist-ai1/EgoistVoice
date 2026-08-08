@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Egoist.Voice.Core;
 
@@ -52,17 +53,28 @@ public sealed class VoiceCommandProcessor
     ];
 
     private readonly Dictionary<string, VoiceCommand> _lookup;
+    private readonly IReadOnlyList<InlineCommand> _inlinePunctuation;
 
     public VoiceCommandProcessor(IEnumerable<VoiceCommand>? commands = null)
     {
         _lookup = new Dictionary<string, VoiceCommand>(StringComparer.Ordinal);
-        foreach (var command in commands ?? DefaultCommands)
+        var selectedCommands = (commands ?? DefaultCommands).ToArray();
+        foreach (var command in selectedCommands)
         {
             foreach (var spoken in command.Spoken)
             {
                 _lookup[Fold(spoken)] = command;
             }
         }
+
+        _inlinePunctuation = selectedCommands
+            .Where(command => command.Replacement is "," or "." or ";" or ":" or "?" or "!")
+            .SelectMany(command => command.Spoken.Select(spoken => new InlineCommand(
+                BuildInlineExpression(spoken),
+                spoken,
+                command)))
+            .OrderByDescending(command => command.Spoken.Length)
+            .ToArray();
     }
 
     public string Apply(string text)
@@ -96,7 +108,16 @@ public sealed class VoiceCommandProcessor
             }
             else
             {
-                builder.Append(suppressLeadingSpace ? segment.TrimStart() : segment).Append(delimiter);
+                var inlineSegment = ReplaceInlinePunctuation(segment, out var inlineReplaced);
+                if (inlineReplaced)
+                {
+                    replaced = true;
+                    if (delimiter.Length > 0 && EndsWithPunctuation(inlineSegment))
+                    {
+                        delimiter = string.Empty;
+                    }
+                }
+                builder.Append(suppressLeadingSpace ? inlineSegment.TrimStart() : inlineSegment).Append(delimiter);
                 suppressLeadingSpace = false;
             }
 
@@ -108,6 +129,60 @@ public sealed class VoiceCommandProcessor
         }
 
         return replaced ? Tidy(builder.ToString()) : text;
+    }
+
+    private string ReplaceInlinePunctuation(string segment, out bool replaced)
+    {
+        var didReplace = false;
+        foreach (var candidate in _inlinePunctuation)
+        {
+            segment = candidate.Expression.Replace(segment, match =>
+            {
+                if (IsBlockedInlinePoint(candidate.Spoken, segment, match.Index + match.Length))
+                {
+                    return match.Value;
+                }
+
+                didReplace = true;
+                return candidate.Command.Replacement + " ";
+            });
+        }
+        replaced = didReplace;
+        return segment;
+    }
+
+    private static bool IsBlockedInlinePoint(string spoken, string text, int afterMatch)
+    {
+        if (!string.Equals(Fold(spoken), "точка", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var tail = text[afterMatch..].TrimStart();
+        return InlinePointNounPrefixes.Any(prefix => tail.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool EndsWithPunctuation(string value)
+    {
+        for (var index = value.Length - 1; index >= 0; index--)
+        {
+            if (char.IsWhiteSpace(value[index]))
+            {
+                continue;
+            }
+            return value[index] is ',' or '.' or ';' or ':' or '?' or '!';
+        }
+        return false;
+    }
+
+    private static Regex BuildInlineExpression(string spoken)
+    {
+        var words = spoken.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var body = string.Join(@"[\s\-]+", words.Select(Regex.Escape));
+        return new Regex(
+            @"(?<![\p{L}\p{N}])" + body + @"(?![\p{L}\p{N}])",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+            TimeSpan.FromMilliseconds(25));
     }
 
     /// <summary>
@@ -191,4 +266,12 @@ public sealed class VoiceCommandProcessor
 
         return builder.ToString().Trim();
     }
+
+    private static readonly string[] InlinePointNounPrefixes =
+    [
+        "вход", "зрени", "доступ", "опор", "рос", "кипени", "пересечени",
+        "назначени", "отсчет", "отсчёт", "на карте", "маршрут"
+    ];
+
+    private sealed record InlineCommand(Regex Expression, string Spoken, VoiceCommand Command);
 }

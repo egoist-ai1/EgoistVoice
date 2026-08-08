@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Egoist.Voice.Core;
@@ -47,7 +48,44 @@ public static partial class TranscriptNormalizer
         text = SpaceAfterOpeningBracketRegex().Replace(text, "$1");
         text = SpaceBeforeClosingBracketRegex().Replace(text, "$1");
 
-        return text;
+        return CapitalizeSentenceStarts(text);
+    }
+
+    private static string CapitalizeSentenceStarts(string text)
+    {
+        var builder = new StringBuilder(text.Length);
+        var capitalizeNextLetter = false;
+        var sawBoundaryWhitespace = false;
+        foreach (var character in text)
+        {
+            if (capitalizeNextLetter && char.IsWhiteSpace(character))
+            {
+                builder.Append(character);
+                sawBoundaryWhitespace = true;
+                continue;
+            }
+
+            if (capitalizeNextLetter && sawBoundaryWhitespace && char.IsLetter(character))
+            {
+                builder.Append(char.ToUpperInvariant(character));
+                capitalizeNextLetter = false;
+                sawBoundaryWhitespace = false;
+                continue;
+            }
+
+            builder.Append(character);
+            if (character is '.' or '!' or '?')
+            {
+                capitalizeNextLetter = true;
+                sawBoundaryWhitespace = false;
+            }
+            else if (capitalizeNextLetter && character is not '«' and not '(' and not '[')
+            {
+                capitalizeNextLetter = false;
+                sawBoundaryWhitespace = false;
+            }
+        }
+        return builder.ToString();
     }
 
     private static string Capitalize(string text) =>

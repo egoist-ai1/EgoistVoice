@@ -223,7 +223,13 @@ public sealed partial class UserDictionary
         var builder = new StringBuilder();
         if (wholeWord)
         {
-            builder.Append(@"(?<![\p{L}\p{N}])");
+            var isSingleLatinIdentifier = spoken.All(character =>
+                character is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9');
+            // A canonical Latin alias such as "json" is useful in prose, but a dot-prefixed
+            // occurrence is normally a file extension or domain segment and must keep its case.
+            builder.Append(isSingleLatinIdentifier
+                ? @"(?<![\p{L}\p{N}.])"
+                : @"(?<![\p{L}\p{N}])");
         }
 
         var words = spoken.Split(' ', StringSplitOptions.RemoveEmptyEntries);
