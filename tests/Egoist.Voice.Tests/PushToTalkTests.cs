@@ -27,6 +27,22 @@ public sealed class PushToTalkTests
         Assert.False(coordinator.Release(PushToTalkSource.Mouse));
     }
 
+    [Fact]
+    public void PausedCoordinatorSuppressesBothActivationSourcesAndClearsHeldState()
+    {
+        var coordinator = new PushToTalkCoordinator();
+        Assert.True(coordinator.Press(PushToTalkSource.Keyboard));
+
+        coordinator.SetPaused(true);
+
+        Assert.False(coordinator.Press(PushToTalkSource.Keyboard));
+        Assert.False(coordinator.Press(PushToTalkSource.Mouse));
+        Assert.False(coordinator.Release(PushToTalkSource.Keyboard));
+
+        coordinator.SetPaused(false);
+        Assert.True(coordinator.Press(PushToTalkSource.Mouse));
+    }
+
     [Theory]
     [InlineData("dota2.exe", null, true)]
     [InlineData("unknown.exe", @"D:\SteamLibrary\steamapps\common\Some Game\game.exe", true)]

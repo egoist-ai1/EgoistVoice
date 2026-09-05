@@ -29,11 +29,8 @@ public sealed class ModelManager : IModelManager
         bool allowDownload = true)
     {
         RequiredModels = requiredModels;
-        _modelsRoot = modelsRoot ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "EgoistVoice",
-            "Models");
-        _allowDownload = allowDownload;
+        _modelsRoot = modelsRoot ?? Egoist.Voice.Core.VoiceRuntimeProfile.ModelsRoot;
+        _allowDownload = allowDownload && !Egoist.Voice.Core.VoiceRuntimeProfile.IsPortable;
         CleanupUnsupportedModelKinds();
         _httpClient = httpHandler is null ? new HttpClient() : new HttpClient(httpHandler, disposeHandler: true);
         _httpClient.Timeout = TimeSpan.FromHours(6);
@@ -489,6 +486,7 @@ public sealed class ModelManager : IModelManager
 
     private void CleanupSupersededModels(ModelDescriptor descriptor, string activePath)
     {
+        if (!_allowDownload) return;
         var kindRoot = Path.Combine(_modelsRoot, descriptor.Kind.ToString());
         if (!Directory.Exists(kindRoot))
         {
@@ -517,6 +515,7 @@ public sealed class ModelManager : IModelManager
 
     private void CleanupUnsupportedModelKinds()
     {
+        if (!_allowDownload) return;
         if (!Directory.Exists(_modelsRoot))
         {
             return;

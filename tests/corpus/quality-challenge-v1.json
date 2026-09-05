@@ -1,0 +1,42 @@
+{
+  "schema": "egoist.voice.corpus-profile/v1",
+  "id": "quality-challenge-v1",
+  "description": "Focused user-voice baseline for quiet/merged Russian, boundaries, noise and RU/EN entities.",
+  "buckets": {
+    "quiet": [
+      "ru-quiet-phonetics/001", "ru-quiet-phonetics/002", "ru-quiet-phonetics/003",
+      "ru-quiet-phonetics/004", "ru-quiet-phonetics/005", "ru-quiet-phonetics/006",
+      "ru-quiet-phonetics/007", "ru-quiet-phonetics/008", "ru-quiet-phonetics/009",
+      "ru-quiet-phonetics/010", "ru-quiet-phonetics/011", "ru-quiet-phonetics/012"
+    ],
+    "short-onset": [
+      "ru-quiet-phonetics/001", "ru-quiet-phonetics/002", "ru-quiet-phonetics/003",
+      "boundary-start/001", "boundary-start/002", "boundary-start/003",
+      "boundary-start/004", "boundary-start/005", "boundary-start/006",
+      "boundary-start/007", "boundary-start/008", "boundary-start/009", "boundary-start/010"
+    ],
+    "sibilant-softness": [
+      "ru-quiet-phonetics/004", "ru-quiet-phonetics/005", "ru-quiet-phonetics/006",
+      "ru-quiet-phonetics/007", "ru-quiet-phonetics/008", "ru-quiet-phonetics/009",
+      "ru-quiet-phonetics/010", "ru-quiet-phonetics/011", "ru-quiet-phonetics/012"
+    ],
+    "merged-vowel": [
+      "ru-quiet-phonetics/001", "ru-quiet-phonetics/002", "ru-quiet-phonetics/003"
+    ],
+    "critical-phrase": [
+      "ru-quiet-phonetics/001", "ru-quiet-phonetics/002", "ru-quiet-phonetics/003"
+    ],
+    "household-noise": [
+      "ru-noisy/001", "ru-noisy/002", "ru-noisy/003", "ru-noisy/004", "ru-noisy/005"
+    ],
+    "pure-ru": [
+      "ru-clean/001", "ru-clean/002", "ru-clean/003", "ru-clean/004", "ru-clean/005"
+    ],
+    "ru-en-entity": [
+      "ru-en-mixed/026", "ru-en-mixed/027", "ru-en-mixed/028",
+      "ru-en-mixed/029", "ru-en-mixed/030", "ru-en-mixed/031",
+      "ru-en-mixed/032", "ru-en-mixed/033", "ru-en-mixed/034",
+      "ru-en-mixed/035"
+    ]
+  }
+}

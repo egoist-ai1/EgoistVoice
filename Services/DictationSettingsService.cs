@@ -5,11 +5,24 @@ using Egoist.Voice.Core;
 
 namespace Egoist.Voice.Services;
 
+[JsonConverter(typeof(JsonStringEnumConverter<AppTheme>))]
+public enum AppTheme
+{
+    System,
+    Light,
+    Dark
+}
+
 /// <summary>
 /// User-facing behaviour that is not the activation binding and not the capsule position.
 /// </summary>
 public sealed record DictationSettings
 {
+    [JsonPropertyName("formatWithQwen")] public bool FormatWithQwen { get; init; }
+    [JsonPropertyName("startLocalQwen")] public bool StartLocalQwen { get; init; }
+    [JsonPropertyName("textModelEndpoint")] public string TextModelEndpoint { get; init; } = "http://127.0.0.1:11434/v1";
+    [JsonPropertyName("textModelId")] public string TextModelId { get; init; } = "";
+    [JsonPropertyName("formatBudgetSeconds")] public double FormatBudgetSeconds { get; init; } = 2;
     [JsonPropertyName("applyDictionary")] public bool ApplyDictionary { get; init; } = true;
     [JsonPropertyName("applyVoiceCommands")] public bool ApplyVoiceCommands { get; init; } = true;
 
@@ -24,7 +37,21 @@ public sealed record DictationSettings
     [JsonPropertyName("soundFeedback")] public bool SoundFeedback { get; init; } = true;
     [JsonPropertyName("soundVolume")] public double SoundVolume { get; init; } = 0.4;
 
-    public static DictationSettings Default { get; } = new();
+    [JsonPropertyName("theme")] public AppTheme Theme { get; init; } = AppTheme.System;
+
+    /// <summary>Actionable recovery notifications only; successful dictation never uses balloons.</summary>
+    [JsonPropertyName("desktopNotifications")] public bool DesktopNotifications { get; init; } = true;
+
+    /// <summary>Stores only the three newest compressed takes locally; no transcript is persisted.</summary>
+    [JsonPropertyName("saveRecentRecordings")] public bool SaveRecentRecordings { get; init; } = true;
+
+    /// <summary>Null follows the current Windows default; otherwise this is a stable endpoint ID.</summary>
+    [JsonPropertyName("captureDeviceId")] public string? CaptureDeviceId { get; init; }
+
+    /// <summary>A deliberate pause survives restarts and never opens the microphone in background.</summary>
+    [JsonPropertyName("isPaused")] public bool IsCapturePaused { get; init; }
+
+    public static DictationSettings Default { get; } = new() { SaveRecentRecordings = !VoiceRuntimeProfile.IsPortable };
 
     public PostProcessingOptions ToPostProcessingOptions() =>
         new(ApplyDictionary, ApplyVoiceCommands, ApplyNumberNormalization);
@@ -48,8 +75,7 @@ public sealed class DictationSettingsService
     public DictationSettingsService(string? root = null)
     {
         _root = root ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "EgoistVoice");
+            Egoist.Voice.Core.VoiceRuntimeProfile.DataRoot);
     }
 
     public string SettingsPath => Path.Combine(_root, "dictation.json");

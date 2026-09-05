@@ -16,6 +16,8 @@
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings>
       <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
+      <!-- sherpa-onnx marshals model paths through LPStr; its native API expects UTF-8. -->
+      <activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>
       <!--
         Declared here rather than through the SDK property: ApplicationHighDpiMode only takes
         effect via ApplicationConfiguration.Initialize(), which a WPF entry point never calls.

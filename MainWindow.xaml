@@ -163,7 +163,7 @@
 
             <!-- A real blurred shadow. The previous three concentric hairlines had no blur at all
                  and read as nested rings against a light background. -->
-            <Border x:Name="ShadowSurface" CornerRadius="24" Background="#0A0A0C"
+            <Border x:Name="ShadowSurface" CornerRadius="24" Background="{DynamicResource AppSurfaceBrush}"
                     IsHitTestVisible="False" Opacity="1" CacheMode="BitmapCache">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="18" ShadowDepth="4" Direction="270"
@@ -188,7 +188,8 @@
 
             <controls:PixelPerfectCapsuleBorder x:Name="RootBorder"
                     CornerRadius="24"
-                    Background="#08080A" BorderBrush="#2A2A30"
+                    Background="{DynamicResource AppSurfaceBrush}"
+                    BorderBrush="{DynamicResource AppBorderBrush}"
                     PhysicalStroke="1.6" RasterScale="4"
                     Cursor="SizeAll"
                     MouseLeftButtonDown="RootBorder_OnMouseLeftButtonDown"
@@ -222,9 +223,9 @@
                             </LinearGradientBrush>
                         </Border.Background>
                     </Border>
-                    <Border x:Name="HoverSurface" CornerRadius="23" Background="#10FF2634"
+                    <Border x:Name="HoverSurface" CornerRadius="23" Background="{DynamicResource AppControlHoverBrush}"
                             Opacity="0" IsHitTestVisible="False" />
-                    <Border x:Name="SuccessFlash" CornerRadius="23" Background="#20FF2634"
+                    <Border x:Name="SuccessFlash" CornerRadius="23" Background="{DynamicResource AppAccentBrush}"
                             Opacity="0" IsHitTestVisible="False" />
 
                     <Grid>
@@ -242,7 +243,7 @@
                         </Grid.ColumnDefinitions>
 
                         <Grid Grid.Column="0" Width="28" Height="28">
-                            <Ellipse x:Name="StateHalo" Fill="#FF2634" Opacity="0"
+                            <Ellipse x:Name="StateHalo" Fill="{DynamicResource AppAccentBrush}" Opacity="0"
                                      RenderTransformOrigin="0.5,0.5">
                                 <Ellipse.RenderTransform>
                                     <ScaleTransform x:Name="StateHaloScale" ScaleX="1" ScaleY="1" />
@@ -266,7 +267,7 @@
                                     -->
                                     <Canvas x:Name="MicIcon" Width="18" Height="18"
                                             HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <Path Stroke="#FFFFFF" StrokeThickness="1.35"
+                                        <Path Stroke="{DynamicResource AppTextPrimaryBrush}" StrokeThickness="1.35"
                                               StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                               StrokeLineJoin="Round" Opacity="0.94"
                                               Data="M 6.3,5.6 A 2.7,2.7 0 0 1 11.7,5.6 L 11.7,8.3 A 2.7,2.7 0 0 1 6.3,8.3 Z
@@ -279,20 +280,20 @@
                                             HorizontalAlignment="Center" VerticalAlignment="Center"
                                             RenderTransformOrigin="0.5,0.5">
                                         <Canvas.RenderTransform><ScaleTransform x:Name="CheckScale" /></Canvas.RenderTransform>
-                                        <Path Stroke="#FFFFFF" StrokeThickness="1.5"
+                                        <Path Stroke="{DynamicResource AppTextPrimaryBrush}" StrokeThickness="1.5"
                                               StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                               StrokeLineJoin="Round" Opacity="0.94"
                                               Data="M 4.2,9.4 L 7.6,12.9 L 13.8,5.6" />
                                     </Canvas>
                                     <TextBlock x:Name="ClipboardIcon" Visibility="Collapsed" Text="&#xE77F;"
-                                               FontFamily="Segoe Fluent Icons" Foreground="#F7F7F8" FontSize="14"
+                                               FontFamily="Segoe Fluent Icons" Foreground="{DynamicResource AppTextPrimaryBrush}" FontSize="14"
                                                TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     <!-- A 270° arc rather than four orbiting dots. The dots read as
                                          a 2014 loading indicator and, being small, barely showed
                                          motion at all; an arc with rounded caps is what every
                                          current system spinner uses. -->
                                     <Grid x:Name="SpinnerIcon" Visibility="Collapsed" Width="18" Height="18">
-                                        <Path Stroke="#FF2634" StrokeThickness="1.9"
+                                        <Path Stroke="{DynamicResource AppAccentBrush}" StrokeThickness="1.9"
                                               StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                               Data="M 9,1.6 A 7.4,7.4 0 1 1 1.6,9"
                                               RenderTransformOrigin="0.5,0.5">
@@ -300,7 +301,7 @@
                                         </Path>
                                     </Grid>
                                     <TextBlock x:Name="DownloadIcon" Visibility="Collapsed" Text="&#xE896;"
-                                               FontFamily="Segoe Fluent Icons" Foreground="#FF2634" FontSize="15"
+                                               FontFamily="Segoe Fluent Icons" Foreground="{DynamicResource AppAccentBrush}" FontSize="15"
                                                TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <TextBlock.RenderTransform><TranslateTransform x:Name="DownloadArrowOffset" /></TextBlock.RenderTransform>
                                     </TextBlock>
@@ -309,7 +310,7 @@
                                          признак, по которому отказ отличается от успеха. -->
                                     <Canvas x:Name="ErrorIcon" Visibility="Collapsed" Width="18" Height="18"
                                             HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <Path Stroke="#F59E0B" StrokeThickness="1.4"
+                                        <Path Stroke="{DynamicResource AppWarningBrush}" StrokeThickness="1.4"
                                               StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                               Data="M 9,2.2 A 6.8,6.8 0 1 1 8.99,2.2 Z
                                                     M 9,5.6 L 9,10.1
@@ -335,30 +336,31 @@
 
                             <Grid x:Name="ProcessingDots" Visibility="Collapsed"
                                   HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock x:Name="ProcessingLabel" Text="Распознаю" Foreground="#F7F7F8"
+                                <TextBlock x:Name="ProcessingLabel" Text="Распознаю" Foreground="{DynamicResource AppTextPrimaryBrush}"
                                            FontSize="12.5" FontWeight="SemiBold" />
                             </Grid>
 
                             <TextBlock x:Name="DetailText" Visibility="Collapsed" TextTrimming="CharacterEllipsis"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Foreground="#F7F7F8" FontSize="12.5" FontWeight="SemiBold" />
+                                       Foreground="{DynamicResource AppTextPrimaryBrush}" FontSize="12.5" FontWeight="SemiBold" />
                             <ProgressBar x:Name="DownloadProgress" Visibility="Collapsed" Height="2"
                                          Margin="0,0,0,1" VerticalAlignment="Bottom" Minimum="0" Maximum="100"
-                                         Background="#25252A" Foreground="#FF2634" BorderThickness="0" />
+                                         Background="{DynamicResource AppMeterTrackBrush}"
+                                         Foreground="{DynamicResource AppAccentBrush}" BorderThickness="0" />
                         </Grid>
 
                         <!-- Tabular figures: proportional digits make the seconds column jitter
                              on every tick, which reads as the whole capsule twitching. -->
                         <TextBlock x:Name="RecordingTimer" Grid.Column="3" Visibility="Collapsed"
                                    VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0"
-                                   Foreground="#FFFFFF" FontSize="11.5" FontWeight="SemiBold" Opacity="0.82"
+                                   Foreground="{DynamicResource AppTextPrimaryBrush}" FontSize="11.5" FontWeight="SemiBold" Opacity="0.82"
                                    Typography.NumeralAlignment="Tabular"
                                    AutomationProperties.Name="Длительность записи" />
 
 
                         <Button x:Name="CloseButton" Grid.Column="5" Click="CloseButton_OnClick"
                                 Width="26" Height="26" Background="Transparent" BorderThickness="0"
-                                Foreground="#D0D0D4" Focusable="False" Cursor="Hand" ToolTip="Отменить"
+                                Foreground="{DynamicResource AppIconBrush}" Focusable="False" Cursor="Hand" ToolTip="Отменить"
                                 AutomationProperties.Name="Отменить диктовку">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
@@ -369,11 +371,11 @@
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="ButtonBorder" Property="Background" Value="#2EFF2634" />
-                                            <Setter Property="Foreground" Value="#FF5962" />
+                                            <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource AppControlHoverBrush}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource AppAccentBrush}" />
                                         </Trigger>
                                         <Trigger Property="IsPressed" Value="True">
-                                            <Setter TargetName="ButtonBorder" Property="Background" Value="#4AFF2634" />
+                                            <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource AppControlPressedBrush}" />
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>

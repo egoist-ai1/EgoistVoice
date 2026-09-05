@@ -22,48 +22,52 @@ public partial class MainWindow : Window, IDisposable
     // и по цвету контура, а не по плашке под иконкой.
     private static readonly SolidColorBrush ActiveDiscBrush = FrozenBrush("#00000000");
     private static readonly SolidColorBrush SuccessDiscBrush = FrozenBrush("#00000000");
-    private static readonly SolidColorBrush IdleBorderBrush = FrozenBrush("#2A2A30");
+    private SolidColorBrush IdleBorderBrush => ThemeBrush("AppBorderBrush");
 
     /// <summary>
     /// Контур записи. Красный больше не идёт ровной яркой линией по всему периметру — он вспыхивает
     /// в середине и растворяется к обоим концам. Ровный контур на такой толщине выглядел резко и
     /// при этом сливался в одну полосу с краем пилюли.
     /// </summary>
-    private static readonly System.Windows.Media.Brush ActiveBorderBrush = CreateDissolvingAccent("#FF3846", 0.86);
+    private System.Windows.Media.Brush ActiveBorderBrush =>
+        CreateDissolvingAccent(ThemeBrush("AppAccentBrush").Color.ToString(), 0.86);
 
-    /// <summary>Тот же приём, но приглушённый: распознавание — работа, а не сигнал.</summary>
-    private static readonly System.Windows.Media.Brush RefiningBorderBrush = CreateDissolvingAccent("#FF3846", 0.44);
-    private static readonly SolidColorBrush SurfaceBrush = FrozenBrush("#08080A");
-    private static readonly SolidColorBrush PrimaryTextBrush = FrozenBrush("#F7F7F8");
-    private static readonly SolidColorBrush AccentBrush = FrozenBrush("#FF2634");
+    private SolidColorBrush SurfaceBrush => ThemeBrush("AppSurfaceBrush");
+    private SolidColorBrush PrimaryTextBrush => ThemeBrush("AppTextPrimaryBrush");
+    private SolidColorBrush AccentBrush => ThemeBrush("AppAccentBrush");
     // Amber, not red. The brand accent #FF2634 marks normal operation — recording, progress,
     // hover — while #FF4450 marked failure, and the two were indistinguishable at a glance. Error
     // now has a colour of its own, and the brand keeps its meaning.
-    private static readonly SolidColorBrush ErrorBrush = FrozenBrush("#F59E0B");
+    private SolidColorBrush ErrorBrush => ThemeBrush("AppWarningBrush");
 
     /// <summary>
     /// Растворяется так же, как контур записи, но с более высоким пиком: отказ должен быть заметнее
     /// нормальной работы, при этом оставаясь в той же визуальной грамматике.
     /// </summary>
-    private static readonly System.Windows.Media.Brush ErrorBorderBrush = CreateDissolvingAccent("#F59E0B", 0.92);
-    private static readonly SolidColorBrush ProgressTrackBrush = FrozenBrush("#25252A");
+    private System.Windows.Media.Brush ErrorBorderBrush =>
+        CreateDissolvingAccent(ThemeBrush("AppWarningBrush").Color.ToString(), 0.92);
+    private SolidColorBrush ProgressTrackBrush => ThemeBrush("AppMeterTrackBrush");
 
     private readonly IAudioCaptureService _audioCapture;
     private readonly ITranscriptionService _transcription;
     private readonly DictationDeliveryService _delivery;
     private readonly IModelManager _modelManager;
     private readonly CapsulePositionService _positionService = new();
-    private readonly DictationSettingsService _settingsService = new();
-    private readonly FeedbackSoundService _sounds = new();
+    private readonly DictationSettingsService _settingsService;
+    private readonly AppThemeService _themeService;
+    private readonly RecentRecordingHistoryService _recentRecordings;
+    private readonly FeedbackSoundService _sounds;
     private readonly CancelKeyWatcher _cancelKey = new();
     private TranscriptPostProcessor _postProcessor = new();
     private bool _mixedLanguageMode;
+    private bool _saveRecentRecordings;
 
     // Голосовая команда «переведи …»: локальный переводчик EGOIST (HY-MT1.5).
     private readonly TranslatorClient _translator = new();
     private readonly ActivationSettingsService _activationSettings = new();
     private readonly DispatcherTimer _hideTimer = new();
     private readonly CancellationTokenSource _lifetimeCancellation = new();
+    private Task? _translationWarmupTask;
     private readonly PushToTalkCoordinator _pushToTalk = new();
     private Storyboard _exitStoryboard = null!;
     private GlobalHotkeyService? _hotkey;
@@ -93,7 +97,7 @@ public partial class MainWindow : Window, IDisposable
     private CapsuleVisualStateKind? _lastVisualStateKind;
     private string? _lastAnnouncement;
     private bool _timerVisible;
-    private static bool IsReducedMotion => !SystemParameters.ClientAreaAnimation || SystemParameters.HighContrast;
+    private bool IsReducedMotion => _themeService.ReducedMotion;
 
     /// <summary>Window width up to and including 1.6.5, used to re-centre positions saved back then.</summary>
     private const double LegacyWindowWidth = 242;
@@ -102,17 +106,27 @@ public partial class MainWindow : Window, IDisposable
         IAudioCaptureService audioCapture,
         ITranscriptionService transcription,
         DictationDeliveryService delivery,
-        IModelManager modelManager)
+        IModelManager modelManager,
+        DictationSettingsService settingsService,
+        RecentRecordingHistoryService recentRecordings,
+        AppThemeService themeService)
     {
         InitializeComponent();
         _audioCapture = audioCapture;
         _transcription = transcription;
         _delivery = delivery;
         _modelManager = modelManager;
+        _settingsService = settingsService;
+        _recentRecordings = recentRecordings;
+        _themeService = themeService;
+        _sounds = new FeedbackSoundService(_audioCapture.SuppressFeedbackAudio);
+        _themeService.ThemeChanged += OnCapsuleThemeChanged;
         ApplyDictationSettings();
 
         BuildWaveform();
         _audioCapture.LevelChanged += OnAudioLevelChanged;
+        _audioCapture.StateChanged += OnAudioCaptureStateChanged;
+        _pushToTalk.SetPaused(_audioCapture.GetState().IsPaused);
         _modelManager.ProgressChanged += OnModelProgressChanged;
         _exitStoryboard = (Storyboard)Resources["ExitStoryboard"];
         _exitStoryboard.Completed += (_, _) =>
@@ -149,16 +163,119 @@ public partial class MainWindow : Window, IDisposable
         // clamp only ran on the next show, which may never come if the capsule is off-screen.
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
         _cancelKey.Cancelled += OnCancelKeyPressed;
-        Loaded += (_, _) => AppLog.Write("Capsule Loaded");
+        Loaded += (_, _) =>
+        {
+            AppLog.Write("Capsule Loaded");
+        };
     }
 
     public event EventHandler? ActivationBindingChanged;
+    public event EventHandler<AudioCaptureStateChangedEventArgs>? AudioCaptureStateChanged;
+
+    public event EventHandler<TranslationEngineHealthChangedEventArgs> TranslationEngineHealthChanged
+    {
+        add => _translator.HealthChanged += value;
+        remove => _translator.HealthChanged -= value;
+    }
+
+    public event EventHandler<AppThemeChangedEventArgs> ThemeChanged
+    {
+        add => _themeService.ThemeChanged += value;
+        remove => _themeService.ThemeChanged -= value;
+    }
 
     public ActivationBinding CurrentActivationBinding => _activationConfiguration.Binding;
 
     public KeyboardShortcut? CurrentCustomShortcut => _activationConfiguration.CustomShortcut;
 
     public string CurrentActivationDisplayName => ActivationBindingInfo.DisplayName(_activationConfiguration);
+
+    public AudioCaptureState CurrentAudioCaptureState => _audioCapture.GetState();
+
+    public IReadOnlyList<MicrophoneDeviceInfo> CaptureDevices => _audioCapture.GetCaptureDevices();
+
+    public float CurrentAudioLevel => _audioLevelTarget;
+
+    public bool IsRecording => _isRecording;
+
+    public bool IsProcessing => _isProcessing;
+
+    public bool AreRecognitionModelsReady => _modelManager.AreAllModelsReady;
+
+    public ModelTransferProgress? RecognitionModelProgress => _modelManager.CurrentProgress;
+
+    public TranslationEngineHealth CurrentTranslationEngineHealth => _translator.CurrentHealth;
+
+    public RecentRecordingHistoryService RecentRecordings => _recentRecordings;
+
+    public AppTheme ThemePreference => _themeService.Preference;
+
+    public EffectiveAppTheme EffectiveTheme => _themeService.EffectiveTheme;
+
+    public bool ReducedMotion => _themeService.ReducedMotion;
+
+    public Task<TranslationEngineHealth> RefreshTranslationEngineAsync() =>
+        _translator.EnsureReadyAsync(_lifetimeCancellation.Token);
+
+    public void BeginTranslationEngineWarmup()
+    {
+        if (VoiceRuntimeProfile.IsPortable) return;
+        _translationWarmupTask ??= WarmTranslationEngineAsync();
+    }
+
+    public void PreviewFeedbackSound() => PlayFeedback(FeedbackSound.RecordingStarted, preview: true);
+
+    private async Task WarmTranslationEngineAsync()
+    {
+        try
+        {
+            _ = await _translator.EnsureReadyAsync(_lifetimeCancellation.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            // Normal application shutdown owns this cancellation.
+        }
+    }
+
+    public async Task<bool> SelectMicrophoneAsync(string? deviceId)
+    {
+        if (_isRecording)
+        {
+            var confirmation = System.Windows.MessageBox.Show(
+                "Текущая диктовка будет отменена, а её аудиобуфер очищен. Сменить микрофон?",
+                "Смена микрофона",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No);
+            if (confirmation != MessageBoxResult.Yes)
+            {
+                return false;
+            }
+            await CancelDictationAsync();
+        }
+        _audioCapture.SelectCaptureDevice(deviceId);
+        PersistAudioSettings();
+        return true;
+    }
+
+    public async Task SetMicrophonePausedAsync(bool paused)
+    {
+        _recentRecordings.StopPlayback();
+        if (paused && (_isRecording || _isProcessing))
+        {
+            await CancelDictationAsync();
+        }
+
+        if (paused)
+        {
+            _audioCapture.PauseMonitoring();
+        }
+        else
+        {
+            _audioCapture.ResumeMonitoring();
+        }
+        PersistAudioSettings();
+    }
 
     public void SetActivationCaptureActive(bool active)
     {
@@ -370,6 +487,40 @@ public partial class MainWindow : Window, IDisposable
         }
     }
 
+    private void OnAudioCaptureStateChanged(object? sender, AudioCaptureStateChangedEventArgs change)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            _ = Dispatcher.BeginInvoke(() => OnAudioCaptureStateChanged(sender, change));
+            return;
+        }
+
+        _pushToTalk.SetPaused(change.State.IsPaused);
+        if (change.ActiveTakeCancelled)
+        {
+            _operationCancellation?.Cancel();
+            _isRecording = false;
+            _isProcessing = false;
+            _cancelKey.Disarm();
+            ShowError("Запись отменена");
+        }
+        if (change.Kind == AudioCaptureChangeKind.DeviceUnavailable)
+        {
+            PersistAudioSettings();
+        }
+        AudioCaptureStateChanged?.Invoke(this, change);
+    }
+
+    private void PersistAudioSettings()
+    {
+        var state = _audioCapture.GetState();
+        _settingsService.Save(_settingsService.Load() with
+        {
+            CaptureDeviceId = state.SelectedDeviceId,
+            IsCapturePaused = state.IsPaused
+        });
+    }
+
     private async Task EndPushToTalkAsync(PushToTalkSource source)
     {
         if (_pushToTalk.Release(source) && _isRecording && !_isProcessing)
@@ -497,6 +648,7 @@ public partial class MainWindow : Window, IDisposable
     private void StartRecording()
     {
         AppLog.Write("StartRecording requested");
+        _recentRecordings.StopPlayback();
         _forceHideAfterCancellation = false;
         _hideTimer.Stop();
         _operationCancellation?.Dispose();
@@ -508,7 +660,7 @@ public partial class MainWindow : Window, IDisposable
         {
             _audioCapture.Start();
             AppLog.Write($"Audio capture started, target=0x{_targetWindow:X}");
-            _sounds.Play(FeedbackSound.RecordingStarted);
+            PlayFeedback(FeedbackSound.RecordingStarted);
 
             // The keyboard hook is armed only for the duration of a dictation: a dictation tool
             // has no business watching every keystroke of the session.
@@ -529,16 +681,20 @@ public partial class MainWindow : Window, IDisposable
         AppLog.Write($"StopAndTranscribe requested, held={(DateTime.UtcNow - _recordingStartedUtc).TotalSeconds:0.00}s");
         _isRecording = false;
         _isProcessing = true;
-        _sounds.Play(FeedbackSound.RecordingStopped);
         SetProcessingState("Распознаю", null);
         var cancellationToken = _operationCancellation?.Token ?? CancellationToken.None;
         var trace = new DictationTrace();
+        var textSettings = _currentTextSettings;
         trace.Mark(DictationStage.CaptureStarted);
         string? audioPath = null;
+        AudioCaptureResult? completedCapture = null;
+        var recordingStatus = RecentRecordingStatus.ProcessingFailed;
 
         try
         {
             var capture = await _audioCapture.StopAsync(cancellationToken);
+            PlayFeedback(FeedbackSound.RecordingStopped);
+            completedCapture = capture;
             trace.Mark(DictationStage.CaptureStopped);
             audioPath = capture.Path;
             AppLog.Write(
@@ -594,6 +750,7 @@ public partial class MainWindow : Window, IDisposable
                 ShowError("Не услышал");
                 return;
             }
+            recordingStatus = RecentRecordingStatus.Recognized;
 
             // Голосовая команда «переведи …» / «… переведи на немецкий» идёт
             // только через проверенный current-user Engine Host. При ошибке
@@ -622,8 +779,24 @@ public partial class MainWindow : Window, IDisposable
                 }
             }
 
+            string? formattingMessage = null;
+            if (directive is null && textSettings.FormatWithQwen)
+            {
+                SetProcessingState("Оформляю", null);
+                var budget = double.IsFinite(textSettings.FormatBudgetSeconds)
+                    ? Math.Clamp(textSettings.FormatBudgetSeconds, 0.5, 5) : 2;
+                var formatted = await _textFormatter.FormatAsync(text, textSettings.TextModelEndpoint,
+                    textSettings.TextModelId, TimeSpan.FromSeconds(budget), false, cancellationToken);
+                text = formatted.Text;
+                formattingMessage = formatted.Message;
+                AppLog.Write($"Text formatting status={formatted.Status}; elapsedMs={formatted.Elapsed.TotalMilliseconds:0}; characters={text.Length}");
+                trace.Mark(DictationStage.TextEnhanced);
+            }
+            cancellationToken.ThrowIfCancellationRequested();
             var deliveryResult = await _delivery.DeliverAsync(text, _targetWindow, cancellationToken);
             trace.Mark(DictationStage.Delivered);
+            LastOperationSummary = $"От отпускания до результата: {trace.Total.TotalSeconds:0.00} с" +
+                (formattingMessage is null ? " · быстрое оформление" : " · " + formattingMessage);
             AppLog.Write($"Dictation timing: {trace.Format()}");
             switch (deliveryResult.Status)
             {
@@ -665,6 +838,22 @@ public partial class MainWindow : Window, IDisposable
         {
             _isProcessing = false;
             _cancelKey.Disarm();
+
+            // Persistence is deliberately queued only after capture has completed and speech has
+            // been accepted. Escape/pause cancellation never reaches this branch, and Media
+            // Foundation work runs on the bounded history worker rather than the UI/WASAPI thread.
+            if (RecentRecordingPersistencePolicy.ShouldQueue(
+                    completedCapture,
+                    cancellationToken.IsCancellationRequested,
+                    _saveRecentRecordings) &&
+                completedCapture is { } accepted)
+            {
+                _recentRecordings.TryQueue(
+                    accepted.Samples,
+                    accepted.SampleRate,
+                    accepted.Duration,
+                    recordingStatus);
+            }
 
             // Diagnostic/corpus mode can still return an explicit temporary WAV. Normal dictation
             // is memory-only, so cancellation normally has no path to resolve or delete.
@@ -867,13 +1056,22 @@ public partial class MainWindow : Window, IDisposable
     public void ApplyDictationSettings()
     {
         var settings = _settingsService.Load();
+        _currentTextSettings = settings;
+        ApplyLocalQwenPreference(settings);
         var dictionary = _settingsService.LoadDictionary();
         _postProcessor = new TranscriptPostProcessor(dictionary, settings.ToPostProcessingOptions());
-        _mixedLanguageMode = settings.MixedLanguageMode;
+        _mixedLanguageMode = settings.MixedLanguageMode && !VoiceRuntimeProfile.IsPortable;
+        _saveRecentRecordings = settings.SaveRecentRecordings;
         _delivery.RestoreClipboard = settings.RestoreClipboard;
         _sounds.Enabled = settings.SoundFeedback;
         _sounds.Volume = settings.SoundVolume;
         _sounds.Invalidate();
+        _themeService.Apply(settings.Theme);
+
+        if (!settings.SaveRecentRecordings)
+        {
+            _recentRecordings.CancelPending();
+        }
 
         if (_transcription is HybridTranscriptionService hybrid)
         {
@@ -967,7 +1165,7 @@ public partial class MainWindow : Window, IDisposable
 
     private void SetWaveform(double scaleY)
     {
-        Waveform.HighContrast = SystemParameters.HighContrast;
+        BuildWaveform();
         Waveform.SetUniformScale(scaleY);
     }
 
@@ -1017,6 +1215,8 @@ public partial class MainWindow : Window, IDisposable
         brush.Freeze();
         return brush;
     }
+
+    private SolidColorBrush ThemeBrush(string key) => (SolidColorBrush)FindResource(key);
 
     /// <summary>
     /// Строит горизонтальный градиент, у которого акцент разгорается к середине и уходит в ноль на
@@ -1081,15 +1281,30 @@ public partial class MainWindow : Window, IDisposable
         _operationCancellation?.Cancel();
         _pushToTalk.Reset();
         _lifetimeCancellation.Cancel();
+        try
+        {
+            _translationWarmupTask?.Wait(TimeSpan.FromSeconds(2));
+        }
+        catch (AggregateException exception) when (
+            exception.InnerExceptions.All(inner => inner is OperationCanceledException))
+        {
+            // Cancellation is the expected shutdown path for a readiness probe.
+        }
         _operationCancellation?.Dispose();
         _lifetimeCancellation.Dispose();
         _hotkey?.Dispose();
         _mouseHotkey?.Dispose();
         _modelManager.ProgressChanged -= OnModelProgressChanged;
+        _audioCapture.LevelChanged -= OnAudioLevelChanged;
+        _audioCapture.StateChanged -= OnAudioCaptureStateChanged;
+        _themeService.ThemeChanged -= OnCapsuleThemeChanged;
         _sounds.Dispose();
+        _recentRecordings.Dispose();
         _audioCapture.Dispose();
         _transcription.Dispose();
         _translator.Dispose();
+        _textFormatter.Dispose();
+        _localQwen?.Dispose();
         _modelManager.Dispose();
     }
 }

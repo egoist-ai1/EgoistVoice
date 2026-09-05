@@ -5,6 +5,11 @@ Egoist Voice распространяется вместе с речевыми �
 
 Исходный код самого Egoist Voice лицензирован отдельно — см. `LICENSE`.
 
+Компактная версия Portable RU включает GigaAM, sherpa-onnx, ONNX Runtime,
+NAudio и .NET. Нативные Whisper, CUDA, Vulkan и движок перевода в неё не входят.
+Текстовая Qwen устанавливается отдельно от Portable; источник закреплённой модели:
+https://huggingface.co/Qwen/Qwen3-4B-GGUF/tree/bc640142c66e1fdd12af0bd68f40445458f3869b
+
 ---
 
 ## Речевые модели (входят в установщик)
@@ -17,8 +22,8 @@ Egoist Voice распространяется вместе с речевыми �
 - Лицензия: **MIT**
 
 Установщик кладёт `gigaam_v3_e2e_rnnt_encoder_int8.onnx`, `..._decoder.onnx`, `..._joint.onnx` и
-`..._tokens.txt` в `%LOCALAPPDATA%\EgoistVoice\Models\Speech`. При удалении приложения через
-Windows они удаляются вместе с ним.
+`..._tokens.txt` в `%LOCALAPPDATA%\EgoistVoice\Models\Speech`. Full Preview 2 сохраняет этот
+кэш при удалении приложения. Compact хранит модели рядом с EXE.
 
 ### Whisper large-v3-turbo — фолбэк для смешанной русско-английской речи
 
@@ -71,5 +76,20 @@ NVIDIA CUDA Redistributable, необходимые для GPU-ускорени�
 - MIT: https://opensource.org/license/mit
 - Apache-2.0: https://www.apache.org/licenses/LICENSE-2.0
 
-Каждый из перечисленных проектов публикует свой текст лицензии по ссылке в таблице выше; при
-распространении бинарной сборки этот файл сопровождает её и служит требуемым уведомлением.
+Полные тексты лицензий и copyright-уведомления включены в каталог `licenses/`.
+MIT-лицензия исходников Egoist Voice не заменяет отдельные условия сторонних компонентов.
+
+## Дополнения Full Preview 2
+
+- **Qwen3-4B Q4_K_M**, Apache-2.0: официальный GGUF из указанного выше закреплённого revision.
+  Текст лицензии — `licenses/Qwen3-4B-APACHE-2.0.txt`.
+- **Hy-MT2-1.8B Q8_0**, Apache-2.0: модель перевода Tencent, revision
+  `1cd5208700acedef4ef93019b6cfc148b8522d45`. `licenses/Hy-MT2-LICENSE.txt`.
+- **llama.cpp b10219**, MIT: `licenses/llama.cpp-LICENSE.txt`.
+- **Visual C++ 2022 Redistributable**, условия Microsoft: указатель на официальный список
+  распространяемых компонентов — `licenses/Microsoft-Visual-Cpp-2022-REDIST.txt`.
+- CUDA распространяется только как часть приложения; полные условия включены в
+  `licenses/NVIDIA-CUDA-EULA.html`. Драйвер NVIDIA в комплект не входит.
+
+Установщик Full сохраняет словарь, настройки, историю и кэш ASR/Qwen при обновлении и удалении.
+Общий движок перевода учитывает владельцев Voice/Translator; чужой owner не удаляется.

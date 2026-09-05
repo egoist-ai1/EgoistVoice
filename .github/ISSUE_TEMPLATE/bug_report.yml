@@ -1,0 +1,32 @@
+name: Ошибка в Egoist Voice
+description: Воспроизводимая проблема с диктовкой, меню или установкой
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: Не прикладывайте секреты, личную историю или чужие аудиозаписи.
+  - type: dropdown
+    id: edition
+    attributes:
+      label: Редакция
+      options:
+        - Compact RU — EXE
+        - Compact RU — Portable ZIP
+        - Full + Qwen
+        - Сборка из исходников
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Версия и Windows
+      placeholder: 2.2.0-preview.2, Windows 11 x64
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как повторить
+      description: Действия, ожидаемый результат и фактическое поведение. Для распознавания — безопасный пример.
+    validations:
+      required: true

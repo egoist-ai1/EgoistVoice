@@ -1,9 +1,13 @@
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Egoist.Voice.Core;
 
 namespace Egoist.Voice.Services;
 
-public sealed class HybridTranscriptionService : ITranscriptionService, ISampleTranscriptionService
+public sealed class HybridTranscriptionService :
+    ITranscriptionService,
+    ISampleTranscriptionService,
+    IBenchmarkTranscriptionService
 {
     /// <summary>
     /// Full memory-only dictation path. It preserves the same conditional Whisper policy as the
@@ -14,6 +18,7 @@ public sealed class HybridTranscriptionService : ITranscriptionService, ISampleT
         int sampleRate,
         CancellationToken cancellationToken)
     {
+        var pipeline = Stopwatch.StartNew();
         await WarmUpAsync(null, cancellationToken).ConfigureAwait(false);
         var giga = await CaptureSampleCandidateAsync(_gigaAm, samples, sampleRate, cancellationToken)
             .ConfigureAwait(false);
@@ -23,10 +28,10 @@ public sealed class HybridTranscriptionService : ITranscriptionService, ISampleT
 
         if (!decision.NeedsFallback)
         {
-            return giga.Result!;
+            return giga.Result! with { Elapsed = pipeline.Elapsed };
         }
 
-        AppLog.Write($"Mixed speech suspected ({decision.Trigger}: {decision.Evidence}); refining with Whisper");
+        AppLog.Write($"Mixed speech suspected trigger={decision.Trigger}; refining with Whisper");
         var warmUp = EnsureWhisperWarmUpStarted(force: true);
         if (!_whisperReady && _modelManager.AreAllModelsReady)
         {
@@ -42,7 +47,8 @@ public sealed class HybridTranscriptionService : ITranscriptionService, ISampleT
 
         if (!_whisperReady)
         {
-            return giga.Result ?? throw giga.Error ?? new InvalidOperationException("Распознавание не дало результата.");
+            return (giga.Result ?? throw giga.Error ?? new InvalidOperationException("Распознавание не дало результата."))
+                with { Elapsed = pipeline.Elapsed };
         }
 
         Volatile.Write(ref _lastWhisperUseTicks, Environment.TickCount64);
@@ -55,12 +61,12 @@ public sealed class HybridTranscriptionService : ITranscriptionService, ISampleT
         if (giga.Result is null)
         {
             AppLog.Write("Hybrid ASR fell back to Whisper after GigaAM failure", giga.Error);
-            return whisper.Result!;
+            return whisper.Result! with { Elapsed = pipeline.Elapsed };
         }
         if (whisper.Result is null)
         {
             AppLog.Write("Hybrid ASR kept GigaAM after Whisper failure", whisper.Error);
-            return giga.Result;
+            return giga.Result with { Elapsed = pipeline.Elapsed };
         }
 
         var selected = _selector.Select(giga.Result.Text, whisper.Result.Text);
@@ -68,7 +74,7 @@ public sealed class HybridTranscriptionService : ITranscriptionService, ISampleT
             $"Hybrid ASR selected {selected.Engine}: gigaChars={giga.Result.Text.Length}, whisperChars={whisper.Result.Text.Length}");
         return new TranscriptionResult(
             selected.Text,
-            giga.Result.Elapsed > whisper.Result.Elapsed ? giga.Result.Elapsed : whisper.Result.Elapsed);
+            pipeline.Elapsed);
     }
 
     private readonly ITranscriptionEngine _gigaAm;
@@ -205,8 +211,25 @@ public sealed class HybridTranscriptionService : ITranscriptionService, ISampleT
     public async Task<TranscriptionResult> TranscribeAsync(
         string audioPath,
         IProgress<ModelProgress>? progress,
+        CancellationToken cancellationToken) =>
+        (await TranscribeObservedAsync(audioPath, progress, cancellationToken).ConfigureAwait(false)).Result;
+
+    internal Task<HybridTranscriptionObservation> TranscribeObservedAsync(
+        string audioPath,
+        CancellationToken cancellationToken) =>
+        TranscribeObservedAsync(audioPath, progress: null, cancellationToken);
+
+    Task<HybridTranscriptionObservation> IBenchmarkTranscriptionService.TranscribeObservedAsync(
+        string audioPath,
+        CancellationToken cancellationToken) =>
+        TranscribeObservedAsync(audioPath, cancellationToken);
+
+    private async Task<HybridTranscriptionObservation> TranscribeObservedAsync(
+        string audioPath,
+        IProgress<ModelProgress>? progress,
         CancellationToken cancellationToken)
     {
+        var pipeline = Stopwatch.StartNew();
         await WarmUpAsync(progress, cancellationToken).ConfigureAwait(false);
 
         // Deliberately no longer waiting for the Whisper warm-up here. That wait made the first
@@ -224,10 +247,13 @@ public sealed class HybridTranscriptionService : ITranscriptionService, ISampleT
 
         if (!decision.NeedsFallback)
         {
-            return giga.Result!;
+            return CompleteObservation(
+                giga.Result!, giga, fallback: null, decision, "GigaAM",
+                fallbackRan: false, fallbackUnavailable: false,
+                selectionElapsed: TimeSpan.Zero, pipeline);
         }
 
-        AppLog.Write($"Mixed speech suspected ({decision.Trigger}: {decision.Evidence}); refining with Whisper");
+        AppLog.Write($"Mixed speech suspected trigger={decision.Trigger}; refining with Whisper");
         progress?.Report(new ModelProgress(RefiningLabel, null));
 
         // Only now is it worth waiting for the fallback to be loadable — and only when the models
@@ -247,7 +273,13 @@ public sealed class HybridTranscriptionService : ITranscriptionService, ISampleT
 
         if (!_whisperReady)
         {
-            return giga.Result ?? throw giga.Error ?? new InvalidOperationException("Распознавание не дало результата.");
+            var availableResult = giga.Result
+                ?? throw giga.Error
+                ?? new InvalidOperationException("Распознавание не дало результата.");
+            return CompleteObservation(
+                availableResult, giga, fallback: null, decision, "GigaAM",
+                fallbackRan: false, fallbackUnavailable: true,
+                selectionElapsed: TimeSpan.Zero, pipeline);
         }
 
         Volatile.Write(ref _lastWhisperUseTicks, Environment.TickCount64);
@@ -260,20 +292,58 @@ public sealed class HybridTranscriptionService : ITranscriptionService, ISampleT
         if (giga.Result is null)
         {
             AppLog.Write("Hybrid ASR fell back to Whisper after GigaAM failure", giga.Error);
-            return whisper.Result!;
+            return CompleteObservation(
+                whisper.Result!, giga, whisper, decision, "Whisper",
+                fallbackRan: true, fallbackUnavailable: false,
+                selectionElapsed: TimeSpan.Zero, pipeline);
         }
         if (whisper.Result is null)
         {
             AppLog.Write("Hybrid ASR kept GigaAM after Whisper failure", whisper.Error);
-            return giga.Result;
+            return CompleteObservation(
+                giga.Result, giga, whisper, decision, "GigaAM",
+                fallbackRan: true, fallbackUnavailable: false,
+                selectionElapsed: TimeSpan.Zero, pipeline);
         }
 
+        var selectionStarted = Stopwatch.GetTimestamp();
         var selected = _selector.Select(giga.Result.Text, whisper.Result.Text);
+        var selectionElapsed = Stopwatch.GetElapsedTime(selectionStarted);
         AppLog.Write(
             $"Hybrid ASR selected {selected.Engine}: gigaChars={giga.Result.Text.Length}, whisperChars={whisper.Result.Text.Length}");
-        return new TranscriptionResult(
+        var selectedResult = new TranscriptionResult(
             selected.Text,
             giga.Result.Elapsed > whisper.Result.Elapsed ? giga.Result.Elapsed : whisper.Result.Elapsed);
+        return CompleteObservation(
+            selectedResult, giga, whisper, decision, selected.Engine,
+            fallbackRan: true, fallbackUnavailable: false,
+            selectionElapsed, pipeline);
+    }
+
+    private static HybridTranscriptionObservation CompleteObservation(
+        TranscriptionResult result,
+        EngineAttempt primary,
+        EngineAttempt? fallback,
+        MixedSpeechDecision decision,
+        string selectedEngine,
+        bool fallbackRan,
+        bool fallbackUnavailable,
+        TimeSpan selectionElapsed,
+        Stopwatch pipeline)
+    {
+        pipeline.Stop();
+        return new HybridTranscriptionObservation(
+            result,
+            primary.Result,
+            fallback?.Result,
+            decision.Trigger,
+            selectedEngine,
+            primary.Error is not null,
+            fallback?.Error is not null,
+            fallbackRan,
+            fallbackUnavailable,
+            selectionElapsed,
+            pipeline.Elapsed);
     }
 
     private static async Task<EngineAttempt> CaptureCandidateAsync(
@@ -398,6 +468,19 @@ public sealed class HybridTranscriptionService : ITranscriptionService, ISampleT
 }
 
 internal sealed record EngineAttempt(TranscriptionResult? Result, Exception? Error);
+
+internal sealed record HybridTranscriptionObservation(
+    TranscriptionResult Result,
+    TranscriptionResult? Primary,
+    TranscriptionResult? Fallback,
+    MixedSpeechTrigger FallbackTrigger,
+    string SelectedEngine,
+    bool PrimaryFailed,
+    bool FallbackFailed,
+    bool FallbackRan,
+    bool FallbackUnavailable,
+    TimeSpan SelectionElapsed,
+    TimeSpan PipelineElapsed);
 
 internal sealed record TranscriptSelection(string Text, string Engine);
 

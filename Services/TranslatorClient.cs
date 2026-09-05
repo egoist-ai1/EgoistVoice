@@ -33,6 +33,34 @@ public sealed record VoiceTranslationOutcome(
         new(null, failure, message);
 }
 
+public enum TranslationEngineHealthState
+{
+    Checking,
+    Ready,
+    Missing,
+    RepairRequired,
+    Incompatible,
+    Unavailable
+}
+
+public sealed record TranslationEngineHealth(
+    TranslationEngineHealthState State,
+    string Title,
+    string Detail,
+    bool CanRetry)
+{
+    public static TranslationEngineHealth Initial { get; } = new(
+        TranslationEngineHealthState.Checking,
+        "Запускаю движок перевода",
+        "Проверяю локальный пакет в фоне. Диктовка продолжает работать независимо.",
+        CanRetry: false);
+}
+
+public sealed class TranslationEngineHealthChangedEventArgs(TranslationEngineHealth health) : EventArgs
+{
+    public TranslationEngineHealth Health { get; } = health;
+}
+
 internal interface ITranslationEngineGateway : IDisposable
 {
     Task<EngineStatusSnapshot> EnsureAvailableAsync(CancellationToken cancellationToken);
@@ -68,6 +96,7 @@ public sealed class TranslatorClient : IDisposable
         };
 
     private readonly ITranslationEngineGateway _gateway;
+    private TranslationEngineHealth _health = TranslationEngineHealth.Initial;
     private int _disposed;
 
     public TranslatorClient()
@@ -78,6 +107,40 @@ public sealed class TranslatorClient : IDisposable
     internal TranslatorClient(ITranslationEngineGateway gateway)
     {
         _gateway = gateway ?? throw new ArgumentNullException(nameof(gateway));
+    }
+
+    public event EventHandler<TranslationEngineHealthChangedEventArgs>? HealthChanged;
+
+    public TranslationEngineHealth CurrentHealth => Volatile.Read(ref _health);
+
+    /// <summary>
+    /// Starts or reconnects to the shared Host without framing user text. This is safe to run at
+    /// application startup: Voice never owns or terminates the shared process, and ordinary
+    /// dictation remains independent from the result.
+    /// </summary>
+    public async Task<TranslationEngineHealth> EnsureReadyAsync(CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        Publish(TranslationEngineHealth.Initial);
+        try
+        {
+            var snapshot = await _gateway.EnsureAvailableAsync(cancellationToken).ConfigureAwait(false);
+            return Publish(FromSnapshot(snapshot));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (TranslationEngineException exception)
+        {
+            AppLog.Write($"Фоновая проверка перевода завершилась: {exception.Error.Code}; retryable={exception.Error.Retryable}");
+            return Publish(FromFailure(exception.Error.Code));
+        }
+        catch (Exception)
+        {
+            AppLog.Write("Фоновая проверка перевода завершилась неожиданной локальной ошибкой");
+            return Publish(Unavailable());
+        }
     }
 
     public async Task<VoiceTranslationOutcome> TranslateAsync(
@@ -101,7 +164,21 @@ public sealed class TranslatorClient : IDisposable
         {
             status("Проверяю движок");
             var engine = await _gateway.EnsureAvailableAsync(cancellationToken).ConfigureAwait(false);
+            var health = Publish(FromSnapshot(engine));
+            if (!engine.OfflineReady)
+            {
+                return VoiceTranslationOutcome.Error(
+                    health.State is TranslationEngineHealthState.Missing
+                        ? TranslationFailureKind.EngineMissing
+                        : TranslationFailureKind.ModelInvalid,
+                    health.Detail);
+            }
             status(StatusLabel(engine.State));
+            Publish(new TranslationEngineHealth(
+                TranslationEngineHealthState.Checking,
+                "Перевожу локально",
+                "Движок обрабатывает голосовую команду на этом компьютере.",
+                CanRetry: false));
 
             var result = await _gateway.TranslateAsync(new TranslationRequest
             {
@@ -117,9 +194,14 @@ public sealed class TranslatorClient : IDisposable
                 ContextKey = "egoist-voice-dictation",
             }, cancellationToken).ConfigureAwait(false);
 
-            return string.IsNullOrWhiteSpace(result.Text)
-                ? VoiceTranslationOutcome.Error(TranslationFailureKind.Failed, "Движок вернул пустой перевод")
-                : VoiceTranslationOutcome.Success(result.Text.Trim());
+            if (string.IsNullOrWhiteSpace(result.Text))
+            {
+                Publish(Unavailable());
+                return VoiceTranslationOutcome.Error(TranslationFailureKind.Failed, "Движок вернул пустой перевод");
+            }
+
+            Publish(FromSnapshot(engine));
+            return VoiceTranslationOutcome.Success(result.Text.Trim());
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -128,11 +210,13 @@ public sealed class TranslatorClient : IDisposable
         catch (TranslationEngineException exception)
         {
             var failure = MapFailure(exception.Error.Code);
+            Publish(FromFailure(exception.Error.Code));
             AppLog.Write($"Перевод не выполнен: {exception.Error.Code}; retryable={exception.Error.Retryable}");
             return VoiceTranslationOutcome.Error(failure.Kind, failure.Message);
         }
         catch (Exception)
         {
+            Publish(Unavailable());
             AppLog.Write("Перевод не выполнен: unexpected local engine failure");
             return VoiceTranslationOutcome.Error(TranslationFailureKind.Failed, "Не удалось выполнить перевод");
         }
@@ -170,6 +254,78 @@ public sealed class TranslatorClient : IDisposable
         _ =>
             (TranslationFailureKind.Failed, "Не удалось выполнить перевод"),
     };
+
+    private TranslationEngineHealth Publish(TranslationEngineHealth health)
+    {
+        var previous = Interlocked.Exchange(ref _health, health);
+        if (previous != health)
+        {
+            HealthChanged?.Invoke(this, new TranslationEngineHealthChangedEventArgs(health));
+        }
+        return health;
+    }
+
+    internal static TranslationEngineHealth FromSnapshot(EngineStatusSnapshot snapshot)
+    {
+        if (snapshot.OfflineReady && snapshot.State is EngineState.Ready or EngineState.Sleeping)
+        {
+            var model = snapshot.Model is null
+                ? "HY-MT2 · локально"
+                : $"HY-MT2 · {snapshot.Model.Quantization} · локально";
+            return new TranslationEngineHealth(
+                TranslationEngineHealthState.Ready,
+                "Движок перевода готов",
+                model,
+                CanRetry: false);
+        }
+
+        return snapshot.State switch
+        {
+            EngineState.Verifying or EngineState.Loading or EngineState.Repairing => TranslationEngineHealth.Initial,
+            EngineState.Missing => new TranslationEngineHealth(
+                TranslationEngineHealthState.Missing,
+                "Движок перевода не установлен",
+                "Переустановите Egoist Voice с полным офлайн-пакетом.",
+                CanRetry: true),
+            EngineState.Corrupt => new TranslationEngineHealth(
+                TranslationEngineHealthState.RepairRequired,
+                "Нужно восстановить движок",
+                "Runtime-пакет повреждён или неполон. Переустановите Egoist Voice и повторите проверку.",
+                CanRetry: true),
+            EngineState.Incompatible => new TranslationEngineHealth(
+                TranslationEngineHealthState.Incompatible,
+                "Версии движка несовместимы",
+                "Обновите общий офлайн-движок и Egoist Voice до согласованных версий.",
+                CanRetry: true),
+            _ => Unavailable()
+        };
+    }
+
+    private static TranslationEngineHealth FromFailure(ProtocolErrorCode code) => code switch
+    {
+        ProtocolErrorCode.EngineMissing => new TranslationEngineHealth(
+            TranslationEngineHealthState.Missing,
+            "Движок перевода не найден",
+            "Переустановите Egoist Voice с полным офлайн-пакетом.",
+            CanRetry: true),
+        ProtocolErrorCode.ModelMismatch => new TranslationEngineHealth(
+            TranslationEngineHealthState.RepairRequired,
+            "Нужно восстановить движок",
+            "Локальный runtime или модель не прошли проверку целостности.",
+            CanRetry: true),
+        ProtocolErrorCode.IncompatibleClient => new TranslationEngineHealth(
+            TranslationEngineHealthState.Incompatible,
+            "Версии движка несовместимы",
+            "Обновите общий офлайн-движок и Egoist Voice до согласованных версий.",
+            CanRetry: true),
+        _ => Unavailable()
+    };
+
+    private static TranslationEngineHealth Unavailable() => new(
+        TranslationEngineHealthState.Unavailable,
+        "Движок перевода недоступен",
+        "Повторите проверку. Обычная диктовка продолжает работать.",
+        CanRetry: true);
 
     public void Dispose()
     {
@@ -368,9 +524,9 @@ internal sealed class SharedTranslationEngineGateway : ITranslationEngineGateway
 
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref _disposed, 1) == 0)
-        {
-            _startGate.Dispose();
-        }
+        // SemaphoreSlim owns no native handle. Do not dispose it while a cancelled readiness
+        // operation may still be unwinding through finally/Release during application shutdown.
+        // The gateway becomes unreachable together with TranslatorClient immediately afterwards.
+        Interlocked.Exchange(ref _disposed, 1);
     }
 }

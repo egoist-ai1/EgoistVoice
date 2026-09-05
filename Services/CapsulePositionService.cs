@@ -14,8 +14,7 @@ internal sealed record CapsulePosition(double Left, double Top, double WindowWid
 internal sealed class CapsulePositionService
 {
     private readonly string _settingsPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "EgoistVoice",
+        Egoist.Voice.Core.VoiceRuntimeProfile.DataRoot,
         "settings.json");
 
     internal CapsulePosition? Load()

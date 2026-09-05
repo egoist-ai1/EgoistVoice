@@ -4,7 +4,14 @@
 в [`PROGRAM-PLAN.md`](../../egoist-translator/docs/program/PROGRAM-PLAN.md);
 указатель на межпроектные документы — [`docs/program/README.md`](./program/README.md).
 
-## Now
+## Current publication — 2026-09-05
+
+`v2.2.0-preview.2` packages EV-2224 as Compact RU and Full + Qwen. Current evidence,
+remaining Full lifecycle checks and preview limits live in [STATUS](../STATUS.md)
+and [release notes](releases/2.2.0-preview.2.md). The owner requested publication
+without repeating the interrupted Full Sandbox test. Stable remains 2.1.0.
+
+## Historical program baseline
 
 - `EV-2200`: зафиксировать текущие ~68 несохранённых файлов в ветке
   `v2.2-wip`. Выполняется **первым**: сейчас неделя работы существует только в

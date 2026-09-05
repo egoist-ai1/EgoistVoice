@@ -71,4 +71,7 @@ public static class ModelCatalog
 
     public static IReadOnlyList<ModelDescriptor> CreateRequiredModels() =>
         [GigaAmEncoder, GigaAmDecoder, GigaAmJoiner, GigaAmTokens, Whisper, GigaAmTokenizer];
+
+    public static IReadOnlyList<ModelDescriptor> CreateCompactModels() =>
+        [GigaAmEncoder, GigaAmDecoder, GigaAmJoiner, GigaAmTokens];
 }

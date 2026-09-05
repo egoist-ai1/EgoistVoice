@@ -228,8 +228,8 @@ public sealed partial class UserDictionary
             // A canonical Latin alias such as "json" is useful in prose, but a dot-prefixed
             // occurrence is normally a file extension or domain segment and must keep its case.
             builder.Append(isSingleLatinIdentifier
-                ? @"(?<![\p{L}\p{N}.])"
-                : @"(?<![\p{L}\p{N}])");
+                ? @"(?<![\p{L}\p{N}._/\\@])"
+                : @"(?<![\p{L}\p{N}_/\\@])");
         }
 
         var words = spoken.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -246,7 +246,9 @@ public sealed partial class UserDictionary
         {
             builder.Append("(?:");
             builder.Append(string.Join('|', CaseEndings.Distinct().Select(Regex.Escape)));
-            builder.Append(@")?(?![\p{L}\p{N}])");
+            // A spoken name may be repaired in prose, but never inside a path, email,
+            // snake_case identifier or filename. A sentence-ending period remains valid.
+            builder.Append(@")?(?![\p{L}\p{N}_/\\@]|\.[\p{L}\p{N}])");
         }
 
         return new Regex(

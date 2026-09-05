@@ -49,6 +49,67 @@ public sealed class AudioCaptureServiceTests
     }
 
     [Fact]
+    public void EndpointSwitchClearRemovesBothActiveSessionAndWarmPreRoll()
+    {
+        var buffer = new CaptureSessionBuffer(preRollCapacity: 8, blockAlign: 1);
+        buffer.Append(new byte[] { 1, 2, 3, 4 });
+        buffer.Begin(initialCapacity: 8);
+        buffer.Append(new byte[] { 5, 6 });
+
+        buffer.Clear();
+        buffer.Begin(initialCapacity: 8);
+        buffer.Append(new byte[] { 9 });
+        var nextEndpoint = buffer.Complete();
+
+        Assert.Equal(new byte[] { 9 }, nextEndpoint.Bytes);
+        Assert.Equal(0, nextEndpoint.PreRollBytes);
+    }
+
+    [Fact]
+    public void FeedbackExclusionDropsWarmAndActiveCueAudioButKeepsTheSessionAlive()
+    {
+        var buffer = new CaptureSessionBuffer(preRollCapacity: 8, blockAlign: 1);
+        buffer.Append(new byte[] { 1, 2, 3 });
+        buffer.Begin(initialCapacity: 16);
+        buffer.Append(new byte[] { 4, 5 });
+
+        buffer.DiscardAudioPreservingSession();
+        buffer.Append(new byte[] { 8, 9 });
+        var accepted = buffer.Complete();
+
+        Assert.Equal(new byte[] { 8, 9 }, accepted.Bytes);
+        Assert.Equal(0, accepted.PreRollBytes);
+    }
+
+    [Fact]
+    public void QueuedCallbackFromReplacedEndpointIsRejectedByIdentity()
+    {
+        var replacedEndpoint = new object();
+        var currentEndpoint = new object();
+
+        Assert.False(AudioCaptureService.IsCurrentCaptureCallback(
+            replacedEndpoint,
+            currentEndpoint,
+            disposed: false,
+            bytesRecorded: 512));
+        Assert.True(AudioCaptureService.IsCurrentCaptureCallback(
+            currentEndpoint,
+            currentEndpoint,
+            disposed: false,
+            bytesRecorded: 512));
+        Assert.False(AudioCaptureService.IsCurrentCaptureCallback(
+            currentEndpoint,
+            currentEndpoint,
+            disposed: true,
+            bytesRecorded: 512));
+        Assert.False(AudioCaptureService.IsCurrentCaptureCallback(
+            currentEndpoint,
+            currentEndpoint,
+            disposed: false,
+            bytesRecorded: 0));
+    }
+
+    [Fact]
     public void ThreeHundredSessionCyclesRemainBoundedAndOrdered()
     {
         var buffer = new CaptureSessionBuffer(preRollCapacity: 8, blockAlign: 1);
@@ -125,8 +186,12 @@ public sealed class AudioCaptureServiceTests
     [Fact]
     public void BoundaryWindowsStaySmallAndExplicit()
     {
-        Assert.Equal(200, AudioCaptureService.PreRollDuration.TotalMilliseconds);
+        Assert.Equal(320, AudioCaptureService.PreRollDuration.TotalMilliseconds);
         Assert.Equal(350, AudioCaptureService.ReleaseTailDuration.TotalMilliseconds);
+
+        const int worstCaseBytesPerSecond = 48_000 * 2 * sizeof(float);
+        var preRollBytes = worstCaseBytesPerSecond * AudioCaptureService.PreRollDuration.TotalSeconds;
+        Assert.InRange(preRollBytes, 1, 128 * 1024);
     }
 
     [Theory]

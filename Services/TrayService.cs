@@ -1,5 +1,7 @@
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Egoist.Voice.Core;
 using Forms = System.Windows.Forms;
@@ -10,29 +12,66 @@ public sealed class TrayService : IDisposable
 {
     private readonly Forms.NotifyIcon _notifyIcon;
     private readonly Icon _icon;
+    private readonly Icon _pausedIcon;
     private readonly MainWindow _window;
     private readonly IModelManager _modelManager;
+    private readonly DictationSettingsService _settingsService;
+    private readonly AppThemeService _themeService;
+    private readonly EgoistTrayRenderer _renderer;
+    private readonly Action _quit;
+    private readonly Forms.ContextMenuStrip _menu;
+    private readonly Forms.ToolStripMenuItem _startStopItem;
+    private readonly Forms.ToolStripMenuItem _pauseItem;
+    private readonly Forms.ToolStripMenuItem _microphoneMenu;
     private readonly Forms.ToolStripMenuItem _modelStatus;
     private readonly Forms.ToolStripMenuItem _showDownload;
     private readonly Forms.ToolStripMenuItem _retryDownload;
     private readonly Forms.ToolStripMenuItem _customActivationItem;
     private readonly Dictionary<ActivationBinding, Forms.ToolStripMenuItem> _activationItems = [];
-    private readonly DictationSettingsService _settingsService = new();
     private readonly Forms.ToolStripMenuItem _mixedLanguageItem;
     private readonly Forms.ToolStripMenuItem _numbersItem;
     private readonly Forms.ToolStripMenuItem _voiceCommandsItem;
     private readonly Forms.ToolStripMenuItem _restoreClipboardItem;
     private readonly Forms.ToolStripMenuItem _soundItem;
+    private readonly Forms.ToolStripMenuItem _notificationsItem;
+    private readonly Forms.ToolStripMenuItem _themeMenu;
+    private readonly Dictionary<AppTheme, Forms.ToolStripMenuItem> _themeItems = [];
+    private readonly Forms.ToolStripMenuItem _historyMenu;
+    private SettingsWindow? _settingsWindow;
+    private ModelTransferProgress? _lastModelProgress;
+    private string? _lastHistoryNotificationMessage;
+    private TrayNotificationKind? _lastNotificationKind;
+    private string? _lastNotificationMessage;
+    private long _lastNotificationTimestamp;
 
-    public TrayService(MainWindow window, IModelManager modelManager, Action quit)
+    public TrayService(
+        MainWindow window,
+        IModelManager modelManager,
+        DictationSettingsService settingsService,
+        AppThemeService themeService,
+        Action quit)
     {
         _window = window;
         _modelManager = modelManager;
+        _settingsService = settingsService;
+        _themeService = themeService;
+        _quit = quit;
 
+        EgoistTrayPalette.Apply(themeService.EffectiveTheme);
         var renderer = new EgoistTrayRenderer();
+        _renderer = renderer;
         var menu = CreateDropDown<Forms.ContextMenuStrip>(renderer);
+        _menu = menu;
         menu.ShowCheckMargin = true;
-        menu.Items.Add(CreateItem("Начать / остановить", async (_, _) => await window.ToggleRecordingAsync()));
+        _startStopItem = CreateItem("Начать / остановить", async (_, _) => await window.ToggleRecordingAsync());
+        menu.Items.Add(_startStopItem);
+        _pauseItem = CreateItem("Приостановить микрофон", async (_, _) => await TogglePauseAsync());
+        menu.Items.Add(_pauseItem);
+
+        _microphoneMenu = CreateItem("Микрофон");
+        ConfigureDropDown(_microphoneMenu.DropDown, renderer);
+        _microphoneMenu.DropDownOpening += (_, _) => RefreshMicrophoneMenu();
+        menu.Items.Add(_microphoneMenu);
 
         var activationMenu = CreateItem("Кнопка запуска");
         ConfigureDropDown(activationMenu.DropDown, renderer);
@@ -61,11 +100,26 @@ public sealed class TrayService : IDisposable
             settings => settings with { RestoreClipboard = !settings.RestoreClipboard });
         _soundItem = AddToggle(settingsMenu, "Звуковые сигналы",
             settings => settings with { SoundFeedback = !settings.SoundFeedback });
+        _notificationsItem = AddToggle(settingsMenu, "Важные уведомления",
+            settings => settings with { DesktopNotifications = !settings.DesktopNotifications });
         settingsMenu.DropDownItems.Add(CreateSeparator());
         var dictionaryItem = CreateItem("Открыть словарь…", (_, _) => OpenDictionary());
         dictionaryItem.CheckOnClick = false;
         settingsMenu.DropDownItems.Add(dictionaryItem);
         menu.Items.Add(settingsMenu);
+
+        _historyMenu = CreateItem("Последние записи");
+        ConfigureDropDown(_historyMenu.DropDown, renderer);
+        _historyMenu.DropDownOpening += (_, _) => RefreshHistoryMenu();
+        menu.Items.Add(_historyMenu);
+
+        _themeMenu = CreateItem("Тема");
+        ConfigureDropDown(_themeMenu.DropDown, renderer);
+        AddThemeItem(AppTheme.System, "Системная");
+        AddThemeItem(AppTheme.Light, "Светлая");
+        AddThemeItem(AppTheme.Dark, "Тёмная");
+        menu.Items.Add(_themeMenu);
+        menu.Items.Add(CreateItem("Открыть все настройки…", (_, _) => ShowSettingsWindow()));
         menu.Items.Add(CreateSeparator());
         RefreshSettingsChecks();
 
@@ -86,17 +140,34 @@ public sealed class TrayService : IDisposable
         menu.Items.Add(CreateItem("Выход", (_, _) => quit()));
 
         _icon = LoadApplicationIcon();
+        _pausedIcon = CreatePausedIcon(_icon);
         _notifyIcon = new Forms.NotifyIcon
         {
             Icon = _icon,
             Text = "Egoist Voice — локальная диктовка",
-            ContextMenuStrip = menu,
+            // The control center is now the only tray surface. Keeping the legacy WinForms menu
+            // attached would let Windows open it before MouseClick and recreate the illegible
+            // light-theme popup reported by users.
+            ContextMenuStrip = null,
             Visible = true
         };
         _notifyIcon.MouseClick += OnNotifyIconMouseClick;
+        _notifyIcon.BalloonTipClicked += OnBalloonTipClicked;
+        _menu.Opening += (_, _) =>
+        {
+            RefreshAudioControls();
+            // Settings can also be changed in the WPF window. Refresh on every opening so the
+            // checkmarks are a view of persisted truth rather than a cache of the last tray click.
+            RefreshSettingsChecks();
+        };
         _modelManager.ProgressChanged += OnModelProgressChanged;
         _window.ActivationBindingChanged += OnActivationBindingChanged;
+        _window.AudioCaptureStateChanged += OnAudioCaptureStateChanged;
+        _window.RecentRecordings.Changed += OnRecentRecordingsChanged;
+        _themeService.ThemeChanged += OnThemeChanged;
         UpdateActivationChecks();
+        RefreshAudioControls();
+        RefreshHistoryMenu();
     }
 
     /// <summary>
@@ -127,6 +198,25 @@ public sealed class TrayService : IDisposable
         _voiceCommandsItem.Checked = settings.ApplyVoiceCommands;
         _restoreClipboardItem.Checked = settings.RestoreClipboard;
         _soundItem.Checked = settings.SoundFeedback;
+        _notificationsItem.Checked = settings.DesktopNotifications;
+        foreach (var (theme, item) in _themeItems)
+        {
+            item.Checked = theme == settings.Theme;
+        }
+    }
+
+    private void AddThemeItem(AppTheme theme, string label)
+    {
+        var item = CreateItem(label, (_, _) =>
+        {
+            var settings = _settingsService.Load() with { Theme = theme };
+            _settingsService.Save(settings);
+            _window.ApplyDictationSettings();
+            RefreshSettingsChecks();
+        });
+        item.CheckOnClick = false;
+        _themeItems[theme] = item;
+        _themeMenu.DropDownItems.Add(item);
     }
 
     /// <summary>
@@ -164,15 +254,14 @@ public sealed class TrayService : IDisposable
         if (_window.TrySetActivationBinding(binding, out var error))
         {
             UpdateActivationChecks();
-            _notifyIcon.Text = TruncateTooltip($"Egoist Voice — {_window.CurrentActivationDisplayName}");
+            UpdateTrayTooltip(_window.CurrentAudioCaptureState);
             return;
         }
 
-        _notifyIcon.ShowBalloonTip(
-            3500,
+        NotifyActionable(
+            TrayNotificationKind.RecoveryRequired,
             "Egoist Voice",
-            error ?? "Не удалось сменить кнопку запуска.",
-            Forms.ToolTipIcon.Warning);
+            error ?? "Не удалось сменить кнопку запуска.");
     }
 
     private void ConfigureCustomShortcut()
@@ -198,24 +287,286 @@ public sealed class TrayService : IDisposable
         if (_window.TrySetCustomShortcut(dialog.SelectedShortcut, out var error))
         {
             UpdateActivationChecks();
-            _notifyIcon.Text = TruncateTooltip($"Egoist Voice — {_window.CurrentActivationDisplayName}");
+            UpdateTrayTooltip(_window.CurrentAudioCaptureState);
             return;
         }
 
-        _notifyIcon.ShowBalloonTip(
-            3500,
+        NotifyActionable(
+            TrayNotificationKind.RecoveryRequired,
             "Egoist Voice",
-            error ?? "Не удалось назначить сочетание.",
-            Forms.ToolTipIcon.Warning);
+            error ?? "Не удалось назначить сочетание.");
     }
 
     private async void OnNotifyIconMouseClick(object? sender, Forms.MouseEventArgs args)
     {
-        if (args.Button == Forms.MouseButtons.Left)
+        if (args.Button is Forms.MouseButtons.Left or Forms.MouseButtons.Right)
         {
-            await _window.ToggleRecordingAsync();
+            await _window.Dispatcher.InvokeAsync(ShowSettingsWindow);
         }
     }
+
+    private async void OnBalloonTipClicked(object? sender, EventArgs args)
+    {
+        await _window.Dispatcher.InvokeAsync(() =>
+        {
+            ShowSettingsWindow();
+            if (_lastNotificationKind == TrayNotificationKind.ModelFailure)
+            {
+                _settingsWindow?.ShowRecognitionAndActivate();
+            }
+            else if (_lastNotificationKind == TrayNotificationKind.MicrophoneUnavailable)
+            {
+                _settingsWindow?.ShowFeedbackAndActivate();
+            }
+        });
+    }
+
+    private async Task TogglePauseAsync()
+    {
+        try
+        {
+            var state = _window.CurrentAudioCaptureState;
+            await _window.SetMicrophonePausedAsync(!state.IsPaused);
+            RefreshAudioControls();
+        }
+        catch (Exception exception)
+        {
+            ShowMicrophoneWarning(exception.Message);
+        }
+    }
+
+    private async Task SelectMicrophoneAsync(string? deviceId)
+    {
+        try
+        {
+            await _window.SelectMicrophoneAsync(deviceId);
+            RefreshAudioControls();
+        }
+        catch (Exception exception)
+        {
+            ShowMicrophoneWarning(exception.Message);
+        }
+    }
+
+    private void RefreshAudioControls()
+    {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        try
+        {
+            var state = _window.CurrentAudioCaptureState;
+            var presentation = TrayAudioPresentation.From(state);
+            _notifyIcon.Icon = state.IsPaused ? _pausedIcon : _icon;
+            _startStopItem.Enabled = presentation.StartEnabled;
+            _startStopItem.Text = presentation.StartText;
+            _pauseItem.Text = presentation.PauseText;
+            _pauseItem.Checked = state.IsPaused;
+            _pauseItem.Enabled = presentation.PauseEnabled;
+            _microphoneMenu.Text = $"Микрофон · {ShortDeviceName(state.DeviceName)}";
+            UpdateTrayTooltip(state);
+        }
+        catch (Exception exception)
+        {
+            _startStopItem.Enabled = false;
+            _pauseItem.Enabled = false;
+            AppLog.Write("Tray audio controls refresh failed", exception);
+        }
+        finally
+        {
+            var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(started);
+            if (elapsed > TimeSpan.FromMilliseconds(250))
+            {
+                AppLog.Write($"Tray microphone refresh exceeded budget: {elapsed.TotalMilliseconds:0} ms");
+            }
+        }
+    }
+
+    private void RefreshMicrophoneMenu()
+    {
+        _microphoneMenu.DropDownItems.Clear();
+        try
+        {
+            var state = _window.CurrentAudioCaptureState;
+            var devices = _window.CaptureDevices;
+            var defaultDevice = devices.FirstOrDefault(device => device.IsDefault);
+            var defaultItem = CreateItem(
+                defaultDevice is null
+                    ? "Системный микрофон · недоступен"
+                    : $"Системный · {defaultDevice.Name}",
+                async (_, _) => await SelectMicrophoneAsync(null));
+            defaultItem.Checked = state.SelectedDeviceId is null;
+            defaultItem.Enabled = defaultDevice is not null;
+            _microphoneMenu.DropDownItems.Add(defaultItem);
+            _microphoneMenu.DropDownItems.Add(CreateSeparator());
+
+            foreach (var device in devices)
+            {
+                var item = CreateItem(
+                    device.IsDefault ? $"{device.Name} · по умолчанию" : device.Name,
+                    async (_, _) => await SelectMicrophoneAsync(device.Id));
+                item.Checked = string.Equals(device.Id, state.SelectedDeviceId, StringComparison.Ordinal);
+                _microphoneMenu.DropDownItems.Add(item);
+            }
+
+            if (state.SelectedDeviceId is not null
+                && devices.All(device => !string.Equals(device.Id, state.SelectedDeviceId, StringComparison.Ordinal)))
+            {
+                var unavailable = CreateItem("Выбранный микрофон · недоступен");
+                unavailable.Checked = true;
+                unavailable.Enabled = false;
+                _microphoneMenu.DropDownItems.Add(unavailable);
+            }
+        }
+        catch (Exception exception)
+        {
+            var error = CreateItem("Не удалось получить список");
+            error.Enabled = false;
+            _microphoneMenu.DropDownItems.Add(error);
+            AppLog.Write("Tray microphone inventory failed", exception);
+        }
+    }
+
+    private void ShowSettingsWindow()
+    {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        var wasWarm = _settingsWindow is not null;
+        _settingsWindow ??= new SettingsWindow(_window, _settingsService, _quit);
+        _settingsWindow.ShowAndActivate();
+        var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(started);
+        if (wasWarm && elapsed > TimeSpan.FromMilliseconds(250))
+        {
+            AppLog.Write($"Warm settings open exceeded budget: {elapsed.TotalMilliseconds:0} ms");
+        }
+    }
+
+    private void ShowHistoryWindow()
+    {
+        _settingsWindow ??= new SettingsWindow(_window, _settingsService, _quit);
+        _settingsWindow.ShowHistoryAndActivate();
+    }
+
+    private void OnRecentRecordingsChanged(object? sender, EventArgs e)
+    {
+        if (!_window.Dispatcher.CheckAccess())
+        {
+            _ = _window.Dispatcher.BeginInvoke(() => OnRecentRecordingsChanged(sender, e));
+            return;
+        }
+        RefreshHistoryMenu();
+        var message = _window.RecentRecordings.StateMessage;
+        if (TrayNotificationPolicy.IsActionableHistoryMessage(message)
+            && !string.Equals(message, _lastHistoryNotificationMessage, StringComparison.Ordinal))
+        {
+            _lastHistoryNotificationMessage = message;
+            NotifyActionable(TrayNotificationKind.HistoryFailure, "Egoist Voice · история", message!);
+        }
+        else if (!TrayNotificationPolicy.IsActionableHistoryMessage(message))
+        {
+            _lastHistoryNotificationMessage = null;
+        }
+    }
+
+    private void RefreshHistoryMenu()
+    {
+        _historyMenu.DropDownItems.Clear();
+        var items = _window.RecentRecordings.GetItems();
+        _historyMenu.Text = items.Count == 0 ? "Последние записи" : $"Последние записи · {items.Count}";
+        if (items.Count == 0)
+        {
+            var empty = CreateItem("Записей пока нет");
+            empty.Enabled = false;
+            _historyMenu.DropDownItems.Add(empty);
+        }
+        else
+        {
+            foreach (var item in items.Take(RecentRecordingHistoryService.Capacity))
+            {
+                var local = item.CreatedUtc.ToLocalTime();
+                var seconds = Math.Max(1, (int)Math.Round(item.Duration.TotalSeconds));
+                _historyMenu.DropDownItems.Add(CreateItem(
+                    $"{local:HH:mm} · {seconds / 60}:{seconds % 60:00}",
+                    (_, _) => ShowHistoryWindow()));
+            }
+        }
+
+        _historyMenu.DropDownItems.Add(CreateSeparator());
+        _historyMenu.DropDownItems.Add(CreateItem("Открыть историю…", (_, _) => ShowHistoryWindow()));
+    }
+
+    private void OnAudioCaptureStateChanged(object? sender, AudioCaptureStateChangedEventArgs change)
+    {
+        RefreshAudioControls();
+        if (change.Kind == AudioCaptureChangeKind.DeviceUnavailable && !string.IsNullOrWhiteSpace(change.UserMessage))
+        {
+            ShowMicrophoneWarning(change.UserMessage);
+        }
+    }
+
+    private void ShowMicrophoneWarning(string message) => NotifyActionable(
+        TrayNotificationKind.MicrophoneUnavailable,
+        "Egoist Voice · микрофон",
+        string.IsNullOrWhiteSpace(message) ? "Микрофон недоступен." : message);
+
+    private void NotifyActionable(TrayNotificationKind kind, string title, string message)
+    {
+        var enabled = _settingsService.Load().DesktopNotifications;
+        if (!TrayNotificationPolicy.ShouldNotify(kind, enabled))
+        {
+            return;
+        }
+
+        var now = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (_lastNotificationKind is { } previousKind
+            && _lastNotificationMessage is { } previousMessage
+            && TrayNotificationPolicy.IsDuplicate(
+                kind,
+                message,
+                previousKind,
+                previousMessage,
+                System.Diagnostics.Stopwatch.GetElapsedTime(_lastNotificationTimestamp, now)))
+        {
+            return;
+        }
+
+        _notifyIcon.ShowBalloonTip(4500, title, message, Forms.ToolTipIcon.Warning);
+        _lastNotificationKind = kind;
+        _lastNotificationMessage = message;
+        _lastNotificationTimestamp = now;
+    }
+
+    private void OnThemeChanged(object? sender, AppThemeChangedEventArgs args)
+    {
+        EgoistTrayPalette.Apply(args.EffectiveTheme);
+        ApplyDropDownTheme(_menu);
+        RefreshSettingsChecks();
+    }
+
+    private void ApplyDropDownTheme(Forms.ToolStripDropDown dropDown)
+    {
+        ConfigureDropDown(dropDown, _renderer);
+        foreach (var item in dropDown.Items.OfType<Forms.ToolStripMenuItem>())
+        {
+            if (item.HasDropDownItems)
+            {
+                ApplyDropDownTheme(item.DropDown);
+            }
+        }
+        dropDown.Invalidate(true);
+    }
+
+    private void UpdateTrayTooltip(AudioCaptureState state)
+    {
+        if (!state.IsPaused
+            && state.IsAvailable
+            && _lastModelProgress is { Stage: not ModelTransferStage.Ready } progress)
+        {
+            _notifyIcon.Text = ModelProgressFormatter.TrayTooltip(progress);
+            return;
+        }
+        var status = state.IsPaused ? "пауза" : state.IsAvailable ? "готов" : "нет микрофона";
+        _notifyIcon.Text = TruncateTooltip($"Egoist Voice — {status} · {ShortDeviceName(state.DeviceName)}");
+    }
+
+    private static string ShortDeviceName(string value) => value.Length <= 25 ? value : value[..24] + "…";
 
     private void OnActivationBindingChanged(object? sender, EventArgs args) => UpdateActivationChecks();
 
@@ -245,6 +596,8 @@ public sealed class TrayService : IDisposable
 
     private void UpdateModelProgress(ModelTransferProgress progress)
     {
+        var wasFailed = _lastModelProgress?.Stage == ModelTransferStage.Failed;
+        _lastModelProgress = progress;
         var failed = progress.Stage == ModelTransferStage.Failed;
         var ready = progress.Stage == ModelTransferStage.Ready && _modelManager.AreAllModelsReady;
         _modelStatus.Text = failed
@@ -254,7 +607,14 @@ public sealed class TrayService : IDisposable
                 : ModelProgressFormatter.Detail(progress);
         _showDownload.Visible = !ready && !failed;
         _retryDownload.Visible = failed;
-        _notifyIcon.Text = ModelProgressFormatter.TrayTooltip(progress);
+        UpdateTrayTooltip(_window.CurrentAudioCaptureState);
+        if (failed && !wasFailed)
+        {
+            NotifyActionable(
+                TrayNotificationKind.ModelFailure,
+                "Egoist Voice · модели",
+                "Не удалось подготовить модель. Откройте центр управления → Распознавание и нажмите «Повторить».");
+        }
     }
 
     public void Dispose()
@@ -262,9 +622,15 @@ public sealed class TrayService : IDisposable
         _notifyIcon.Visible = false;
         _modelManager.ProgressChanged -= OnModelProgressChanged;
         _window.ActivationBindingChanged -= OnActivationBindingChanged;
+        _window.AudioCaptureStateChanged -= OnAudioCaptureStateChanged;
+        _window.RecentRecordings.Changed -= OnRecentRecordingsChanged;
+        _themeService.ThemeChanged -= OnThemeChanged;
         _notifyIcon.MouseClick -= OnNotifyIconMouseClick;
-        _notifyIcon.ContextMenuStrip?.Dispose();
+        _notifyIcon.BalloonTipClicked -= OnBalloonTipClicked;
+        _settingsWindow?.CloseForExit();
+        _menu.Dispose();
         _notifyIcon.Dispose();
+        _pausedIcon.Dispose();
         _icon.Dispose();
     }
 
@@ -370,5 +736,57 @@ public sealed class TrayService : IDisposable
         return (Icon)SystemIcons.Application.Clone();
     }
 
+    private static Icon CreatePausedIcon(Icon source)
+    {
+        using var bitmap = source.ToBitmap();
+        using (var graphics = Graphics.FromImage(bitmap))
+        {
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            var badge = Math.Max(8, (int)Math.Round(Math.Min(bitmap.Width, bitmap.Height) * 0.56));
+            var left = bitmap.Width - badge;
+            var top = bitmap.Height - badge;
+            using var fill = new SolidBrush(EgoistTrayPalette.Accent);
+            graphics.FillEllipse(fill, left, top, badge - 1, badge - 1);
+            var barWidth = Math.Max(1.3f, badge * 0.13f);
+            using var pen = new Pen(Color.White, barWidth)
+            {
+                StartCap = LineCap.Round,
+                EndCap = LineCap.Round
+            };
+            var y1 = top + (badge * 0.29f);
+            var y2 = top + (badge * 0.70f);
+            graphics.DrawLine(pen, left + (badge * 0.38f), y1, left + (badge * 0.38f), y2);
+            graphics.DrawLine(pen, left + (badge * 0.62f), y1, left + (badge * 0.62f), y2);
+        }
+
+        var handle = bitmap.GetHicon();
+        try
+        {
+            using var borrowed = Icon.FromHandle(handle);
+            return (Icon)borrowed.Clone();
+        }
+        finally
+        {
+            _ = DestroyIcon(handle);
+        }
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DestroyIcon(nint handle);
+
     private static string TruncateTooltip(string value) => value.Length <= 63 ? value : value[..62] + "…";
+}
+
+internal sealed record TrayAudioPresentation(
+    bool StartEnabled,
+    string StartText,
+    bool PauseEnabled,
+    string PauseText)
+{
+    internal static TrayAudioPresentation From(AudioCaptureState state) => new(
+        StartEnabled: !state.IsPaused && state.IsAvailable,
+        StartText: state.IsPaused ? "Начать диктовку · пауза" : "Начать / остановить",
+        PauseEnabled: state.IsAvailable || !state.IsPaused,
+        PauseText: state.IsPaused ? "Возобновить микрофон" : "Приостановить микрофон");
 }

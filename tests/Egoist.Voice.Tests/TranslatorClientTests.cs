@@ -50,6 +50,43 @@ public sealed class TranslatorClientTests
     }
 
     [Fact]
+    public async Task BackgroundWarmupPublishesReadyWithoutSendingUserText()
+    {
+        var gateway = new FakeGateway();
+        using var client = new TranslatorClient(gateway);
+
+        var health = await client.EnsureReadyAsync(CancellationToken.None);
+
+        Assert.Equal(TranslationEngineHealthState.Ready, health.State);
+        Assert.Equal(1, gateway.EnsureCalls);
+        Assert.Null(gateway.LastRequest);
+    }
+
+    [Fact]
+    public async Task CorruptRuntimeBecomesActionableRepairStateBeforeTranslation()
+    {
+        var gateway = new FakeGateway
+        {
+            Status = new EngineStatusSnapshot
+            {
+                State = EngineState.Corrupt,
+                Message = "runtime file set is invalid",
+                OfflineReady = false,
+                QueueDepth = 0,
+                CacheEntries = 0,
+            }
+        };
+        using var client = new TranslatorClient(gateway);
+
+        var health = await client.EnsureReadyAsync(CancellationToken.None);
+
+        Assert.Equal(TranslationEngineHealthState.RepairRequired, health.State);
+        Assert.True(health.CanRetry);
+        Assert.Contains("Runtime", health.Detail, StringComparison.Ordinal);
+        Assert.Null(gateway.LastRequest);
+    }
+
+    [Fact]
     public async Task LanguageOutsidePinnedOfflineTierIsRejectedBeforeFraming()
     {
         var gateway = new FakeGateway();
@@ -120,6 +157,21 @@ public sealed class TranslatorClientTests
         Assert.DoesNotContain("47821", source, StringComparison.Ordinal);
         Assert.DoesNotContain("/v1/chat/completions", source, StringComparison.Ordinal);
         Assert.DoesNotContain("HttpClient", source, StringComparison.Ordinal);
+
+        var startup = File.ReadAllText(Path.Combine(root, "App.xaml.cs"));
+        Assert.Contains("window.BeginTranslationEngineWarmup();", startup, StringComparison.Ordinal);
+        Assert.True(
+            startup.IndexOf("window.BeginTranslationEngineWarmup();", StringComparison.Ordinal) <
+            startup.IndexOf("new TrayService", StringComparison.Ordinal));
+
+        var mainWindow = File.ReadAllText(Path.Combine(root, "MainWindow.xaml.cs"));
+        Assert.Contains("_translationWarmupTask ??= WarmTranslationEngineAsync();", mainWindow, StringComparison.Ordinal);
+        Assert.Contains("_translationWarmupTask?.Wait", mainWindow, StringComparison.Ordinal);
+
+        Assert.Contains(
+            "Do not dispose it while a cancelled readiness",
+            source,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -148,6 +200,7 @@ public sealed class TranslatorClientTests
     private sealed class FakeGateway : ITranslationEngineGateway
     {
         public Exception? Failure { get; init; }
+        public EngineStatusSnapshot? Status { get; init; }
         public TranslationRequest? LastRequest { get; private set; }
         public int EnsureCalls { get; private set; }
         public int DisposeCalls { get; private set; }
@@ -161,7 +214,7 @@ public sealed class TranslatorClientTests
                 return Task.FromException<EngineStatusSnapshot>(Failure);
             }
 
-            return Task.FromResult(new EngineStatusSnapshot
+            return Task.FromResult(Status ?? new EngineStatusSnapshot
             {
                 State = EngineState.Ready,
                 Message = "ready",

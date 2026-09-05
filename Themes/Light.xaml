@@ -1,0 +1,28 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F6F6F8" />
+    <SolidColorBrush x:Key="AppTitleBarBrush" Color="#ECECF1" />
+    <SolidColorBrush x:Key="AppSurfaceBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="AppSurfaceRaisedBrush" Color="#F0F0F3" />
+    <SolidColorBrush x:Key="AppBorderBrush" Color="#D7D7DD" />
+    <SolidColorBrush x:Key="AppBorderStrongBrush" Color="#B9BAC4" />
+    <SolidColorBrush x:Key="AppTextPrimaryBrush" Color="#18181B" />
+    <SolidColorBrush x:Key="AppTextMutedBrush" Color="#5F6069" />
+    <SolidColorBrush x:Key="AppTextDisabledBrush" Color="#92939C" />
+    <SolidColorBrush x:Key="AppControlBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="AppControlHoverBrush" Color="#FFF0F1" />
+    <SolidColorBrush x:Key="AppControlPressedBrush" Color="#FFE2E5" />
+    <SolidColorBrush x:Key="AppSubtleFocusBrush" Color="#FFF0F1" />
+    <SolidColorBrush x:Key="AppAccentBrush" Color="#D9192A" />
+    <SolidColorBrush x:Key="AppAccentTextBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="AppAccentBorderBrush" Color="#E46A74" />
+    <SolidColorBrush x:Key="AppSelectionBrush" Color="#FFE2E5" />
+    <SolidColorBrush x:Key="AppSelectionTextBrush" Color="#18181B" />
+    <SolidColorBrush x:Key="AppSelectionIconBrush" Color="#D9192A" />
+    <SolidColorBrush x:Key="AppMeterTrackBrush" Color="#DDDDE3" />
+    <SolidColorBrush x:Key="AppListBorderBrush" Color="#D2D2D9" />
+    <SolidColorBrush x:Key="AppIconBrush" Color="#44454D" />
+    <SolidColorBrush x:Key="AppSuccessBrush" Color="#16794B" />
+    <SolidColorBrush x:Key="AppWarningBrush" Color="#9A5A00" />
+    <SolidColorBrush x:Key="AppDangerBrush" Color="#C20F25" />
+</ResourceDictionary>

@@ -21,6 +21,7 @@ public partial class App : System.Windows.Application
     private EventWaitHandle? _shutdownEvent;
     private RegisteredWaitHandle? _shutdownRegistration;
     private TrayService? _tray;
+    private AppThemeService? _themeService;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -36,6 +37,48 @@ public partial class App : System.Windows.Application
             AppLog.Write("Dispatcher unhandled exception", args.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             AppLog.Write("AppDomain unhandled exception", args.ExceptionObject as Exception);
+
+        if (e.Args.Length == 2 && e.Args[0] == "--export-compact-models")
+        {
+            File.WriteAllText(e.Args[1], System.Text.Json.JsonSerializer.Serialize(ModelCatalog.CreateCompactModels()));
+            Shutdown();
+            return;
+        }
+        if (e.Args.Length == 4 && e.Args[0] == "--local-entity-asr-check")
+        {
+            _ = RunLocalAsrCheckAsync(e.Args[1], e.Args[2], e.Args[3], scorePostProcessing: true);
+            return;
+        }
+        if (e.Args.Length == 4 && e.Args[0] == "--local-asr-check")
+        {
+            _ = RunLocalAsrCheckAsync(e.Args[1], e.Args[2], e.Args[3]);
+            return;
+        }
+        if (e.Args.Length == 4 && e.Args[0] == "--local-history-check")
+        {
+            _ = RunLocalHistoryCheckAsync(e.Args[1], e.Args[2], e.Args[3]);
+            return;
+        }
+        if (e.Args.Length == 4 && e.Args[0] == "--asr-thread-check")
+        {
+            _ = RunAsrThreadCheckAsync(e.Args[1], e.Args[2], e.Args[3]);
+            return;
+        }
+        if (e.Args.Length == 2 && e.Args[0] == "--local-qwen-check")
+        {
+            _ = RunLocalQwenCheckAsync(e.Args[1]);
+            return;
+        }
+        if (e.Args.Length == 2 && e.Args[0] == "--local-translation-comparison")
+        {
+            _ = RunLocalTranslationComparisonAsync(e.Args[1]);
+            return;
+        }
+        if (e.Args.Length == 2 && e.Args[0] == "--qwen-lifetime-probe")
+        {
+            _ = RunQwenLifetimeProbeAsync(e.Args[1]);
+            return;
+        }
 
         if (e.Args.Contains("--shutdown", StringComparer.OrdinalIgnoreCase))
         {
@@ -76,14 +119,16 @@ public partial class App : System.Windows.Application
                 e.Args[1],
                 e.Args[2],
                 e.Args.Length >= 4 ? e.Args[3] : "hybrid",
-                e.Args.Length >= 5 ? e.Args[4] : "baseline");
+                e.Args.Length >= 5 ? e.Args[4] : "baseline",
+                e.Args.Length >= 6 && !e.Args[5].Equals("-", StringComparison.Ordinal) ? e.Args[5] : null,
+                e.Args.Length >= 7 ? e.Args[6] : "auto");
             return;
         }
 
         if (e.Args.Length >= 2 && e.Args[0].Equals("--corpus-record", StringComparison.OrdinalIgnoreCase))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            _ = RunCorpusRecorderAsync(e.Args[1]);
+            _ = RunCorpusRecorderAsync(e.Args[1], e.Args.Length >= 3 ? e.Args[2] : null);
             return;
         }
 
@@ -125,6 +170,13 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        if (e.Args.Length >= 2 && e.Args[0].Equals("--microphone-control-smoke", StringComparison.OrdinalIgnoreCase))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            _ = RunMicrophoneControlSmokeAsync(e.Args[1]);
+            return;
+        }
+
         if (e.Args.Length >= 2 && e.Args[0].Equals("--giga-hotword-smoke", StringComparison.OrdinalIgnoreCase))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -143,7 +195,13 @@ public partial class App : System.Windows.Application
         {
             try
             {
-                EgoistTrayVisualPreview.Render(e.Args[1]);
+                var trayTheme = e.Args.Length >= 3 &&
+                                e.Args[2].Equals("light", StringComparison.OrdinalIgnoreCase)
+                    ? EffectiveAppTheme.Light
+                    : e.Args.Length >= 3 && e.Args[2].Equals("contrast", StringComparison.OrdinalIgnoreCase)
+                        ? EffectiveAppTheme.HighContrast
+                        : EffectiveAppTheme.Dark;
+                EgoistTrayVisualPreview.Render(e.Args[1], trayTheme);
             }
             catch (Exception exception)
             {
@@ -157,6 +215,16 @@ public partial class App : System.Windows.Application
         if (e.Args.Length >= 2 && e.Args[0].Equals("--render-shortcut-preview", StringComparison.OrdinalIgnoreCase))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            _themeService = new AppThemeService();
+            var shortcutTheme = e.Args.Length >= 3 &&
+                                e.Args[2].Equals("light", StringComparison.OrdinalIgnoreCase)
+                ? EffectiveAppTheme.Light
+                : e.Args.Length >= 3 && e.Args[2].Equals("contrast", StringComparison.OrdinalIgnoreCase)
+                    ? EffectiveAppTheme.HighContrast
+                    : EffectiveAppTheme.Dark;
+            _themeService.ApplyDiagnostic(
+                shortcutTheme,
+                reducedMotion: shortcutTheme == EffectiveAppTheme.HighContrast);
             var dialog = new CustomShortcutDialog(new KeyboardShortcut(
                 HotkeyModifiers.Control | HotkeyModifiers.Shift,
                 0x56));
@@ -166,39 +234,178 @@ public partial class App : System.Windows.Application
                 dialog.RenderPreview(e.Args[1]);
                 dialog.Close();
                 Shutdown();
-            }, DispatcherPriority.ApplicationIdle);
+            }, DispatcherPriority.ContextIdle);
             return;
         }
 
-        _singleInstance = new Mutex(true, MutexName, out var isFirstInstance);
-        if (!isFirstInstance)
+        var isolatedVisualPreview = e.Args.Length >= 2 &&
+            (e.Args[0].Equals("--render-settings-preview", StringComparison.OrdinalIgnoreCase) ||
+             e.Args[0].Equals("--render-state-preview", StringComparison.OrdinalIgnoreCase) ||
+             e.Args[0].Equals("--render-preview", StringComparison.OrdinalIgnoreCase) ||
+             e.Args[0].Equals("--background-render-preview", StringComparison.OrdinalIgnoreCase));
+        if (!isolatedVisualPreview)
         {
-            Shutdown();
-            return;
+            _singleInstance = new Mutex(true, MutexName, out var isFirstInstance);
+            if (!isFirstInstance)
+            {
+                Shutdown();
+                return;
+            }
+
+            _shutdownEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShutdownEventName);
+            _shutdownRegistration = ThreadPool.RegisterWaitForSingleObject(
+                _shutdownEvent,
+                (_, _) => Dispatcher.BeginInvoke(Shutdown),
+                null,
+                Timeout.Infinite,
+                executeOnlyOnce: true);
         }
 
-        _shutdownEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShutdownEventName);
-        _shutdownRegistration = ThreadPool.RegisterWaitForSingleObject(
-            _shutdownEvent,
-            (_, _) => Dispatcher.BeginInvoke(Shutdown),
-            null,
-            Timeout.Infinite,
-            executeOnlyOnce: true);
-
-        var requiredModels = ModelCatalog.CreateRequiredModels();
+        var requiredModels = VoiceRuntimeProfile.Models;
         var modelManager = new ModelManager(requiredModels);
         var delivery = new DictationDeliveryService(
             new ClipboardService(),
             new TextInsertionService());
+        var settingsService = new DictationSettingsService();
+        var settings = settingsService.Load();
+        _themeService = new AppThemeService();
+        _themeService.Apply(settings.Theme);
+        var recentRecordings = new RecentRecordingHistoryService();
         var window = new MainWindow(
-            new AudioCaptureService(),
-            new HybridTranscriptionService(modelManager),
+            new AudioCaptureService(
+                captureDeviceId: settings.CaptureDeviceId,
+                startPaused: settings.IsCapturePaused || isolatedVisualPreview),
+            VoiceRuntimeProfile.CreateTranscription(modelManager),
             delivery,
-            modelManager);
+            modelManager,
+            settingsService,
+            recentRecordings,
+            _themeService);
 
         MainWindow = window;
+        if (e.Args.Length >= 2 && e.Args[0].Equals("--render-settings-preview", StringComparison.OrdinalIgnoreCase))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var settingsWindow = new SettingsWindow(window, settingsService, quit: () => { });
+            settingsWindow.DiagnosticPreview = true;
+            settingsWindow.ShowActivated = false;
+            settingsWindow.ShowInTaskbar = false;
+            settingsWindow.WindowStartupLocation = WindowStartupLocation.Manual;
+            settingsWindow.Left = -20000;
+            settingsWindow.Top = -20000;
+            settingsWindow.Show();
+            _ = Dispatcher.InvokeAsync(async () =>
+            {
+                var renderMode = e.Args.Length >= 3 ? e.Args[2] : "default";
+                if (renderMode.Contains("light", StringComparison.OrdinalIgnoreCase))
+                {
+                    _themeService.ApplyDiagnostic(EffectiveAppTheme.Light, reducedMotion: false);
+                }
+                else if (renderMode.Contains("contrast", StringComparison.OrdinalIgnoreCase))
+                {
+                    _themeService.ApplyDiagnostic(EffectiveAppTheme.HighContrast, reducedMotion: true);
+                }
+                else if (renderMode.Contains("dark", StringComparison.OrdinalIgnoreCase))
+                {
+                    _themeService.ApplyDiagnostic(EffectiveAppTheme.Dark, reducedMotion: false);
+                }
+                if (renderMode.StartsWith("text", StringComparison.OrdinalIgnoreCase))
+                {
+                    settingsWindow.ShowTextPreview(renderMode.Contains("filled", StringComparison.OrdinalIgnoreCase));
+                    if (renderMode.Contains("result", StringComparison.OrdinalIgnoreCase)) settingsWindow.ScrollTextResultForPreview();
+                }
+                else if (renderMode.Contains("appearance", StringComparison.OrdinalIgnoreCase))
+                {
+                    settingsWindow.ShowAppearanceAndActivate();
+                    await Task.Delay(80);
+                }
+                else if (renderMode.Contains("feedback", StringComparison.OrdinalIgnoreCase))
+                {
+                    settingsWindow.ShowFeedbackAndActivate();
+                    await Task.Delay(80);
+                }
+                else if (renderMode.Contains("general", StringComparison.OrdinalIgnoreCase))
+                {
+                    settingsWindow.ShowGeneralAndActivate();
+                    await Task.Delay(80);
+                }
+                else if (renderMode.Contains("models", StringComparison.OrdinalIgnoreCase))
+                {
+                    settingsWindow.ShowModelsAndActivate();
+                    await Task.Delay(80);
+                }
+                else if (renderMode.Contains("recognition", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (renderMode.Contains("model-error", StringComparison.OrdinalIgnoreCase))
+                    {
+                        settingsWindow.ShowRecognitionModelFailurePreview();
+                    }
+                    else if (renderMode.Contains("engine-error", StringComparison.OrdinalIgnoreCase))
+                    {
+                        settingsWindow.ShowTranslationEngineRepairPreview();
+                    }
+                    else
+                    {
+                        settingsWindow.ShowRecognitionAndActivate();
+                    }
+                    await Task.Delay(80);
+                }
+                if (renderMode.StartsWith("history", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (renderMode.Contains("filled", StringComparison.OrdinalIgnoreCase))
+                    {
+                        settingsWindow.ShowFilledHistoryPreview();
+                    }
+                    else
+                    {
+                        settingsWindow.ShowHistoryAndActivate();
+                    }
+                    await Task.Delay(80);
+                }
+                if (renderMode.Equals("min", StringComparison.OrdinalIgnoreCase) ||
+                    renderMode.EndsWith("min", StringComparison.OrdinalIgnoreCase))
+                {
+                    settingsWindow.Width = settingsWindow.MinWidth;
+                    settingsWindow.Height = settingsWindow.MinHeight;
+                    settingsWindow.UpdateLayout();
+                    await Task.Delay(80);
+                }
+                await Task.Delay(200);
+                var renderOpenDropdown = renderMode.StartsWith("open", StringComparison.OrdinalIgnoreCase);
+                if (renderOpenDropdown)
+                {
+                    settingsWindow.Left = 100;
+                    settingsWindow.Top = 100;
+                    settingsWindow.Topmost = true;
+                    settingsWindow.ShowAndActivate();
+                    settingsWindow.OpenMicrophoneDropdownForPreview();
+                    await Task.Delay(180);
+                    settingsWindow.RenderScreenPreview(e.Args[1]);
+                    settingsWindow.Topmost = false;
+                }
+                else
+                {
+                    settingsWindow.RenderPreview(e.Args[1]);
+                }
+                settingsWindow.CloseForExit();
+                Shutdown();
+            }, DispatcherPriority.ContextIdle);
+            return;
+        }
+
         if (e.Args.Length >= 3 && e.Args[0].Equals("--render-state-preview", StringComparison.OrdinalIgnoreCase))
         {
+            if (e.Args.Length >= 4)
+            {
+                var stateTheme = e.Args[3].Equals("light", StringComparison.OrdinalIgnoreCase)
+                    ? EffectiveAppTheme.Light
+                    : e.Args[3].Equals("contrast", StringComparison.OrdinalIgnoreCase)
+                        ? EffectiveAppTheme.HighContrast
+                        : EffectiveAppTheme.Dark;
+                _themeService.ApplyDiagnostic(
+                    stateTheme,
+                    reducedMotion: stateTheme == EffectiveAppTheme.HighContrast);
+            }
             window.Show();
             window.ShowStatePreview(e.Args[1]);
             _ = RenderStatePreviewAsync(window, e.Args[2]);
@@ -223,7 +430,12 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        _tray = new TrayService(window, modelManager, Shutdown);
+        // Background startup does not show MainWindow, so its Loaded event is not an engine
+        // lifecycle boundary. Start the shared Host explicitly after all isolated CLI/render modes
+        // have returned. The operation never frames recognized text and cannot block dictation.
+        window.BeginTranslationEngineWarmup();
+        window.BeginTextModelWarmup();
+        _tray = new TrayService(window, modelManager, settingsService, _themeService, Shutdown);
         window.InitializeHotkey();
         var background = e.Args.Contains("--background", StringComparer.OrdinalIgnoreCase);
         if (!background)
@@ -285,7 +497,8 @@ public partial class App : System.Windows.Application
     {
         try
         {
-            using var service = CreateTranscriptionService();
+            using var manager = new ModelManager(VoiceRuntimeProfile.Models, allowDownload: false);
+            using var service = VoiceRuntimeProfile.CreateTranscription(manager);
             var result = await service.TranscribeAsync(audioPath, null, CancellationToken.None);
             await File.WriteAllTextAsync(outputPath, result.Text);
         }
@@ -406,6 +619,67 @@ public partial class App : System.Windows.Application
         }
     }
 
+    private async Task RunMicrophoneControlSmokeAsync(string outputPath)
+    {
+        try
+        {
+            using var capture = new AudioCaptureService(startPaused: true);
+            var devices = capture.GetCaptureDevices();
+            if (devices.Count < 2)
+            {
+                throw new InvalidOperationException(
+                    $"Microphone control smoke requires two active endpoints; found {devices.Count}.");
+            }
+
+            capture.SelectCaptureDevice(devices[0].Id);
+            var firstPaused = capture.GetState();
+            if (!firstPaused.IsPaused || firstPaused.IsMonitoring)
+            {
+                throw new InvalidOperationException("Selecting while paused unexpectedly opened capture.");
+            }
+
+            capture.ResumeMonitoring();
+            await Task.Delay(180);
+            var firstRunning = capture.GetState();
+            if (!firstRunning.IsMonitoring || firstRunning.IsPaused)
+            {
+                throw new InvalidOperationException("The first endpoint did not enter monitoring state.");
+            }
+
+            capture.PauseMonitoring();
+            capture.SelectCaptureDevice(devices[1].Id);
+            var secondPaused = capture.GetState();
+            if (!secondPaused.IsPaused || secondPaused.IsMonitoring
+                || !string.Equals(secondPaused.SelectedDeviceId, devices[1].Id, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Paused endpoint switch did not preserve safe state.");
+            }
+
+            capture.ResumeMonitoring();
+            await Task.Delay(180);
+            if (!capture.GetState().IsMonitoring)
+            {
+                throw new InvalidOperationException("The second endpoint did not enter monitoring state.");
+            }
+            capture.PauseMonitoring();
+
+            await File.WriteAllTextAsync(outputPath,
+                $"PASS{Environment.NewLine}" +
+                $"activeEndpoints={devices.Count}{Environment.NewLine}" +
+                "switchWithoutRestart=true" + Environment.NewLine +
+                "pauseStopsMonitoring=true");
+        }
+        catch (Exception exception)
+        {
+            Environment.ExitCode = 1;
+            await File.WriteAllTextAsync(outputPath, $"ERROR: {exception}");
+        }
+        finally
+        {
+            Shutdown();
+        }
+    }
+
     private async Task RunGigaHotwordSmokeAsync(string outputPath)
     {
         try
@@ -469,7 +743,9 @@ public partial class App : System.Windows.Application
         string corpusDirectory,
         string outputPath,
         string label,
-        string decoderMode)
+        string decoderMode,
+        string? profilePath,
+        string whisperRuntimeMode)
     {
         try
         {
@@ -480,14 +756,24 @@ public partial class App : System.Windows.Application
                 "hotwords" => true,
                 _ => throw new ArgumentException("Decoder mode must be baseline or hotwords.", nameof(decoderMode))
             };
+            var whisperRuntimePreference = WhisperRuntimePolicy.ConfigureForBenchmark(whisperRuntimeMode);
             corpusDirectory = Path.GetFullPath(corpusDirectory);
             var script = CorpusScript.Load(corpusDirectory);
+            var profile = string.IsNullOrWhiteSpace(profilePath)
+                ? null
+                : CorpusBenchmarkProfile.Load(Path.GetFullPath(profilePath), script);
             var referenceDocument = CorpusBenchmark.LoadReferenceDocument(corpusDirectory);
-            var inventory = CorpusBenchmark.ValidateAndFingerprint(corpusDirectory, script, referenceDocument);
-            var references = referenceDocument.Entries;
+            var inventory = CorpusBenchmark.ValidateAndFingerprint(
+                corpusDirectory,
+                script,
+                referenceDocument,
+                profile?.SelectedIds);
+            var selectedIds = profile?.SelectedIds.ToHashSet(StringComparer.Ordinal);
+            var references = selectedIds is null
+                ? referenceDocument.Entries
+                : referenceDocument.Entries.Where(entry => selectedIds.Contains(entry.Id)).ToArray();
             var models = ModelCatalog.CreateRequiredModels();
             var environment = CorpusBenchmark.CaptureEnvironment(models);
-            var parameters = CorpusBenchmark.CaptureParameters(enableContextualBias);
             var resourcesBefore = BenchmarkResourceSnapshot.Capture();
 
             // A benchmark must not turn into a hidden network operation. Missing current models are
@@ -496,48 +782,126 @@ public partial class App : System.Windows.Application
             using var service = CreateTranscriptionService(
                 allowModelDownload: false,
                 enableContextualBias: enableContextualBias);
+            var observedService = service as IBenchmarkTranscriptionService
+                ?? throw new InvalidOperationException("Hybrid benchmark observation is unavailable.");
             // Warm-up is excluded from the measurements on purpose: the first decode pays for ONNX
             // graph optimization and would dominate every percentile computed after it.
             await service.WarmUpAsync(null, CancellationToken.None);
+            var parameters = CorpusBenchmark.CaptureParameters(
+                enableContextualBias,
+                whisperRuntimePreference,
+                WhisperRuntimePolicy.LoadedLibrary);
             var postProcessor = new TranscriptPostProcessor(UserDictionary.BuiltIn);
+            using var uiStalls = new UiThreadStallMonitor(Dispatcher);
 
             var entries = new List<BenchmarkEntry>(references.Count);
-            foreach (var reference in references)
+            var progressPath = outputPath + ".progress.json";
+            for (var referenceIndex = 0; referenceIndex < references.Count; referenceIndex++)
             {
+                var reference = references[referenceIndex];
+                CorpusBenchmark.SaveProgress(
+                    progressPath,
+                    label,
+                    "started",
+                    referenceIndex,
+                    references.Count,
+                    reference.Id);
                 var audioPath = Path.Combine(corpusDirectory, reference.Audio);
+                var buckets = profile?.BucketsFor(reference.Id) ?? [];
                 if (!File.Exists(audioPath))
                 {
                     entries.Add(new BenchmarkEntry(
-                        reference.Id, reference.Set, reference.Text, string.Empty, 0, 0, "AudioMissing"));
+                        reference.Id,
+                        reference.Set,
+                        reference.Text,
+                        string.Empty,
+                        0,
+                        0,
+                        "AudioMissing",
+                        Buckets: buckets,
+                        CaptureCode: "CaptureMissing",
+                        AttributionCode: "CaptureReadFailed"));
+                    CorpusBenchmark.SaveProgress(
+                        progressPath,
+                        label,
+                        "completed",
+                        referenceIndex + 1,
+                        references.Count,
+                        reference.Id);
                     continue;
                 }
 
-                var trace = new DictationTrace();
-                trace.Mark(DictationStage.CaptureStopped);
+                var captureCode = "CaptureNotMeasured";
+                var gateCode = "GateNotMeasured";
+                var failureAttribution = "CaptureReadFailed";
                 try
                 {
-                    var result = await service.TranscribeAsync(audioPath, null, CancellationToken.None);
-                    trace.Mark(DictationStage.PrimaryDecoded);
+                    var captureStarted = Stopwatch.GetTimestamp();
+                    var samples = await Task.Run(
+                        () => AudioSampleReader.ReadMono16Khz(audioPath),
+                        CancellationToken.None);
+                    var preRollSamples = Math.Min(
+                        samples.Length,
+                        (int)Math.Round(
+                            AudioCaptureService.PreRollDuration.TotalSeconds *
+                            AudioCaptureService.OutputSampleRate));
+                    var activity = AudioCaptureService.Analyze(samples, preRollSamples);
+                    var captureElapsed = Stopwatch.GetElapsedTime(captureStarted);
+                    captureCode = CorpusBenchmark.ClassifyCapture(samples, activity);
+                    gateCode = CorpusBenchmark.ClassifyGate(activity);
+                    failureAttribution = "CaptureIntegrity";
+                    if (captureCode == "CaptureNoAudio")
+                    {
+                        throw new InvalidDataException("Corpus audio contains no decodable samples.");
+                    }
+
+                    failureAttribution = "DecodeFailed";
+                    var observation = await observedService.TranscribeObservedAsync(
+                        audioPath,
+                        CancellationToken.None);
+
                     // Benchmark the string users actually receive, including the same built-in
                     // dictionary and deterministic command/format stages as normal dictation.
+                    failureAttribution = "NormalizationFailed";
+                    var normalizationStarted = Stopwatch.GetTimestamp();
                     var entityProfile = EntityProfilePolicy.Resolve(
-                        result.Text,
+                        observation.Result.Text,
                         processName: null,
                         isGame: false,
                         technologyRequested: false);
-                    var text = postProcessor.Process(result.Text, entityProfile);
-                    trace.Mark(DictationStage.TextFormatted);
+                    var text = postProcessor.Process(observation.Result.Text, entityProfile);
+                    var normalizationElapsed = Stopwatch.GetElapsedTime(normalizationStarted);
+                    var diagnostics = CorpusBenchmark.AnalyzeStages(
+                        reference.Text,
+                        samples,
+                        activity,
+                        observation,
+                        text,
+                        captureElapsed,
+                        normalizationElapsed);
                     entries.Add(new BenchmarkEntry(
                         reference.Id,
                         reference.Set,
                         reference.Text,
                         text,
-                        trace.PerceivedLatency.TotalMilliseconds,
-                        result.Elapsed.TotalMilliseconds,
+                        diagnostics.StageTimings.PipelineMs,
+                        observation.Result.Elapsed.TotalMilliseconds,
                         ExpectedEntities: reference.Entities,
                         TranslationCommandExpected: reference.TranslationCommandExpected,
                         Boundary: reference.Boundary,
-                        BoundaryTarget: reference.BoundaryTarget));
+                        BoundaryTarget: reference.BoundaryTarget,
+                        Buckets: buckets,
+                        CaptureCode: diagnostics.CaptureCode,
+                        GateCode: diagnostics.GateCode,
+                        AttributionCode: diagnostics.AttributionCode,
+                        FallbackTrigger: diagnostics.FallbackTrigger,
+                        FallbackRan: diagnostics.FallbackRan,
+                        FallbackUnavailable: diagnostics.FallbackUnavailable,
+                        SelectedEngine: diagnostics.SelectedEngine,
+                        PrimaryWordErrors: diagnostics.PrimaryWordErrors,
+                        FallbackWordErrors: diagnostics.FallbackWordErrors,
+                        SelectedWordErrors: diagnostics.SelectedWordErrors,
+                        StageTimings: diagnostics.StageTimings));
                 }
                 catch (Exception exception)
                 {
@@ -551,19 +915,44 @@ public partial class App : System.Windows.Application
                         ExpectedEntities: reference.Entities,
                         TranslationCommandExpected: reference.TranslationCommandExpected,
                         Boundary: reference.Boundary,
-                        BoundaryTarget: reference.BoundaryTarget));
+                        BoundaryTarget: reference.BoundaryTarget,
+                        Buckets: buckets,
+                        CaptureCode: captureCode,
+                        GateCode: gateCode,
+                        AttributionCode: failureAttribution));
                 }
+                CorpusBenchmark.SaveProgress(
+                    progressPath,
+                    label,
+                    "completed",
+                    referenceIndex + 1,
+                    references.Count,
+                    reference.Id);
             }
 
+            var uiStallSummary = uiStalls.StopAndSummarize();
             var resourcesAfter = BenchmarkResourceSnapshot.Capture();
+            parameters = parameters with
+            {
+                WhisperRuntimeLoaded = WhisperRuntimePolicy.LoadedLibrary
+            };
             var context = new BenchmarkRunContext(
                 inventory,
                 environment,
                 parameters,
                 resourcesBefore,
-                resourcesAfter);
+                resourcesAfter,
+                profile is null ? null : CorpusBenchmark.SummarizeProfile(profile),
+                uiStallSummary);
             var report = CorpusBenchmark.Summarize(label, entries, context: context);
             CorpusBenchmark.Save(report, outputPath);
+            CorpusBenchmark.SaveProgress(
+                progressPath,
+                label,
+                "complete",
+                references.Count,
+                references.Count,
+                currentId: null);
             if (entries.Any(entry => entry.Error is not null))
             {
                 Environment.ExitCode = 3;
@@ -824,6 +1213,7 @@ public partial class App : System.Windows.Application
         AppLog.Write($"Exit code={e.ApplicationExitCode}");
         _tray?.Dispose();
         (MainWindow as IDisposable)?.Dispose();
+        _themeService?.Dispose();
         _shutdownRegistration?.Unregister(null);
         _shutdownEvent?.Dispose();
         _singleInstance?.Dispose();
@@ -845,7 +1235,7 @@ public partial class App : System.Windows.Application
     }
 }
 
-internal sealed class OwnedHybridTranscriptionService : ITranscriptionService
+internal sealed class OwnedHybridTranscriptionService : ITranscriptionService, IBenchmarkTranscriptionService
 {
     private readonly IModelManager _manager;
     private readonly HybridTranscriptionService _inner;
@@ -863,6 +1253,10 @@ internal sealed class OwnedHybridTranscriptionService : ITranscriptionService
         string audioPath,
         IProgress<ModelProgress>? progress,
         CancellationToken cancellationToken) => _inner.TranscribeAsync(audioPath, progress, cancellationToken);
+
+    public Task<HybridTranscriptionObservation> TranscribeObservedAsync(
+        string audioPath,
+        CancellationToken cancellationToken) => _inner.TranscribeObservedAsync(audioPath, cancellationToken);
 
     public void Dispose()
     {

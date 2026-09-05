@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.IO;
+using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
@@ -13,25 +14,64 @@ namespace Egoist.Voice.Services;
 public sealed class AudioCaptureService : IAudioCaptureService
 {
     internal const int OutputSampleRate = 16_000;
-    internal static readonly TimeSpan PreRollDuration = TimeSpan.FromMilliseconds(200);
+    // Preserve a quiet short word that starts just before the push-to-talk trigger. The extra
+    // 120 ms costs only about 46 KiB even for 48 kHz stereo float capture and adds no
+    // release-to-text latency because the WASAPI stream remains continuously warm.
+    internal static readonly TimeSpan PreRollDuration = TimeSpan.FromMilliseconds(320);
     internal static readonly TimeSpan ReleaseTailDuration = TimeSpan.FromMilliseconds(350);
 
     private readonly object _sync = new();
     private readonly bool _persistCompletedTake;
+    private readonly IMicrophoneDeviceCatalog _deviceCatalog;
+    private readonly bool _ownsDeviceCatalog;
     private WasapiCapture? _capture;
+    private MMDevice? _captureDevice;
     private WaveFormat? _captureFormat;
     private CaptureSessionBuffer? _buffer;
+    private string? _selectedDeviceId;
+    private string? _activeDeviceId;
+    private bool _paused;
     private bool _stopRequested;
     private bool _disposed;
     private Exception? _monitoringFailure;
     private float _smoothedLevel;
+    private long _feedbackSuppressedUntilTimestamp;
 
     public event EventHandler<float>? LevelChanged;
     public event EventHandler<float[]>? SamplesAvailable;
+    public event EventHandler<AudioCaptureStateChangedEventArgs>? StateChanged;
 
-    public AudioCaptureService(bool persistCompletedTake = false)
+    public AudioCaptureService(
+        bool persistCompletedTake = false,
+        string? captureDeviceId = null,
+        bool startPaused = false)
+        : this(
+            new MicrophoneDeviceCatalog(),
+            ownsDeviceCatalog: true,
+            persistCompletedTake,
+            captureDeviceId,
+            startPaused)
     {
+    }
+
+    internal AudioCaptureService(
+        IMicrophoneDeviceCatalog deviceCatalog,
+        bool ownsDeviceCatalog,
+        bool persistCompletedTake,
+        string? captureDeviceId,
+        bool startPaused)
+    {
+        _deviceCatalog = deviceCatalog;
+        _ownsDeviceCatalog = ownsDeviceCatalog;
         _persistCompletedTake = persistCompletedTake;
+        _selectedDeviceId = MicrophoneSelectionPolicy.NormalizeDeviceId(captureDeviceId);
+        _paused = startPaused;
+        _deviceCatalog.DevicesChanged += OnDevicesChanged;
+        if (_paused)
+        {
+            return;
+        }
+
         try
         {
             lock (_sync)
@@ -48,6 +88,128 @@ public sealed class AudioCaptureService : IAudioCaptureService
         }
     }
 
+    public AudioCaptureState GetState()
+    {
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return GetStateLocked(GetDevicesSafe());
+        }
+    }
+
+    public IReadOnlyList<MicrophoneDeviceInfo> GetCaptureDevices()
+    {
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return GetDevicesSafe();
+        }
+    }
+
+    public void SelectCaptureDevice(string? deviceId)
+    {
+        var normalized = MicrophoneSelectionPolicy.NormalizeDeviceId(deviceId);
+        AudioCaptureStateChangedEventArgs? change;
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            var devices = GetDevicesSafe();
+            if (!MicrophoneSelectionPolicy.IsAvailable(normalized, devices))
+            {
+                throw new MicrophoneUnavailableException(
+                    normalized is null
+                        ? "Системный микрофон сейчас недоступен."
+                        : "Выбранный микрофон сейчас недоступен.");
+            }
+
+            var sameSelection = string.Equals(_selectedDeviceId, normalized, StringComparison.Ordinal);
+            var expectedActiveId = ResolveActiveDeviceId(normalized, devices);
+            if (sameSelection
+                && (_paused || (_capture is not null
+                    && string.Equals(_activeDeviceId, expectedActiveId, StringComparison.Ordinal))))
+            {
+                return;
+            }
+
+            var cancelled = _buffer?.IsSessionActive == true;
+            DiscardSessionLocked(clearPreRoll: true);
+            StopAndDisposeCaptureLocked();
+            _selectedDeviceId = normalized;
+            _monitoringFailure = null;
+            if (!_paused)
+            {
+                StartMonitoringLocked();
+            }
+            change = new AudioCaptureStateChangedEventArgs(
+                GetStateLocked(devices),
+                AudioCaptureChangeKind.DeviceChanged,
+                cancelled);
+        }
+        RaiseStateChanged(change);
+    }
+
+    public void PauseMonitoring()
+    {
+        AudioCaptureStateChangedEventArgs? change;
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_paused)
+            {
+                return;
+            }
+            var cancelled = _buffer?.IsSessionActive == true;
+            _paused = true;
+            _monitoringFailure = null;
+            DiscardSessionLocked(clearPreRoll: true);
+            StopAndDisposeCaptureLocked();
+            change = new AudioCaptureStateChangedEventArgs(
+                GetStateLocked(GetDevicesSafe()),
+                AudioCaptureChangeKind.Paused,
+                cancelled);
+        }
+        RaiseStateChanged(change);
+    }
+
+    public void ResumeMonitoring()
+    {
+        AudioCaptureStateChangedEventArgs? change;
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (!_paused && _capture is not null)
+            {
+                return;
+            }
+            var devices = GetDevicesSafe();
+            if (!MicrophoneSelectionPolicy.IsAvailable(_selectedDeviceId, devices))
+            {
+                throw new MicrophoneUnavailableException(
+                    _selectedDeviceId is null
+                        ? "Системный микрофон сейчас недоступен."
+                        : "Выбранный микрофон сейчас недоступен.");
+            }
+
+            _paused = false;
+            _monitoringFailure = null;
+            try
+            {
+                StartMonitoringLocked();
+            }
+            catch
+            {
+                _paused = true;
+                StopAndDisposeCaptureLocked();
+                throw;
+            }
+            change = new AudioCaptureStateChangedEventArgs(
+                GetStateLocked(devices),
+                AudioCaptureChangeKind.Resumed,
+                ActiveTakeCancelled: false);
+        }
+        RaiseStateChanged(change);
+    }
+
     public void Start()
     {
         lock (_sync)
@@ -56,6 +218,11 @@ public sealed class AudioCaptureService : IAudioCaptureService
             if (_buffer?.IsSessionActive == true)
             {
                 throw new InvalidOperationException("Запись уже запущена.");
+            }
+
+            if (_paused)
+            {
+                throw new InvalidOperationException("Запись приостановлена.");
             }
 
             if (_capture is null)
@@ -72,6 +239,29 @@ public sealed class AudioCaptureService : IAudioCaptureService
             (_buffer ?? throw new InvalidOperationException("Буфер микрофона не создан."))
                 .Begin(Math.Max(format.AverageBytesPerSecond * 2, 4096));
             _stopRequested = false;
+            _smoothedLevel = 0;
+        }
+    }
+
+    /// <summary>
+    /// Clears warm/session audio already exposed to a cue and drops callback buffers until its
+    /// bounded acoustic tail has elapsed. Capture remains active, so UI and hotkey latency do not
+    /// wait for speaker playback, but cue samples cannot enter the accepted ASR window.
+    /// </summary>
+    public void SuppressFeedbackAudio(TimeSpan duration)
+    {
+        lock (_sync)
+        {
+            if (_disposed || duration <= TimeSpan.Zero)
+            {
+                return;
+            }
+
+            var now = System.Diagnostics.Stopwatch.GetTimestamp();
+            var deadline = now + (long)Math.Ceiling(
+                duration.TotalSeconds * System.Diagnostics.Stopwatch.Frequency);
+            _feedbackSuppressedUntilTimestamp = Math.Max(_feedbackSuppressedUntilTimestamp, deadline);
+            _buffer?.DiscardAudioPreservingSession();
             _smoothedLevel = 0;
         }
     }
@@ -175,9 +365,11 @@ public sealed class AudioCaptureService : IAudioCaptureService
         }
 
         WasapiCapture? capture = null;
+        MMDevice? device = null;
         try
         {
-            capture = new WasapiCapture
+            device = _deviceCatalog.OpenCaptureDevice(_selectedDeviceId);
+            capture = new WasapiCapture(device)
             {
                 ShareMode = AudioClientShareMode.Shared
             };
@@ -190,6 +382,8 @@ public sealed class AudioCaptureService : IAudioCaptureService
             capture.DataAvailable += OnDataAvailable;
             capture.RecordingStopped += OnRecordingStopped;
             _capture = capture;
+            _captureDevice = device;
+            _activeDeviceId = device.ID;
             _monitoringFailure = null;
             capture.StartRecording();
             AppLog.Write(
@@ -203,7 +397,10 @@ public sealed class AudioCaptureService : IAudioCaptureService
                 capture.RecordingStopped -= OnRecordingStopped;
                 capture.Dispose();
             }
+            device?.Dispose();
             _capture = null;
+            _captureDevice = null;
+            _activeDeviceId = null;
             _captureFormat = null;
             _buffer = null;
             throw;
@@ -215,7 +412,14 @@ public sealed class AudioCaptureService : IAudioCaptureService
         WaveFormat? format;
         lock (_sync)
         {
-            if (_disposed || args.BytesRecorded <= 0)
+            // Unsubscribing cannot retract a callback that was already queued by the old WASAPI
+            // endpoint. Identity is checked under the same lock as switch/clear so old samples
+            // can neither enter the replacement buffer nor be measured with its format.
+            if (!IsCurrentCaptureCallback(sender, _capture, _disposed, args.BytesRecorded))
+            {
+                return;
+            }
+            if (System.Diagnostics.Stopwatch.GetTimestamp() < _feedbackSuppressedUntilTimestamp)
             {
                 return;
             }
@@ -231,25 +435,186 @@ public sealed class AudioCaptureService : IAudioCaptureService
         var rmsLevel = DbToLevel(rms, -62, -14);
         var peakLevel = DbToLevel(peak, -56, -7);
         var level = (float)Math.Clamp((rmsLevel * 0.76) + (peakLevel * 0.24), 0, 1);
-        var smoothing = level > _smoothedLevel ? 0.62f : 0.20f;
-        _smoothedLevel += (level - _smoothedLevel) * smoothing;
-        LevelChanged?.Invoke(this, _smoothedLevel);
+        float smoothedLevel;
+        lock (_sync)
+        {
+            // The endpoint may have changed while level calculation ran outside the lock.
+            if (!IsCurrentCaptureCallback(sender, _capture, _disposed, args.BytesRecorded))
+            {
+                return;
+            }
+            var smoothing = level > _smoothedLevel ? 0.62f : 0.20f;
+            _smoothedLevel += (level - _smoothedLevel) * smoothing;
+            smoothedLevel = _smoothedLevel;
+        }
+        try
+        {
+            LevelChanged?.Invoke(this, smoothedLevel);
+        }
+        catch (Exception exception)
+        {
+            // A UI observer must never terminate the WASAPI callback thread.
+            AppLog.Write("Microphone level subscriber threw", exception);
+        }
     }
+
+    internal static bool IsCurrentCaptureCallback(
+        object? sender,
+        object? currentCapture,
+        bool disposed,
+        int bytesRecorded) =>
+        !disposed
+        && bytesRecorded > 0
+        && currentCapture is not null
+        && ReferenceEquals(sender, currentCapture);
 
     private void OnRecordingStopped(object? sender, StoppedEventArgs args)
     {
+        AudioCaptureStateChangedEventArgs? change = null;
+        lock (_sync)
+        {
+            if (_disposed || !ReferenceEquals(sender, _capture))
+            {
+                return;
+            }
+            var cancelled = _buffer?.IsSessionActive == true;
+            _monitoringFailure = args.Exception ?? new InvalidOperationException("WASAPI capture stopped unexpectedly.");
+            _paused = true;
+            DiscardSessionLocked(clearPreRoll: true);
+            DisposeCaptureLocked();
+            change = new AudioCaptureStateChangedEventArgs(
+                GetStateLocked(GetDevicesSafe()),
+                AudioCaptureChangeKind.DeviceUnavailable,
+                cancelled,
+                "Микрофон отключён. Выберите доступное устройство и возобновите запись.");
+        }
+        RaiseStateChanged(change);
+    }
+
+    private void OnDevicesChanged(object? sender, EventArgs args)
+    {
+        AudioCaptureStateChangedEventArgs? change = null;
         lock (_sync)
         {
             if (_disposed)
             {
                 return;
             }
-            _monitoringFailure = args.Exception ?? new InvalidOperationException("WASAPI capture stopped unexpectedly.");
-            DisposeCaptureLocked();
+
+            var devices = GetDevicesSafe();
+            var topologyAction = MicrophoneLifecyclePolicy.EvaluateTopologyChange(
+                _selectedDeviceId,
+                _paused,
+                _activeDeviceId,
+                devices);
+            if (topologyAction == MicrophoneTopologyAction.PauseUnavailable)
+            {
+                var cancelled = _buffer?.IsSessionActive == true;
+                _paused = true;
+                _monitoringFailure = new MicrophoneUnavailableException(
+                    _selectedDeviceId is null
+                        ? "Системный микрофон сейчас недоступен."
+                        : "Выбранный микрофон сейчас недоступен.");
+                DiscardSessionLocked(clearPreRoll: true);
+                StopAndDisposeCaptureLocked();
+                change = new AudioCaptureStateChangedEventArgs(
+                    GetStateLocked(devices),
+                    AudioCaptureChangeKind.DeviceUnavailable,
+                    cancelled,
+                    "Микрофон отключён. Выберите доступное устройство и возобновите запись.");
+            }
+            else if (topologyAction == MicrophoneTopologyAction.RestartOnDefault)
+            {
+                var cancelled = _buffer?.IsSessionActive == true;
+                DiscardSessionLocked(clearPreRoll: true);
+                StopAndDisposeCaptureLocked();
+                try
+                {
+                    StartMonitoringLocked();
+                    change = new AudioCaptureStateChangedEventArgs(
+                        GetStateLocked(devices),
+                        AudioCaptureChangeKind.DefaultDeviceChanged,
+                        cancelled);
+                }
+                catch (Exception exception)
+                {
+                    _paused = true;
+                    _monitoringFailure = exception;
+                    change = new AudioCaptureStateChangedEventArgs(
+                        GetStateLocked(devices),
+                        AudioCaptureChangeKind.DeviceUnavailable,
+                        cancelled,
+                        "Не удалось переключиться на системный микрофон. Выберите устройство вручную.");
+                }
+            }
+            else
+            {
+                // Re-adding an explicitly selected endpoint never resumes capture silently.
+                if (_paused && _monitoringFailure is MicrophoneUnavailableException)
+                {
+                    _monitoringFailure = null;
+                }
+                change = new AudioCaptureStateChangedEventArgs(
+                    GetStateLocked(devices),
+                    AudioCaptureChangeKind.InventoryChanged,
+                    ActiveTakeCancelled: false);
+            }
+        }
+        RaiseStateChanged(change);
+    }
+
+    private IReadOnlyList<MicrophoneDeviceInfo> GetDevicesSafe()
+    {
+        try
+        {
+            return _deviceCatalog.GetActiveDevices();
+        }
+        catch (Exception exception) when (exception is COMException or MicrophoneUnavailableException)
+        {
+            AppLog.Write("Could not enumerate capture endpoints", exception);
+            return [];
         }
     }
 
-    private static SpeechActivitySnapshot Analyze(float[] samples, int preRollSamples)
+    private AudioCaptureState GetStateLocked(IReadOnlyList<MicrophoneDeviceInfo> devices)
+    {
+        var available = MicrophoneSelectionPolicy.IsAvailable(_selectedDeviceId, devices);
+        return new AudioCaptureState(
+            _selectedDeviceId,
+            MicrophoneSelectionPolicy.DisplayName(_selectedDeviceId, devices),
+            _paused,
+            _capture is not null && !_paused,
+            available,
+            !available || _monitoringFailure is not null ? "device-unavailable" : null);
+    }
+
+    private static string? ResolveActiveDeviceId(
+        string? selectedDeviceId,
+        IReadOnlyList<MicrophoneDeviceInfo> devices) =>
+        selectedDeviceId ?? devices.FirstOrDefault(device => device.IsDefault)?.Id;
+
+    private void RaiseStateChanged(AudioCaptureStateChangedEventArgs? change)
+    {
+        if (change is null)
+        {
+            return;
+        }
+        try
+        {
+            StateChanged?.Invoke(this, change);
+        }
+        catch (Exception exception)
+        {
+            AppLog.Write("Microphone state subscriber threw", exception);
+        }
+    }
+
+    /// <summary>
+    /// Uses the exact production speech gate for an already captured benchmark WAV. Exposed only
+    /// inside the assembly so the offline harness can attribute a lost take without changing the
+    /// interactive path or persisting another copy of the audio.
+    /// </summary>
+    internal static SpeechActivitySnapshot Analyze(float[] samples, int preRollSamples)
     {
         var detector = new SpeechActivityDetector();
         var noiseFloor = AudioSignalAnalyzer.EstimateNoiseFloorDb(samples, preRollSamples, OutputSampleRate);
@@ -314,8 +679,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
     private static async Task<string> PersistTakeAsync(float[] samples, CancellationToken cancellationToken)
     {
         var directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "EgoistVoice", "Temp");
+            Egoist.Voice.Core.VoiceRuntimeProfile.DataRoot, "Temp");
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, $"voice-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}.wav");
         await Task.Run(() =>
@@ -366,10 +730,32 @@ public sealed class AudioCaptureService : IAudioCaptureService
     private static int AlignToBlock(int bytes, int blockAlign) =>
         Math.Max(blockAlign, bytes - (bytes % Math.Max(1, blockAlign)));
 
-    private void DiscardSessionLocked()
+    private void DiscardSessionLocked(bool clearPreRoll = false)
     {
         _buffer?.CancelSession();
+        if (clearPreRoll)
+        {
+            _buffer?.Clear();
+        }
         _stopRequested = false;
+    }
+
+    private void StopAndDisposeCaptureLocked()
+    {
+        if (_capture is not null)
+        {
+            _capture.DataAvailable -= OnDataAvailable;
+            _capture.RecordingStopped -= OnRecordingStopped;
+            try
+            {
+                _capture.StopRecording();
+            }
+            catch
+            {
+                // Dispose below is the final lifecycle boundary for this endpoint.
+            }
+        }
+        DisposeCaptureLocked();
     }
 
     private void DisposeCaptureLocked()
@@ -382,6 +768,12 @@ public sealed class AudioCaptureService : IAudioCaptureService
         _capture.RecordingStopped -= OnRecordingStopped;
         _capture.Dispose();
         _capture = null;
+        _captureDevice?.Dispose();
+        _captureDevice = null;
+        _activeDeviceId = null;
+        _captureFormat = null;
+        _buffer?.Clear();
+        _buffer = null;
     }
 
     public void Dispose()
@@ -393,21 +785,15 @@ public sealed class AudioCaptureService : IAudioCaptureService
                 return;
             }
             _disposed = true;
-            DiscardSessionLocked();
-            if (_capture is not null)
-            {
-                try
-                {
-                    _capture.StopRecording();
-                }
-                catch
-                {
-                    // Dispose below is the final shutdown boundary.
-                }
-            }
-            DisposeCaptureLocked();
+            _deviceCatalog.DevicesChanged -= OnDevicesChanged;
+            DiscardSessionLocked(clearPreRoll: true);
+            StopAndDisposeCaptureLocked();
             _buffer?.Clear();
             _buffer = null;
+        }
+        if (_ownsDeviceCatalog)
+        {
+            _deviceCatalog.Dispose();
         }
     }
 }
@@ -457,6 +843,17 @@ internal sealed class CaptureSessionBuffer
     {
         DisposeSession(clear: true);
         _preRoll.Clear();
+    }
+
+    internal void DiscardAudioPreservingSession()
+    {
+        var wasActive = _session is not null;
+        DisposeSession(clear: true);
+        _preRoll.Clear();
+        if (wasActive)
+        {
+            _session = new MemoryStream(4096);
+        }
     }
 
     private void DisposeSession(bool clear)

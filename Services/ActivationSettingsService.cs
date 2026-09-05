@@ -178,8 +178,7 @@ internal sealed class ActivationSettingsService
     internal ActivationSettingsService(string? settingsPath = null)
     {
         _settingsPath = settingsPath ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "EgoistVoice",
+            Egoist.Voice.Core.VoiceRuntimeProfile.DataRoot,
             "activation.json");
     }
 

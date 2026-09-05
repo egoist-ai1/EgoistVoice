@@ -21,6 +21,9 @@ public sealed class DictationSettingsTests : IDisposable
         Assert.True(settings.ApplyDictionary);
         Assert.True(settings.ApplyVoiceCommands);
         Assert.True(settings.RestoreClipboard);
+        Assert.True(settings.SaveRecentRecordings);
+        Assert.True(settings.DesktopNotifications);
+        Assert.Equal(AppTheme.System, settings.Theme);
 
         // Number normalization is the one step that rewrites text the user did not ask to rewrite,
         // so it has to be opt-in.
@@ -35,7 +38,12 @@ public sealed class DictationSettingsTests : IDisposable
         {
             ApplyNumberNormalization = true,
             MixedLanguageMode = true,
-            SoundVolume = 0.75
+            SoundVolume = 0.75,
+            CaptureDeviceId = "endpoint-stable-id",
+            IsCapturePaused = true,
+            SaveRecentRecordings = false,
+            DesktopNotifications = false,
+            Theme = AppTheme.Light
         });
 
         var loaded = service.Load();
@@ -43,6 +51,18 @@ public sealed class DictationSettingsTests : IDisposable
         Assert.True(loaded.ApplyNumberNormalization);
         Assert.True(loaded.MixedLanguageMode);
         Assert.Equal(0.75, loaded.SoundVolume);
+        Assert.Equal("endpoint-stable-id", loaded.CaptureDeviceId);
+        Assert.True(loaded.IsCapturePaused);
+        Assert.False(loaded.SaveRecentRecordings);
+        Assert.False(loaded.DesktopNotifications);
+        Assert.Equal(AppTheme.Light, loaded.Theme);
+        var json = File.ReadAllText(service.SettingsPath);
+        Assert.Contains("\"captureDeviceId\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"isPaused\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"saveRecentRecordings\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"desktopNotifications\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"theme\": \"Light\"", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"capturePaused\"", json, StringComparison.Ordinal);
     }
 
     [Fact]

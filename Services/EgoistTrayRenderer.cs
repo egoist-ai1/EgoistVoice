@@ -8,13 +8,48 @@ namespace Egoist.Voice.Services;
 
 internal static class EgoistTrayPalette
 {
-    internal static readonly Color Background = Color.FromArgb(5, 5, 5);
-    internal static readonly Color Hover = Color.FromArgb(58, 13, 18);
-    internal static readonly Color HoverBorder = Color.FromArgb(112, 24, 32);
-    internal static readonly Color Primary = Color.FromArgb(247, 247, 248);
-    internal static readonly Color Disabled = Color.FromArgb(112, 112, 120);
-    internal static readonly Color Accent = Color.FromArgb(255, 38, 52);
-    internal static readonly Color Separator = Color.FromArgb(42, 42, 48);
+    internal static Color Background { get; private set; } = Color.FromArgb(5, 5, 5);
+    internal static Color Hover { get; private set; } = Color.FromArgb(58, 13, 18);
+    internal static Color HoverBorder { get; private set; } = Color.FromArgb(112, 24, 32);
+    internal static Color Primary { get; private set; } = Color.FromArgb(247, 247, 248);
+    internal static Color Disabled { get; private set; } = Color.FromArgb(112, 112, 120);
+    internal static Color Accent { get; private set; } = Color.FromArgb(255, 38, 52);
+    internal static Color Separator { get; private set; } = Color.FromArgb(42, 42, 48);
+
+    internal static void Apply(EffectiveAppTheme theme)
+    {
+        if (theme == EffectiveAppTheme.HighContrast)
+        {
+            Background = SystemColors.Window;
+            Hover = SystemColors.Highlight;
+            HoverBorder = SystemColors.HighlightText;
+            Primary = SystemColors.WindowText;
+            Disabled = SystemColors.GrayText;
+            Accent = SystemColors.Highlight;
+            Separator = SystemColors.WindowText;
+            return;
+        }
+
+        if (theme == EffectiveAppTheme.Light)
+        {
+            Background = Color.FromArgb(246, 246, 248);
+            Hover = Color.FromArgb(255, 232, 235);
+            HoverBorder = Color.FromArgb(228, 106, 116);
+            Primary = Color.FromArgb(24, 24, 27);
+            Disabled = Color.FromArgb(112, 113, 122);
+            Accent = Color.FromArgb(217, 25, 42);
+            Separator = Color.FromArgb(207, 207, 215);
+            return;
+        }
+
+        Background = Color.FromArgb(5, 5, 5);
+        Hover = Color.FromArgb(58, 13, 18);
+        HoverBorder = Color.FromArgb(112, 24, 32);
+        Primary = Color.FromArgb(247, 247, 248);
+        Disabled = Color.FromArgb(112, 112, 120);
+        Accent = Color.FromArgb(255, 38, 52);
+        Separator = Color.FromArgb(42, 42, 48);
+    }
 }
 
 /// <summary>
@@ -138,17 +173,63 @@ internal sealed class EgoistTrayRenderer : Forms.ToolStripProfessionalRenderer
 
 internal static class EgoistTrayVisualPreview
 {
-    internal static void Render(string outputPath)
+    internal static void Render(string outputPath, EffectiveAppTheme theme = EffectiveAppTheme.Dark)
     {
+        EgoistTrayPalette.Apply(theme);
         var renderer = new EgoistTrayRenderer();
         using var root = new Forms.ContextMenuStrip();
         TrayService.ConfigureDropDown(root, renderer);
         root.ShowCheckMargin = true;
-        root.Items.Add(TrayService.CreateItem("Начать / остановить"));
+        root.Items.Add(TrayService.CreateItem("Начать диктовку · пауза"));
+        root.Items[^1].Enabled = false;
+        root.Items.Add(TrayService.CreateItem("Возобновить микрофон"));
+        ((Forms.ToolStripMenuItem)root.Items[^1]).Checked = true;
+        var microphone = TrayService.CreateItem("Микрофон · Studio USB");
+        TrayService.ConfigureDropDown(microphone.DropDown, renderer);
+        microphone.DropDownItems.Add(TrayService.CreateItem("Системный · Studio USB"));
+        root.Items.Add(microphone);
         var activation = TrayService.CreateItem("Кнопка запуска");
         TrayService.ConfigureDropDown(activation.DropDown, renderer);
         activation.DropDownItems.Add(TrayService.CreateItem("Mouse 5"));
         root.Items.Add(activation);
+        var settings = TrayService.CreateItem("Настройки");
+        TrayService.ConfigureDropDown(settings.DropDown, renderer);
+        foreach (var label in new[]
+                 {
+                     "Смешанная русско-английская речь",
+                     "Числа цифрами",
+                     "Голосовые команды",
+                     "Возвращать буфер обмена",
+                     "Звуковые сигналы",
+                     "Важные уведомления"
+                 })
+        {
+            var setting = TrayService.CreateItem(label);
+            setting.Checked = label is "Смешанная русско-английская речь" or
+                "Звуковые сигналы" or "Важные уведомления";
+            settings.DropDownItems.Add(setting);
+        }
+        settings.DropDownItems.Add(TrayService.CreateSeparator());
+        settings.DropDownItems.Add(TrayService.CreateItem("Открыть словарь…"));
+        root.Items.Add(settings);
+
+        var history = TrayService.CreateItem("Последние записи");
+        TrayService.ConfigureDropDown(history.DropDown, renderer);
+        history.DropDownItems.Add(TrayService.CreateItem("19:38 · 00:07 · 81 КБ"));
+        history.DropDownItems.Add(TrayService.CreateItem("19:34 · 00:11 · 126 КБ"));
+        history.DropDownItems.Add(TrayService.CreateItem("19:29 · 00:04 · 53 КБ"));
+        root.Items.Add(history);
+
+        var themeItem = TrayService.CreateItem("Тема");
+        TrayService.ConfigureDropDown(themeItem.DropDown, renderer);
+        foreach (var label in new[] { "Системная", "Светлая", "Тёмная" })
+        {
+            var choice = TrayService.CreateItem(label);
+            choice.Checked = label == "Системная";
+            themeItem.DropDownItems.Add(choice);
+        }
+        root.Items.Add(themeItem);
+        root.Items.Add(TrayService.CreateItem("Открыть все настройки…"));
         root.Items.Add(TrayService.CreateSeparator());
         root.Items.Add(TrayService.CreateItem("GigaAM + Whisper · готовы"));
         root.Items[^1].Enabled = false;
@@ -158,22 +239,17 @@ internal static class EgoistTrayVisualPreview
         using var nested = new Forms.ContextMenuStrip();
         TrayService.ConfigureDropDown(nested, renderer);
         nested.ShowCheckMargin = true;
-        nested.Items.Add(TrayService.CreateItem("Mouse 5 · Ctrl + Alt + Space"));
+        nested.Items.Add(TrayService.CreateItem("Системная · следует за Windows"));
         ((Forms.ToolStripMenuItem)nested.Items[0]).Checked = true;
-        nested.Items.Add(TrayService.CreateItem("Mouse 5"));
-        nested.Items.Add(TrayService.CreateItem("Mouse 4"));
-        nested.Items.Add(TrayService.CreateItem("Ctrl + Alt + Space"));
-        nested.Items.Add(TrayService.CreateSeparator());
-        nested.Items.Add(TrayService.CreateItem("Своя…  ·  Ctrl + Shift + V"));
-        nested.Items.Add(TrayService.CreateItem("Недоступное действие"));
-        nested.Items[^1].Enabled = false;
+        nested.Items.Add(TrayService.CreateItem("Светлая"));
+        nested.Items.Add(TrayService.CreateItem("Тёмная"));
 
         root.CreateControl();
         nested.CreateControl();
         root.PerformLayout();
         nested.PerformLayout();
-        root.Items[1].Select();
-        nested.Items[1].Select();
+        themeItem.Select();
+        nested.Items[0].Select();
         var rootSize = root.GetPreferredSize(Size.Empty);
         var nestedSize = nested.GetPreferredSize(Size.Empty);
         root.Size = rootSize;

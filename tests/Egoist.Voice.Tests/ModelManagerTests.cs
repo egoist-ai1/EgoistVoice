@@ -8,6 +8,31 @@ namespace Egoist.Voice.Tests;
 public sealed class ModelManagerTests
 {
     [Fact]
+    public async Task Offline_profile_never_removes_models_outside_its_catalog()
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var content = new byte[] { 1, 2, 3, 4 };
+            var descriptor = CreateDescriptor("offline-v1", content);
+            var modelPath = Path.Combine(root, "Speech", descriptor.Id, descriptor.FileName);
+            Directory.CreateDirectory(Path.GetDirectoryName(modelPath)!);
+            await File.WriteAllBytesAsync(modelPath, content);
+            var other = Path.Combine(root, "Speech", "other-model", "keep.bin");
+            Directory.CreateDirectory(Path.GetDirectoryName(other)!);
+            await File.WriteAllTextAsync(other, "user owned");
+            var unrelated = Path.Combine(root, "UserAssets", "keep.txt");
+            Directory.CreateDirectory(Path.GetDirectoryName(unrelated)!);
+            await File.WriteAllTextAsync(unrelated, "user owned");
+            using var manager = new ModelManager([descriptor], root, allowDownload: false);
+            await manager.EnsureModelAsync(descriptor, null, CancellationToken.None);
+            Assert.True(File.Exists(other));
+            Assert.True(File.Exists(unrelated));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
     public async Task Downloads_verifies_and_reports_model()
     {
         var content = Enumerable.Range(0, 64 * 1024).Select(index => (byte)(index % 251)).ToArray();

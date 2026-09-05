@@ -5,6 +5,7 @@ using NAudio.Utils;
 using NAudio.Wave;
 using Whisper.net;
 using Whisper.net.Ggml;
+using Whisper.net.LibraryLoader;
 
 namespace Egoist.Voice.Services;
 
@@ -267,6 +268,72 @@ public sealed class WhisperTranscriptionService : ITranscriptionEngine, ISampleT
         if (_ownsModelManager)
         {
             _modelManager.Dispose();
+        }
+    }
+}
+
+internal static class WhisperRuntimePolicy
+{
+    internal static string ConfigureForBenchmark(string value)
+    {
+        var normalized = value.Trim().ToLowerInvariant();
+        RuntimeOptions.RuntimeLibraryOrder = normalized switch
+        {
+            "auto" =>
+            [
+                RuntimeLibrary.Cuda,
+                RuntimeLibrary.Cuda12,
+                RuntimeLibrary.Vulkan,
+                RuntimeLibrary.CoreML,
+                RuntimeLibrary.OpenVino,
+                RuntimeLibrary.Cpu,
+                RuntimeLibrary.CpuNoAvx
+            ],
+            "vulkan" => [RuntimeLibrary.Vulkan, RuntimeLibrary.Cpu],
+            "cpu" => [RuntimeLibrary.Cpu],
+            _ => throw new ArgumentException(
+                "Whisper runtime must be auto, vulkan or cpu.", nameof(value))
+        };
+        return normalized;
+    }
+
+    internal static string LoadedLibrary
+    {
+        get
+        {
+            if (RuntimeOptions.LoadedLibrary is { } loaded)
+            {
+                return loaded.ToString();
+            }
+
+            try
+            {
+                var paths = Process.GetCurrentProcess().Modules
+                    .Cast<ProcessModule>()
+                    .Select(module => module.FileName ?? string.Empty)
+                    .ToArray();
+                if (paths.Any(path => path.Contains("\\runtimes\\cuda\\", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return RuntimeLibrary.Cuda.ToString();
+                }
+                if (paths.Any(path => path.Contains("\\runtimes\\vulkan\\", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return RuntimeLibrary.Vulkan.ToString();
+                }
+                if (paths.Any(path =>
+                        path.Contains("\\runtimes\\win-x64\\whisper.dll", StringComparison.OrdinalIgnoreCase) ||
+                        path.Contains("\\runtimes\\win-x86\\whisper.dll", StringComparison.OrdinalIgnoreCase) ||
+                        path.Contains("\\runtimes\\win-arm64\\whisper.dll", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return RuntimeLibrary.Cpu.ToString();
+                }
+            }
+            catch (Exception)
+            {
+                // Module enumeration is diagnostic-only; runtime selection itself remains valid.
+            }
+
+            return "not-loaded";
         }
     }
 }

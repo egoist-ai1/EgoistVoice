@@ -17,7 +17,7 @@ namespace Egoist.Voice.Core;
 /// </remarks>
 public static class BuiltInVocabulary
 {
-    public const string Version = "3";
+    public const string Version = "5";
 
     /// <summary>
     /// The dictionary sorts aliases by length, so a longer entity always wins over a contained one.
@@ -42,8 +42,19 @@ public static class BuiltInVocabulary
                 "egist translate", "egast translate"
             ],
             "EGOIST Translator"),
+        new(
+            [
+                "egoist games", "egoistgames", "egist games", "agist games", "agistgames",
+                "эгоист геймс", "эгоист геймз", "эгист геймс", "эгаист геймс"
+            ],
+            "Egoist Games"),
+
+        // Complete place name and the exact mistaken output confirmed by the user.
+        // Valid English "Rostov-on-Don" and other cities named Rostov remain unchanged.
+        new(["ростов на дону", "ростов-на-дону", "ростов надону", "rostofundone"], "Ростов-на-Дону"),
 
         // ── AI and local assistants ──────────────────────────────────────────
+        new(["войс студио", "войс студия", "voicestudio"], "VoiceStudio"),
         new(["клод код", "клодкод", "клод коуд", "к лод код", "claude code"], "Claude Code"),
         new(["клод", "к лод", "claude"], "Claude"),
         new(["чат джипити", "чатджипити", "чат гпт", "чат джи пи ти", "chatgpt"], "ChatGPT"),
@@ -56,8 +67,8 @@ public static class BuiltInVocabulary
         new(["миджорни", "мид джорни", "midjourney"], "Midjourney"),
         new(["хаггинг фейс", "хагин фейс", "hugging face"], "Hugging Face"),
         new(["гигачат", "гига чат", "gigachat"], "GigaChat"),
-        new(["гига ам", "gigaam"], "GigaAM"),
-        new(["кьювен", "qwen"], "Qwen"),
+        new(["гига ам", "гигаам", "gigaam"], "GigaAM"),
+        new(["кьювен", "квен", "квэн", "qwen"], "Qwen"),
         new(["оллама", "ollama"], "Ollama"),
         new(["грок", "grok"], "Grok"),
         new(["стейбл диффьюжн", "stable diffusion"], "Stable Diffusion"),
@@ -221,6 +232,12 @@ public static class BuiltInVocabulary
         new(["юнити", "unity"], "Unity"),
         new(["годо энджин", "godot engine"], "Godot Engine"),
         new(["майнкрафт", "minecraft"], "Minecraft"),
+        new(
+            [
+                "path of exile 2", "path of exile two", "pathofexile2", "passfuizile2", "passive exile 2",
+                "пас оф экзайл два", "пас оф экзайл 2", "пат оф экзайл два", "пат оф экзайл 2"
+            ],
+            "Path of Exile 2"),
         new(["фортнайт", "fortnite"], "Fortnite"),
         new(["контр страйк", "counter strike", "counter-strike"], "Counter-Strike"),
         new(["дота два", "dota 2"], "Dota 2"),

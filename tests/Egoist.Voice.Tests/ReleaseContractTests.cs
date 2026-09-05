@@ -44,6 +44,8 @@ public sealed class ReleaseContractTests
         Assert.Contains("ScaleDivisor", installer, StringComparison.Ordinal);
         Assert.DoesNotContain("AvailableWidth * Current", installer, StringComparison.Ordinal);
         Assert.DoesNotContain("Current * 100", installer, StringComparison.Ordinal);
+        Assert.Contains("около 3,2 ГБ", installer, StringComparison.Ordinal);
+        Assert.DoesNotContain("1,3 ГБ", installer, StringComparison.Ordinal);
         Assert.DoesNotContain("egoist-translator.owner.json", installer, StringComparison.Ordinal);
         Assert.DoesNotContain("DelTree(ExpandConstant('{localappdata}\\EGOIST\\TranslationEngine", installer, StringComparison.Ordinal);
     }
@@ -54,8 +56,12 @@ public sealed class ReleaseContractTests
         var script = File.ReadAllText(Path.Combine(RepositoryRoot(), "scripts", "build-installer.ps1"));
 
         Assert.Contains("engine-bundle-manifest.json", script, StringComparison.Ordinal);
+        Assert.Contains("engine-bundle-1.0.1", script, StringComparison.Ordinal);
         Assert.Contains("hy-mt2-1.8b-q8_0", script, StringComparison.Ordinal);
-        Assert.Contains("llama-b10219-vulkan-win-x64", script, StringComparison.Ordinal);
+        Assert.Contains("llama-b10219-vulkan-win-x64-vc143", script, StringComparison.Ordinal);
+        Assert.Contains("offline-pack/msvcp140.dll", script, StringComparison.Ordinal);
+        Assert.Contains("offline-pack/vcruntime140.dll", script, StringComparison.Ordinal);
+        Assert.Contains("offline-pack/vcruntime140_1.dll", script, StringComparison.Ordinal);
         Assert.Contains("checksum mismatch", script, StringComparison.Ordinal);
         Assert.Contains("embedded-inno-bootstrap", script, StringComparison.Ordinal);
         Assert.Contains("New-EgoistVoiceSingleFile.ps1", script, StringComparison.Ordinal);
@@ -65,6 +71,9 @@ public sealed class ReleaseContractTests
         Assert.Contains("bootstrapFileVersion", script, StringComparison.Ordinal);
         Assert.Contains("bootstrapProductVersion", script, StringComparison.Ordinal);
         Assert.Contains("FileVersionInfo", script, StringComparison.Ordinal);
+        Assert.Contains("sourceRevision", script, StringComparison.Ordinal);
+        Assert.Contains("sourceTreeDirty", script, StringComparison.Ordinal);
+        Assert.Contains("managedAppSha256", script, StringComparison.Ordinal);
         Assert.DoesNotContain("deliveryMode = \"inno-disk-spanning\"", script, StringComparison.Ordinal);
         Assert.DoesNotContain("/latest", script, StringComparison.OrdinalIgnoreCase);
     }
@@ -130,7 +139,9 @@ public sealed class ReleaseContractTests
                  {
                      "corpus-script-v2.schema.json",
                      "corpus-reference-v2.schema.json",
-                     "benchmark-report-v2.schema.json"
+                     "corpus-profile-v1.schema.json",
+                     "benchmark-report-v2.schema.json",
+                     "benchmark-report-v3.schema.json"
                  })
         {
             using var schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "tests", "corpus", name)));
@@ -139,17 +150,88 @@ public sealed class ReleaseContractTests
             Assert.True(schema.RootElement.TryGetProperty("$id", out _));
         }
 
+        using (var reportSchema = JsonDocument.Parse(File.ReadAllText(
+                   Path.Combine(root, "tests", "corpus", "benchmark-report-v3.schema.json"))))
+        {
+            Assert.False(reportSchema.RootElement.GetProperty("additionalProperties").GetBoolean());
+            Assert.False(reportSchema.RootElement
+                .GetProperty("properties")
+                .GetProperty("entries")
+                .GetProperty("items")
+                .GetProperty("additionalProperties")
+                .GetBoolean());
+            var schemaText = reportSchema.RootElement.GetRawText();
+            Assert.Contains("transcript", schemaText, StringComparison.Ordinal);
+            Assert.Contains("audioPath", schemaText, StringComparison.Ordinal);
+            Assert.Contains("audioContent", schemaText, StringComparison.Ordinal);
+            Assert.Contains("targetApplication", schemaText, StringComparison.Ordinal);
+        }
+
+        var schemaPrivacyTest = File.ReadAllText(
+            Path.Combine(root, "tests", "corpus", "Test-BenchmarkReportV3Schema.ps1"));
+        Assert.Contains("Test-Json", schemaPrivacyTest, StringComparison.Ordinal);
+        Assert.Contains("$forbiddenProperties", schemaPrivacyTest, StringComparison.Ordinal);
+        Assert.Contains("$objectPaths", schemaPrivacyTest, StringComparison.Ordinal);
+
         var runner = File.ReadAllText(Path.Combine(root, "scripts", "run-corpus-baseline.ps1"));
         Assert.Contains("[switch]$Record", runner, StringComparison.Ordinal);
         Assert.Contains("--corpus-record", runner, StringComparison.Ordinal);
         Assert.Contains("--corpus-benchmark", runner, StringComparison.Ordinal);
         Assert.Contains("$DecoderMode", runner, StringComparison.Ordinal);
+        Assert.Contains("$WhisperRuntime", runner, StringComparison.Ordinal);
+        Assert.Contains("$Profile", runner, StringComparison.Ordinal);
+        Assert.Contains("$ProfilePath", runner, StringComparison.Ordinal);
+        Assert.Contains("quality-challenge-v1.json", runner, StringComparison.Ordinal);
         Assert.Contains(".candidate", runner, StringComparison.Ordinal);
+        Assert.Contains("Start-Process", runner, StringComparison.Ordinal);
+        Assert.Contains("-Wait", runner, StringComparison.Ordinal);
+        Assert.Contains("$BenchmarkProcess.ExitCode", runner, StringComparison.Ordinal);
+        Assert.DoesNotContain("& $Executable --corpus-benchmark", runner, StringComparison.Ordinal);
         Assert.DoesNotContain("Copy-Item", runner, StringComparison.OrdinalIgnoreCase);
 
         var app = File.ReadAllText(Path.Combine(root, "App.xaml.cs"));
         Assert.Contains("allowModelDownload: false", app, StringComparison.Ordinal);
         Assert.Contains("AppLog.SuppressSensitiveData()", app, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PublicProxyCorpus_PinsProvenanceAndStaysOutsideGit()
+    {
+        var root = RepositoryRoot();
+        using var document = JsonDocument.Parse(File.ReadAllText(
+            Path.Combine(root, "tests", "corpus", "public-proxy-v1.sources.json")));
+        var descriptor = document.RootElement;
+
+        Assert.Equal("egoist.voice.public-proxy-sources/v1", descriptor.GetProperty("schema").GetString());
+        Assert.Equal("local-only-no-transcripts-in-git", descriptor.GetProperty("privacy").GetString());
+        Assert.Equal(0.25, descriptor.GetProperty("selection").GetProperty("minDurationSeconds").GetDouble());
+        var sources = descriptor.GetProperty("sources").EnumerateArray().ToArray();
+        Assert.Equal(4, sources.Length);
+        Assert.Equal(3025, sources.Sum(source => source.GetProperty("targetCount").GetInt32()));
+        Assert.Equal(250, descriptor.GetProperty("derivedSets")[0].GetProperty("count").GetInt32());
+
+        foreach (var source in sources)
+        {
+            Assert.Matches("^[0-9a-f]{40}$", source.GetProperty("revision").GetString()!);
+            Assert.False(string.IsNullOrWhiteSpace(source.GetProperty("license").GetString()));
+            foreach (var file in source.GetProperty("files").EnumerateArray())
+            {
+                Assert.True(file.GetProperty("bytes").GetInt64() > 0);
+                Assert.Matches("^[0-9a-f]{64}$", file.GetProperty("sha256").GetString()!);
+            }
+        }
+
+        var wrapper = File.ReadAllText(Path.Combine(root, "scripts", "acquire-public-proxy-corpus.ps1"));
+        var importer = File.ReadAllText(Path.Combine(root, "scripts", "acquire-public-proxy-corpus.py"));
+        var gitIgnore = File.ReadAllText(Path.Combine(root, ".gitignore"));
+        Assert.Contains("artifacts\\corpora\\public-proxy-v1", wrapper, StringComparison.Ordinal);
+        Assert.Contains("revision=source[\"revision\"]", importer, StringComparison.Ordinal);
+        Assert.Contains("sha256_file", importer, StringComparison.Ordinal);
+        Assert.Contains("valid_normalized_audio", importer, StringComparison.Ordinal);
+        Assert.Contains("len(payload) > 44", importer, StringComparison.Ordinal);
+        Assert.Contains("previous_source_rows", importer, StringComparison.Ordinal);
+        Assert.Contains("Public proxy evidence only; no user-voice accuracy claim.", importer, StringComparison.Ordinal);
+        Assert.Contains("artifacts/", gitIgnore, StringComparison.Ordinal);
     }
 
     private static string RepositoryRoot()

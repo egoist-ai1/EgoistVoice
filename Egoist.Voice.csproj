@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
+    <DefineConstants Condition="'$(VoiceFlavor)' == 'Compact'">$(DefineConstants);COMPACT_PORTABLE</DefineConstants>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
@@ -35,9 +36,9 @@
     <PackageReference Include="NAudio" Version="2.3.0" />
     <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.4" />
     <PackageReference Include="Whisper.net" Version="1.9.1" />
-    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
-    <PackageReference Include="Whisper.net.Runtime.Cuda" Version="1.9.1" />
-    <PackageReference Include="Whisper.net.Runtime.Vulkan" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" Condition="'$(VoiceFlavor)' != 'Compact'" />
+    <PackageReference Include="Whisper.net.Runtime.Cuda" Version="1.9.1" Condition="'$(VoiceFlavor)' != 'Compact'" />
+    <PackageReference Include="Whisper.net.Runtime.Vulkan" Version="1.9.1" Condition="'$(VoiceFlavor)' != 'Compact'" />
   </ItemGroup>
 
   <ItemGroup>
@@ -76,6 +77,7 @@
     -->
     <Content Include="assets\EgoistVoice.ico" Link="assets\EgoistVoice.ico"
              CopyToOutputDirectory="PreserveNewest" />
+    <Resource Include="assets\EgoistVoice.png" />
   </ItemGroup>
 
 </Project>

@@ -10,7 +10,11 @@ namespace Egoist.Voice;
 
 public partial class MainWindow
 {
-    private void BuildWaveform() => Waveform.HighContrast = SystemParameters.HighContrast;
+    private void BuildWaveform()
+    {
+        Waveform.HighContrast = EffectiveTheme == EffectiveAppTheme.HighContrast;
+        Waveform.LightTheme = EffectiveTheme == EffectiveAppTheme.Light;
+    }
 
     private void OnAudioLevelChanged(object? sender, float level)
     {
@@ -28,6 +32,11 @@ public partial class MainWindow
         var frameFactor = Math.Clamp(deltaSeconds * 60, 0.25, 3);
         _wavePhase += (0.09 + (_audioLevelCurrent * 0.14)) * frameFactor;
         Waveform.Advance(_audioLevelCurrent, _wavePhase, deltaSeconds, IsReducedMotion);
+        // Make the microphone halo follow the actual voice, on the existing bounded frame loop.
+        // Reduced motion keeps its size fixed; no blur or additional animation timer is needed.
+        StateHalo.Opacity = IsReducedMotion ? 0.3 : 0.12 + _audioLevelCurrent * 0.56;
+        var haloScale = IsReducedMotion ? 1 : 0.94 + _audioLevelCurrent * 0.2;
+        StateHaloScale.ScaleX = StateHaloScale.ScaleY = haloScale;
         UpdateRecordingTimer();
     }
 
@@ -48,7 +57,8 @@ public partial class MainWindow
         SetStateBorder(ActiveBorderBrush);
         SetWaveform(CapsuleWaveformProfile.MinimumScale);
         StopStateAnimations();
-        BeginStateStoryboard("ListenPulseStoryboard");
+        StateHalo.Opacity = 0.12;
+        StateHaloScale.ScaleX = StateHaloScale.ScaleY = 0.94;
         _audioLevelCurrent = 0;
         _audioLevelTarget = 0;
         StartWaveformAnimation();
@@ -56,7 +66,10 @@ public partial class MainWindow
 
     private void SetProcessingState(string label, double? percentage)
     {
+        var alreadyProcessing = _lastVisualStateKind == CapsuleVisualStateKind.Recognizing;
         ApplyVisualStateLayout(new CapsuleVisualState(CapsuleVisualStateKind.Recognizing, label, percentage, percentage is null));
+        // Changing the stage label must not restart the orbit, reanimate the shell or allocate brushes.
+        if (alreadyProcessing) return;
         StopWaveformAnimation();
         SetStateDisc(System.Windows.Media.Brushes.Transparent);
         SetStateBorder(ActiveBorderBrush);
@@ -68,7 +81,7 @@ public partial class MainWindow
 
     private void ShowSuccess(string label = "Вставлено")
     {
-        _sounds.Play(FeedbackSound.TextInserted);
+        PlayFeedback(FeedbackSound.TextInserted);
         ApplyVisualStateLayout(new CapsuleVisualState(CapsuleVisualStateKind.Success, label));
         StopWaveformAnimation();
         SetStateDisc(SuccessDiscBrush);
@@ -129,7 +142,7 @@ public partial class MainWindow
 
     private void ShowError(string title)
     {
-        _sounds.Play(FeedbackSound.Error);
+        PlayFeedback(FeedbackSound.Error);
         ApplyVisualStateLayout(new CapsuleVisualState(CapsuleVisualStateKind.Error, title));
         StopWaveformAnimation();
         _isRecording = false;
@@ -234,6 +247,18 @@ public partial class MainWindow
         }
     }
 
+    private void PlayFeedback(FeedbackSound sound, bool preview = false)
+    {
+        if (preview)
+        {
+            _sounds.Preview(sound);
+        }
+        else
+        {
+            _sounds.Play(sound);
+        }
+    }
+
     /// <summary>
     /// Publishes the capsule's state to assistive technology.
     /// </summary>
@@ -319,7 +344,78 @@ public partial class MainWindow
         };
         AnimateCapsuleWidth(bodyWidth);
 
-        if (SystemParameters.HighContrast)
+        ApplyThemeToCapsule();
+
+        if (stateChanged && IsVisible && !IsReducedMotion)
+        {
+            ((Storyboard)Resources["StateTransitionStoryboard"]).Begin(this, true);
+        }
+    }
+
+    private void OnCapsuleThemeChanged(object? sender, AppThemeChangedEventArgs args)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            _ = Dispatcher.BeginInvoke(() => OnCapsuleThemeChanged(sender, args));
+            return;
+        }
+
+        Waveform.HighContrast = args.EffectiveTheme == EffectiveAppTheme.HighContrast;
+        Waveform.InvalidateVisual();
+        if (args.ReducedMotion)
+        {
+            ApplyReducedMotionImmediately();
+        }
+        ApplyThemeToCapsule();
+    }
+
+    private void ApplyReducedMotionImmediately()
+    {
+        StopStateAnimations();
+        ((Storyboard)Resources["StateTransitionStoryboard"]).Stop(this);
+        ((Storyboard)Resources["EnterStoryboard"]).Stop(this);
+        _exitStoryboard.Stop(this);
+
+        CapsuleShell.Opacity = 1;
+        ShadowSurface.Opacity = 1;
+        ShellScale.ScaleX = 1;
+        ShellScale.ScaleY = 1;
+        ShellTranslate.X = 0;
+        ShellTranslate.Y = 0;
+        StateHalo.Opacity = 0;
+        StateHaloScale.ScaleX = 1;
+        StateHaloScale.ScaleY = 1;
+        StateDiscScale.ScaleX = 1;
+        StateDiscScale.ScaleY = 1;
+        StateContentTranslate.X = 0;
+        SpinnerOrbitRotate.Angle = 0;
+        DownloadArrowOffset.Y = 0;
+        DownloadIcon.Opacity = 1;
+        CheckScale.ScaleX = 1;
+        CheckScale.ScaleY = 1;
+
+        CapsuleBody.BeginAnimation(FrameworkElement.WidthProperty, null);
+        CapsuleBody.Width = _lastVisualStateKind switch
+        {
+            CapsuleVisualStateKind.Ready or CapsuleVisualStateKind.Listening => 218d,
+            CapsuleVisualStateKind.Success or CapsuleVisualStateKind.Clipboard => 224d,
+            CapsuleVisualStateKind.Downloading => 280d,
+            _ => 232d
+        };
+
+        if (_hideRequested)
+        {
+            _hideRequested = false;
+            _forceHideAfterCancellation = false;
+            _displayingBackgroundModelProgress = false;
+            Hide();
+        }
+    }
+
+    private void ApplyThemeToCapsule()
+    {
+        BuildWaveform();
+        if (EffectiveTheme == EffectiveAppTheme.HighContrast)
         {
             RootBorder.Background = System.Windows.SystemColors.WindowBrush;
             RootBorder.BorderBrush = System.Windows.SystemColors.WindowTextBrush;
@@ -341,6 +437,13 @@ public partial class MainWindow
         else
         {
             RootBorder.Background = SurfaceBrush;
+            RootBorder.BorderBrush = _lastVisualStateKind switch
+            {
+                CapsuleVisualStateKind.Listening or CapsuleVisualStateKind.Recognizing => ActiveBorderBrush,
+                CapsuleVisualStateKind.Error => ErrorBorderBrush,
+                CapsuleVisualStateKind.Downloading when _lastModelProgress?.Stage == ModelTransferStage.Failed => ErrorBorderBrush,
+                _ => IdleBorderBrush
+            };
             DetailText.Foreground = PrimaryTextBrush;
             ProcessingLabel.Foreground = PrimaryTextBrush;
             SetMicStroke(PrimaryTextBrush);
@@ -350,15 +453,12 @@ public partial class MainWindow
             SetStroke(ErrorIcon, ErrorBrush);
             DownloadProgress.Foreground = AccentBrush;
             DownloadProgress.Background = ProgressTrackBrush;
-            SurfaceGradient.Visibility = Visibility.Visible;
+            SurfaceGradient.Visibility = EffectiveTheme == EffectiveAppTheme.Dark
+                ? Visibility.Visible
+                : Visibility.Collapsed;
             HoverSurface.Visibility = Visibility.Visible;
             SuccessFlash.Visibility = Visibility.Visible;
             ShadowSurface.Visibility = Visibility.Visible;
-        }
-
-        if (stateChanged && IsVisible && !IsReducedMotion)
-        {
-            ((Storyboard)Resources["StateTransitionStoryboard"]).Begin(this, true);
         }
     }
 
@@ -441,7 +541,7 @@ public partial class MainWindow
         var elapsed = _lastWaveFrame == TimeSpan.Zero
             ? TimeSpan.FromSeconds(1d / 60d)
             : rendering.RenderingTime - _lastWaveFrame;
-        if (_lastWaveFrame != TimeSpan.Zero && elapsed < TimeSpan.FromMilliseconds(12))
+        if (_lastWaveFrame != TimeSpan.Zero && elapsed < TimeSpan.FromMilliseconds(IsReducedMotion ? 50 : 16))
         {
             return;
         }

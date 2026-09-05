@@ -9,6 +9,7 @@ internal static class TechnicalTermCatalog
     /// </summary>
     internal static readonly IReadOnlyList<string> Terms = BuiltInVocabulary.Terms
         .Select(term => term.Written)
+        .Where(term => term.Any(character => character is >= 'A' and <= 'Z' or >= 'a' and <= 'z'))
         .Concat(
         [
             "Arc", "Bash", "branch", "cache", "CHANGELOG", "Chrome", "CI", "CLI", "commit",

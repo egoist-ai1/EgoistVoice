@@ -37,13 +37,20 @@ public partial class App
     private static readonly Brush RecorderAccent = new SolidColorBrush(Color.FromRgb(0xE1, 0x1D, 0x2F));
     private static readonly Brush RecorderDone = new SolidColorBrush(Color.FromRgb(0x4A, 0xC2, 0x6B));
 
-    private async Task RunCorpusRecorderAsync(string corpusDirectory)
+    private async Task RunCorpusRecorderAsync(string corpusDirectory, string? profilePath)
     {
         try
         {
             corpusDirectory = Path.GetFullPath(corpusDirectory);
             var script = CorpusScript.Load(corpusDirectory);
-            if (script.Lines.Count == 0)
+            var profile = string.IsNullOrWhiteSpace(profilePath)
+                ? null
+                : CorpusBenchmarkProfile.Load(Path.GetFullPath(profilePath), script);
+            var selectedIds = profile?.SelectedIds.ToHashSet(StringComparer.Ordinal);
+            var lines = selectedIds is null
+                ? script.Lines
+                : script.Lines.Where(line => selectedIds.Contains(line.Id)).ToArray();
+            if (lines.Count == 0)
             {
                 MessageBox.Show(
                     $"В {CorpusScript.FileName} нет ни одной фразы.",
@@ -52,7 +59,7 @@ public partial class App
                 return;
             }
 
-            var window = new CorpusRecorderWindow(script, corpusDirectory);
+            var window = new CorpusRecorderWindow(script, lines, corpusDirectory, profile?.Id);
             window.Closed += (_, _) => Shutdown();
             window.Show();
             window.Activate();
@@ -76,6 +83,7 @@ public partial class App
     private sealed class CorpusRecorderWindow : Window
     {
         private readonly CorpusScript _script;
+        private readonly IReadOnlyList<CorpusScriptLine> _lines;
         private readonly string _corpusDirectory;
         // Corpus recording is the one explicit mode allowed to persist WAV. Normal dictation uses
         // the same WASAPI path but remains memory-only.
@@ -102,13 +110,21 @@ public partial class App
 
         private readonly DispatcherTimer _takeCeiling = new() { Interval = MaxTakeDuration };
 
-        public CorpusRecorderWindow(CorpusScript script, string corpusDirectory)
+        public CorpusRecorderWindow(
+            CorpusScript script,
+            IReadOnlyList<CorpusScriptLine> lines,
+            string corpusDirectory,
+            string? profileId)
         {
             _script = script;
+            _lines = lines;
             _corpusDirectory = corpusDirectory;
-            _index = Math.Min(script.FirstUnrecorded(corpusDirectory), script.Lines.Count - 1);
+            _index = 0;
+            AdvancePastRecorded();
 
-            Title = "Egoist Voice — начитка корпуса";
+            Title = profileId is null
+                ? "Egoist Voice — начитка корпуса"
+                : $"Egoist Voice — начитка {profileId}";
             Width = 900;
             Height = 520;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
@@ -205,19 +221,19 @@ public partial class App
 
         private void Render()
         {
-            if (_index >= _script.Lines.Count)
+            if (_index >= _lines.Count)
             {
                 _setTitle.Text = "Готово";
                 _setHint.Text = string.Empty;
                 _phrase.Text = "Все фразы записаны. Можно закрывать окно и запускать замер.";
                 _phrase.Foreground = RecorderDone;
-                _progress.Text = $"{_script.Lines.Count} из {_script.Lines.Count}";
+                _progress.Text = $"{_lines.Count} из {_lines.Count}";
                 _status.Text = string.Empty;
                 _keys.Text = "Esc — выйти";
                 return;
             }
 
-            var line = _script.Lines[_index];
+            var line = _lines[_index];
             if (_script.Sets.TryGetValue(line.Set, out var set))
             {
                 _setTitle.Text = set.Title;
@@ -237,7 +253,9 @@ public partial class App
 
             _phrase.Text = line.Text;
             _phrase.Foreground = RecorderText;
-            _progress.Text = $"{_index + 1} из {_script.Lines.Count}   ·   записано {_script.RecordedCount(_corpusDirectory)}";
+            var recorded = _lines.Count(candidate =>
+                File.Exists(Path.Combine(_corpusDirectory, candidate.Audio)));
+            _progress.Text = $"{_index + 1} из {_lines.Count}   ·   записано {recorded}";
             _status.Text = File.Exists(Path.Combine(_corpusDirectory, line.Audio))
                 ? "Эта фраза уже записана — пробел перезапишет её."
                 : string.Empty;
@@ -258,7 +276,7 @@ public partial class App
                 if (_index > 0)
                 {
                     _index--;
-                    _currentSet = _script.Lines[_index].Set;
+                    _currentSet = _lines[_index].Set;
                     Render();
                 }
 
@@ -267,7 +285,7 @@ public partial class App
 
             // IsRepeat: удержание пробела шлёт поток KeyDown, и без этой проверки запись
             // перезапускалась бы десятки раз в секунду.
-            if (e.Key != Key.Space || e.IsRepeat || _isRecording || _isBusy || _index >= _script.Lines.Count)
+            if (e.Key != Key.Space || e.IsRepeat || _isRecording || _isBusy || _index >= _lines.Count)
             {
                 return;
             }
@@ -322,7 +340,7 @@ public partial class App
             try
             {
                 var result = await _capture.StopAsync(CancellationToken.None);
-                var line = _script.Lines[_index];
+                var line = _lines[_index];
                 var target = Path.Combine(_corpusDirectory, line.Audio);
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                 var capturedPath = result.Path ?? throw new InvalidDataException("Запись корпуса не создала WAV-файл.");
@@ -331,6 +349,7 @@ public partial class App
 
                 _currentSet = line.Set;
                 _index++;
+                AdvancePastRecorded();
                 Render();
 
                 // Отказ гейта тишины сообщается, но фразу не блокирует: слишком тихая запись
@@ -359,6 +378,15 @@ public partial class App
             finally
             {
                 _isBusy = false;
+            }
+        }
+
+        private void AdvancePastRecorded()
+        {
+            while (_index < _lines.Count &&
+                File.Exists(Path.Combine(_corpusDirectory, _lines[_index].Audio)))
+            {
+                _index++;
             }
         }
 

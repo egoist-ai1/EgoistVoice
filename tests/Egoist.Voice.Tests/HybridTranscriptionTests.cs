@@ -1,3 +1,4 @@
+using Egoist.Voice.Core;
 using Egoist.Voice.Services;
 
 namespace Egoist.Voice.Tests;
@@ -52,6 +53,26 @@ public sealed class HybridTranscriptionTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             service.TranscribeAsync("audio.wav", null, cancellation.Token));
+    }
+
+    [Fact]
+    public async Task Benchmark_observation_exposes_raw_candidates_without_changing_selection()
+    {
+        using var service = CreateService(
+            new FakeEngine("GigaAM", Result("Открой гитхаб.")),
+            new FakeEngine("Whisper", Result("Открой GitHub.")));
+        await service.WarmUpAsync(null, CancellationToken.None);
+        await Task.Delay(20);
+
+        var observation = await service.TranscribeObservedAsync("audio.wav", CancellationToken.None);
+
+        Assert.Equal("Открой гитхаб.", observation.Primary!.Text);
+        Assert.Equal("Открой GitHub.", observation.Fallback!.Text);
+        Assert.Equal(observation.Result.Text, observation.SelectedEngine == "Whisper"
+            ? observation.Fallback.Text
+            : observation.Primary.Text);
+        Assert.Equal(MixedSpeechTrigger.RussifiedTerm, observation.FallbackTrigger);
+        Assert.True(observation.FallbackRan);
     }
 
     [Fact]

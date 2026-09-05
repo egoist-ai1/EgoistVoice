@@ -50,7 +50,30 @@ Runtime отклоняет неизвестные поля/kind, дубли, н�
 
 - `corpus-script-v2.schema.json`;
 - `corpus-reference-v2.schema.json`;
-- `benchmark-report-v2.schema.json`.
+- `corpus-profile-v1.schema.json`;
+- `benchmark-report-v2.schema.json` — чтение прежних frozen reports;
+- `benchmark-report-v3.schema.json` — stage-attributed reports.
+
+## Быстрый problem-focused baseline
+
+Перед полным корпусом можно записать профиль `quality-challenge-v1`: 42
+уникальных фраз из того же `script.jsonl`, сгруппированных в восемь
+пересекающихся buckets — `quiet`, `short-onset`, `sibilant-softness`,
+`merged-vowel`, `critical-phrase`, `household-noise`, `pure-ru` и
+`ru-en-entity`. Это не отдельный искусственный corpus и не замена полным 350
+WAV: выбранные файлы позднее остаются частью полного EV-2201.
+
+Из корня проекта:
+
+```powershell
+.\scripts\run-corpus-baseline.ps1 -Profile quality-challenge -Record
+```
+
+Recorder показывает только выбранные 42 фразы и продолжает с первого
+отсутствующего WAV. После записи команда проверяет именно этот immutable
+profile и создаёт `artifacts/bench/quality-challenge-baseline.json`. Три первых
+фразы фиксируют варианты `Ну и уйди` с target `Ну и`; они произносятся тихо и
+естественно, без нарочитого разделения слов.
 
 ## Запись и baseline одной командой
 
@@ -100,7 +123,7 @@ Runtime отклоняет неизвестные поля/kind, дубли, н�
 
 ## Что содержит отчёт
 
-`benchmark-report-v2` хранит stable clip IDs и числовые признаки, но никогда не сериализует
+`benchmark-report-v3` хранит stable clip IDs и числовые признаки, но никогда не сериализует
 reference/hypothesis, WAV, абсолютные пути или exception message. В отчёте есть:
 
 - общий и per-set WER/CER, failed clips;
@@ -108,10 +131,20 @@ reference/hypothesis, WAV, абсолютные пути или exception messag
 - precision/recall команды перевода;
 - punctuation F1 и точность start/end boundaries;
 - p50/p95 latency;
+- per-stage p50/p95 для capture analysis, raw GigaAM, conditional Whisper,
+  selection, normalization и всего pipeline;
+- stable capture/gate/attribution codes, fallback request/run/unavailable
+  counters и aggregate bucket metrics;
+- UI-dispatcher heartbeat p50/p95/max и число stalls больше 100 мс;
 - SHA-256 корпуса, скрипта, executable и pinned моделей;
 - версия runtime/OS, CPU/architecture и resource snapshots;
 - точные параметры текущего hybrid pipeline, contextual-bias version/score и явный
   `modelDownloadAllowed=false`.
+
+Raw GigaAM/Whisper/selected/final strings сравниваются с reference только в
+памяти процесса. В JSON уходят исключительно error counts, engine/trigger codes
+и timings. Даже problem fixture нельзя прикладывать к issue вместе с WAV или
+`reference.jsonl`.
 
 `CorpusGateTests` сравнивает только отчёты с одинаковым corpus SHA-256 и останавливает регрессию,
 если общий/per-set WER вырос более чем на 0,5 п.п. или p95 latency — более чем на 15 %. Отсутствие

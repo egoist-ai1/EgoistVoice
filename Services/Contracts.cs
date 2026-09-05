@@ -3,6 +3,7 @@ namespace Egoist.Voice.Services;
 public interface IAudioCaptureService : IDisposable
 {
     event EventHandler<float>? LevelChanged;
+    event EventHandler<AudioCaptureStateChangedEventArgs>? StateChanged;
 
     /// <summary>
     /// Completed 16 kHz mono session normalized to −1…1. Normal dictation consumes the same
@@ -10,9 +11,58 @@ public interface IAudioCaptureService : IDisposable
     /// </summary>
     event EventHandler<float[]>? SamplesAvailable;
 
+    AudioCaptureState GetState();
+    IReadOnlyList<MicrophoneDeviceInfo> GetCaptureDevices();
+    void SelectCaptureDevice(string? deviceId);
+    void PauseMonitoring();
+    void ResumeMonitoring();
+    void SuppressFeedbackAudio(TimeSpan duration);
+
     void Start();
     Task<AudioCaptureResult> StopAsync(CancellationToken cancellationToken);
     Task<string?> CancelAsync();
+}
+
+public sealed record MicrophoneDeviceInfo(
+    string Id,
+    string Name,
+    bool IsDefault);
+
+public sealed record AudioCaptureState(
+    string? SelectedDeviceId,
+    string DeviceName,
+    bool IsPaused,
+    bool IsMonitoring,
+    bool IsAvailable,
+    string? ErrorCode = null);
+
+public enum AudioCaptureChangeKind
+{
+    InventoryChanged,
+    DeviceChanged,
+    DefaultDeviceChanged,
+    Paused,
+    Resumed,
+    DeviceUnavailable
+}
+
+public sealed record AudioCaptureStateChangedEventArgs(
+    AudioCaptureState State,
+    AudioCaptureChangeKind Kind,
+    bool ActiveTakeCancelled,
+    string? UserMessage = null);
+
+public sealed class MicrophoneUnavailableException : InvalidOperationException
+{
+    public MicrophoneUnavailableException(string message)
+        : base(message)
+    {
+    }
+
+    public MicrophoneUnavailableException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
 }
 
 public sealed record AudioCaptureResult(
@@ -31,6 +81,17 @@ public interface ITranscriptionService : IDisposable
     Task<TranscriptionResult> TranscribeAsync(
         string audioPath,
         IProgress<ModelProgress>? progress,
+        CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Benchmark-only observation of the existing hybrid decision. The raw candidates stay in memory;
+/// callers may score them, but must never serialize their text.
+/// </summary>
+internal interface IBenchmarkTranscriptionService : ITranscriptionService
+{
+    Task<HybridTranscriptionObservation> TranscribeObservedAsync(
+        string audioPath,
         CancellationToken cancellationToken);
 }
 

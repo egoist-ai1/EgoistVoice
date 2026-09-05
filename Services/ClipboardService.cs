@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.ComponentModel;
 using System.Windows.Threading;
 using Application = System.Windows.Application;
 using Clipboard = System.Windows.Clipboard;
@@ -26,6 +27,9 @@ public sealed class ClipboardService : IRestorableClipboardService
     internal const string SessionFormat = "EgoistVoice.DictationSession";
 
     private const int Attempts = 6;
+    private const uint CfUnicodeText = 13;
+    private const uint GmemMoveable = 0x0002;
+    private const uint GmemZeroInit = 0x0040;
 
     public async Task CopyAsync(string text, CancellationToken cancellationToken) =>
         await CopyAsync(text, captureSnapshot: false, cancellationToken).ConfigureAwait(false);
@@ -86,11 +90,102 @@ public sealed class ClipboardService : IRestorableClipboardService
     {
         var previous = captureSnapshot ? CaptureSnapshot() : null;
 
-        var payload = new DataObject();
-        payload.SetData(System.Windows.DataFormats.UnicodeText, text);
-        payload.SetData(SessionFormat, sessionId);
-        Clipboard.SetDataObject(payload, copy: true);
+        WriteNativeClipboard(text, sessionId);
         return new ClipboardSnapshot(previous, sessionId, text);
+    }
+
+    /// <summary>
+    /// Writes the transcript through the Win32 clipboard API instead of WPF/OLE.
+    /// </summary>
+    /// <remarks>
+    /// <c>Clipboard.SetDataObject(..., copy: true)</c> first transfers OLE ownership and then
+    /// flushes delayed-rendered data. On affected Windows sessions the ownership transfer succeeds
+    /// but the flush repeatedly fails with CLIPBRD_E_CANT_OPEN, leaving Egoist Voice itself as the
+    /// clipboard owner and dropping every dictation. A Win32-owned global-memory block is already
+    /// durable after <see cref="SetClipboardData"/>, so it has no second flush phase to deadlock.
+    /// </remarks>
+    private static void WriteNativeClipboard(string text, string sessionId)
+    {
+        var textHandle = AllocateUnicodeClipboardData(text);
+        var sessionHandle = AllocateUnicodeClipboardData(sessionId);
+
+        try
+        {
+            if (!OpenClipboard(nint.Zero))
+            {
+                throw CreateClipboardException("OpenClipboard");
+            }
+
+            try
+            {
+                if (!EmptyClipboard())
+                {
+                    throw CreateClipboardException("EmptyClipboard");
+                }
+
+                if (SetClipboardData(CfUnicodeText, textHandle) == nint.Zero)
+                {
+                    throw CreateClipboardException("SetClipboardData(CF_UNICODETEXT)");
+                }
+                textHandle = nint.Zero; // Ownership transferred to Windows.
+
+                var sessionFormat = RegisterClipboardFormat(SessionFormat);
+                if (sessionFormat != 0 && SetClipboardData(sessionFormat, sessionHandle) != nint.Zero)
+                {
+                    sessionHandle = nint.Zero; // Marker is advisory; text comparison is the fallback.
+                }
+            }
+            finally
+            {
+                CloseClipboard();
+            }
+        }
+        finally
+        {
+            if (textHandle != nint.Zero)
+            {
+                GlobalFree(textHandle);
+            }
+            if (sessionHandle != nint.Zero)
+            {
+                GlobalFree(sessionHandle);
+            }
+        }
+    }
+
+    private static nint AllocateUnicodeClipboardData(string value)
+    {
+        var bytes = checked((value.Length + 1) * sizeof(char));
+        var handle = GlobalAlloc(GmemMoveable | GmemZeroInit, (nuint)bytes);
+        if (handle == nint.Zero)
+        {
+            throw new OutOfMemoryException("GlobalAlloc failed while preparing clipboard data.");
+        }
+
+        var pointer = GlobalLock(handle);
+        if (pointer == nint.Zero)
+        {
+            var exception = new Win32Exception(Marshal.GetLastWin32Error(), "GlobalLock failed while preparing clipboard data.");
+            GlobalFree(handle);
+            throw exception;
+        }
+
+        try
+        {
+            Marshal.Copy(value.ToCharArray(), 0, pointer, value.Length);
+        }
+        finally
+        {
+            GlobalUnlock(handle);
+        }
+
+        return handle;
+    }
+
+    private static ExternalException CreateClipboardException(string operation)
+    {
+        var error = Marshal.GetLastWin32Error();
+        return new ExternalException($"{operation} failed: {new Win32Exception(error).Message}", error);
     }
 
     /// <summary>
@@ -168,7 +263,10 @@ public sealed class ClipboardService : IRestorableClipboardService
             return false;
         }
 
-        Clipboard.SetDataObject(snapshot.Data!, copy: true);
+        // The same OLE flush that broke transcript delivery also breaks restoration after it has
+        // already made this process the owner. Keeping the materialized snapshot owned by this
+        // long-running tray process preserves every captured format without the failing flush.
+        Clipboard.SetDataObject(snapshot.Data!, copy: false);
         return true;
     }
 
@@ -254,4 +352,35 @@ public sealed class ClipboardService : IRestorableClipboardService
             ExternalException or ThreadStateException => true,
             _ => false
         };
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool OpenClipboard(nint newOwner);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseClipboard();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool EmptyClipboard();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern nint SetClipboardData(uint format, nint memoryHandle);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint RegisterClipboardFormat(string format);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern nint GlobalAlloc(uint flags, nuint bytes);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern nint GlobalLock(nint memoryHandle);
+
+    [DllImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GlobalUnlock(nint memoryHandle);
+
+    [DllImport("kernel32.dll")]
+    private static extern nint GlobalFree(nint memoryHandle);
 }

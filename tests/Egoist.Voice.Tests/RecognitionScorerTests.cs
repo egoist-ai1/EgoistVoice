@@ -143,6 +143,28 @@ public sealed class RecognitionScorerTests
     }
 
     [Fact]
+    public void Baseline_comparison_rejects_a_different_focused_profile_even_for_the_same_wavs()
+    {
+        var baseline = Report(wer: 0.08, p95: 400, ("ru-clean", 0.05)) with
+        {
+            Profile = new BenchmarkProfileSummary(
+                "quality-challenge-v1",
+                new string('a', 64),
+                10,
+                new Dictionary<string, int> { ["quiet"] = 10 })
+        };
+        var candidate = baseline with
+        {
+            Profile = baseline.Profile! with { Sha256 = new string('b', 64) }
+        };
+
+        var breaches = CorpusBenchmark.CompareToBaseline(baseline, candidate);
+
+        Assert.Single(breaches);
+        Assert.Contains("profile SHA-256", breaches[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Summary_groups_by_corpus_set_and_skips_failed_clips()
     {
         var entries = new[]

@@ -1,0 +1,114 @@
+{
+  "schema": "egoist.voice.public-proxy-sources/v1",
+  "corpusId": "public-proxy-v1",
+  "seed": 20260809,
+  "privacy": "local-only-no-transcripts-in-git",
+  "selection": {
+    "method": "lowest-sha256-priority-over-valid-rows",
+    "minTextCharacters": 4,
+    "minDurationSeconds": 0.25
+  },
+  "derivedSets": [
+    {
+      "id": "quiet",
+      "source": "fleurs",
+      "count": 250,
+      "transform": "volume=-18dB",
+      "purpose": "Reproducible low-level stress proxy; not a natural quiet-speaker corpus."
+    }
+  ],
+  "sources": [
+    {
+      "id": "fleurs",
+      "repository": "google/fleurs",
+      "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+      "config": "ru_ru",
+      "split": "test",
+      "license": "CC-BY-4.0",
+      "targetCount": 775,
+      "format": "fleurs-tsv-tar",
+      "textColumn": "transcription",
+      "audioColumn": "file_name",
+      "tsvColumns": [
+        "id",
+        "file_name",
+        "raw_transcription",
+        "transcription",
+        "phonemes",
+        "num_samples",
+        "gender"
+      ],
+      "files": [
+        {
+          "path": "data/ru_ru/test.tsv",
+          "bytes": 735258,
+          "sha256": "cd54f261220f49afbb4c128633a737eca4a22f6c0a8233d3cc891478d06676e6"
+        },
+        {
+          "path": "data/ru_ru/audio/test.tar.gz",
+          "bytes": 433142634,
+          "sha256": "8a0d6a0d23c3421f50c575bcf65d875cd19dadae2f7cabb415024f81b65178b1"
+        }
+      ]
+    },
+    {
+      "id": "ruls",
+      "repository": "istupakov/russian_librispeech",
+      "revision": "a519c986bb3342cc8136d3d14e5ad8a4f1e1a2bd",
+      "split": "test",
+      "license": "CC-BY-4.0 dataset card; OpenSLR 96 states public domain in the USA",
+      "targetCount": 750,
+      "format": "parquet-embedded-audio",
+      "textColumn": "text",
+      "audioColumn": "audio",
+      "files": [
+        {
+          "path": "data/test-00000-of-00001.parquet",
+          "bytes": 298186051,
+          "sha256": "1b35ad3cf42481a81ac5f9b69ea8533923ae79b12dc5f005173401b5c08445d1"
+        }
+      ]
+    },
+    {
+      "id": "tone",
+      "repository": "Vikhrmodels/ToneWebinars",
+      "revision": "a9bda19fb4bf501a744dc0a9c1c7d239b4c43ea4",
+      "split": "validation",
+      "license": "Apache-2.0",
+      "targetCount": 750,
+      "format": "parquet-embedded-audio",
+      "textColumn": "text",
+      "audioColumn": "audio",
+      "files": [
+        {
+          "path": "data/validation-00000-of-00027.parquet",
+          "bytes": 1778662366,
+          "sha256": "2189c6c628db230b77e7df2b261c9552974101ebbb5975b9fd32e5e6e805c308"
+        }
+      ]
+    },
+    {
+      "id": "sova",
+      "repository": "bond005/sova_rudevices",
+      "revision": "d9197eacfb0afff29d90a2d4e7d0d98a5dfb54bc",
+      "split": "test",
+      "license": "CC-BY-4.0",
+      "targetCount": 750,
+      "format": "parquet-embedded-audio",
+      "textColumn": "transcription",
+      "audioColumn": "audio",
+      "files": [
+        {
+          "path": "data/test-00000-of-00002-e3baf0fee2116c5f.parquet",
+          "bytes": 327354111,
+          "sha256": "800b6096353f6c584910c518ab0f6e7ae8149cc3c2dcb184aefd20061a8e5f2f"
+        },
+        {
+          "path": "data/test-00001-of-00002-70b0ab0d98d48e85.parquet",
+          "bytes": 331158091,
+          "sha256": "289289e1394f398fe0a45f9ac67dc0555b32278978f94036f00ee6dc3775f5d9"
+        }
+      ]
+    }
+  ]
+}

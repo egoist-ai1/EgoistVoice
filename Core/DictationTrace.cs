@@ -15,7 +15,8 @@ public enum DictationStage
     PrimaryDecoded,
     FallbackDecoded,
     TextFormatted,
-    Delivered
+    Delivered,
+    TextEnhanced
 }
 
 /// <summary>

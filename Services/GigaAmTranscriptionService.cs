@@ -18,6 +18,7 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
     private readonly IModelManager _modelManager;
     private readonly bool _ownsModelManager;
     private readonly bool _enableContextualBias;
+    private readonly int _inferenceThreads;
     private OfflineRecognizer? _recognizer;
     private volatile bool _disposed;
 
@@ -26,11 +27,13 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
 
     public GigaAmTranscriptionService(
         IModelManager? modelManager = null,
-        bool enableContextualBias = false)
+        bool enableContextualBias = false,
+        int? inferenceThreads = null)
     {
         _modelManager = modelManager ?? new ModelManager(ModelCatalog.CreateRequiredModels());
         _ownsModelManager = modelManager is null;
         _enableContextualBias = enableContextualBias;
+        _inferenceThreads = Math.Clamp(inferenceThreads ?? BenchmarkDecodeThreads, 1, 12);
     }
 
     public string EngineName => "GigaAM";
@@ -101,7 +104,17 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
             // The first two ONNX Runtime invocations pay for graph optimization and
             // arena setup and run several times slower than steady state. Prime them
             // here so the first real dictation does not carry that cost.
-            await Task.Run(() => PrimeRecognizer(initialized.Recognizer), cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await Task.Run(() => PrimeRecognizer(initialized.Recognizer), cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                ObjectDisposedException.ThrowIf(_disposed, this);
+            }
+            catch
+            {
+                initialized.Recognizer.Dispose();
+                throw;
+            }
             ContextualBiasActive = initialized.ContextualBiasActive;
             ContextualBiasPhraseCount = initialized.PhraseCount;
             _recognizer = initialized.Recognizer;
@@ -120,7 +133,7 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
         var stopwatch = Stopwatch.StartNew();
         await WarmUpAsync(progress, cancellationToken).ConfigureAwait(false);
         var samples = await Task.Run(
-            () => AudioSampleReader.ReadMono16Khz(audioPath),
+            () => AudioSampleReader.ReadMono16Khz(audioPath, cancellationToken),
             cancellationToken).ConfigureAwait(false);
 
         await _decodeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -311,7 +324,7 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
         return samples.ToArray();
     }
 
-    private static GigaAmRecognizerInitialization CreateRecognizer(
+    private GigaAmRecognizerInitialization CreateRecognizer(
         string encoder,
         string decoder,
         string joiner,
@@ -329,7 +342,7 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
                 // now the primary engine usually has the machine to itself. Two cores are deliberately
                 // left for the UI thread and the audio callback — starving those trades a faster decode
                 // for a stuttering capsule and dropped audio buffers.
-                NumThreads = Math.Clamp(Environment.ProcessorCount * 3 / 4, 2, 12),
+                NumThreads = _inferenceThreads,
                 Debug = 0,
 
                 // CPU on purpose. The INT8 encoder runs at roughly 50× real time here, and an RNN-T
@@ -444,10 +457,15 @@ internal sealed record GigaAmRecognizerInitialization(
 
 internal static class AudioSampleReader
 {
-    internal static float[] ReadMono16Khz(string path)
+    internal static float[] ReadMono16Khz(string path, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         using var reader = new AudioFileReader(path);
+        if (reader.TotalTime > TimeSpan.FromMinutes(30))
+            throw new InvalidOperationException("Разделите запись на фрагменты до 30 минут.");
         ISampleProvider provider = reader;
+        if (reader.WaveFormat.Channels > 2)
+            throw new InvalidOperationException("Для многоканальной записи сначала выберите дорожку или экспортируйте моно/стерео WAV.");
         if (reader.WaveFormat.Channels > 1)
         {
             provider = new StereoToMonoSampleProvider(provider);
@@ -465,6 +483,9 @@ internal static class AudioSampleReader
             int read;
             while ((read = provider.Read(buffer, 0, buffer.Length)) > 0)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (writer.WrittenCount + read > 30 * 60 * 16_000)
+                    throw new InvalidOperationException("Разделите запись на фрагменты до 30 минут.");
                 buffer.AsSpan(0, read).CopyTo(writer.GetSpan(read));
                 writer.Advance(read);
             }

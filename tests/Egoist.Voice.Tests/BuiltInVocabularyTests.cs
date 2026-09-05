@@ -184,7 +184,7 @@ public sealed class BuiltInVocabularyTests
     [Fact]
     public void Versioned_catalog_covers_ai_apps_companies_and_games()
     {
-        Assert.Equal("3", BuiltInVocabulary.Version);
+        Assert.Equal("5", BuiltInVocabulary.Version);
         var written = BuiltInVocabulary.Terms
             .Select(term => term.Written)
             .ToHashSet(StringComparer.Ordinal);
@@ -196,7 +196,7 @@ public sealed class BuiltInVocabularyTests
             "Figma", "Notion", "Cloudflare", "Stripe", "NVIDIA", "AMD", "Intel",
             "Apple", "Microsoft", "Steam", "Epic Games Store", "PlayStation", "Xbox",
             "Unreal Engine", "Unity", "Minecraft", "Counter-Strike", "Cyberpunk 2077",
-            "Egoist Voice", "EGOIST Translator"
+            "Egoist Voice", "EGOIST Translator", "Egoist Games", "Path of Exile 2", "Ростов-на-Дону"
         };
 
         Assert.All(expected, entity => Assert.Contains(entity, written));

@@ -1,0 +1,778 @@
+<Window x:Class="Egoist.Voice.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="Настройки — Egoist Voice"
+        Width="1040" Height="760" MinWidth="760" MinHeight="560"
+        WindowStartupLocation="CenterScreen" ResizeMode="CanResize"
+        Background="{DynamicResource AppBackgroundBrush}"
+        Foreground="{DynamicResource AppTextPrimaryBrush}"
+        FontFamily="{StaticResource UiFont}"
+        KeyDown="Window_OnKeyDown">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="32" ResizeBorderThickness="6"
+                            CornerRadius="10" GlassFrameThickness="0" />
+    </shell:WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+        </Style>
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource AppTextMutedBrush}" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="LineHeight" Value="17" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource AppSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="16" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AppControlBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppBorderStrongBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Shell" CornerRadius="8" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Shell" Property="Background" Value="{DynamicResource AppControlHoverBrush}" />
+                                <Setter TargetName="Shell" Property="BorderBrush" Value="{DynamicResource AppAccentBorderBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Shell" Property="Background" Value="{DynamicResource AppControlPressedBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Shell" Property="BorderBrush" Value="{DynamicResource AppAccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="CompactButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="MinWidth" Value="90" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+        </Style>
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{DynamicResource AppAccentBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AppAccentTextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppAccentBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="MinWidth" Value="144" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="PrimaryShell" CornerRadius="8"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="PrimaryShell" Property="Opacity" Value="0.9" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="PrimaryShell" Property="Opacity" Value="0.76" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="PrimaryShell" Property="BorderBrush" Value="{DynamicResource AppTextPrimaryBrush}" />
+                                <Setter TargetName="PrimaryShell" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="PrimaryShell" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource CompactButton}">
+            <Setter Property="Foreground" Value="{DynamicResource AppDangerBrush}" />
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="Margin" Value="0,5" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AppSurfaceRaisedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppBorderStrongBrush}" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource AppSelectionBrush}" />
+            <Style.Triggers>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource AppAccentBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AppSurfaceBrush}" />
+            <Setter Property="Padding" Value="11,8" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemSurface" Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemSurface" Property="Background" Value="{DynamicResource AppControlHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemSurface" Property="Background" Value="{DynamicResource AppSelectionBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{DynamicResource AppTextDisabledBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AppSurfaceRaisedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppBorderStrongBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="11,7" />
+            <Setter Property="MinHeight" Value="38" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="DropDownToggle" ClickMode="Press" Focusable="False"
+                                          Background="{TemplateBinding Background}"
+                                          Foreground="{TemplateBinding Foreground}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          Padding="{TemplateBinding Padding}"
+                                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="ComboSurface" Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="34" />
+                                                </Grid.ColumnDefinitions>
+                                                <ContentPresenter Margin="{TemplateBinding Padding}" VerticalAlignment="Center"
+                                                                  Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                                  ContentTemplate="{Binding SelectionBoxItemTemplate, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                                  ContentTemplateSelector="{Binding ItemTemplateSelector, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                                  TextElement.Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ComboBox}}" />
+                                                <Path Grid.Column="1" Width="8" Height="5" Stretch="Fill"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Stroke="{DynamicResource AppIconBrush}" StrokeThickness="1.3"
+                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                      Data="M 0,0 L 4,4 L 8,0" />
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ComboSurface" Property="BorderBrush" Value="{DynamicResource AppAccentBorderBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="ComboSurface" Property="BorderBrush" Value="{DynamicResource AppAccentBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   PopupAnimation="{DynamicResource AppPopupAnimation}" Focusable="False">
+                                <Border Margin="0,4,0,0" MinWidth="{Binding ActualWidth, ElementName=DropDownToggle}"
+                                        MaxHeight="240" Background="{DynamicResource AppSurfaceBrush}"
+                                        BorderBrush="{DynamicResource AppBorderStrongBrush}"
+                                        BorderThickness="1" CornerRadius="8" SnapsToDevicePixels="True">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                                  CanContentScroll="True" Margin="1">
+                                        <StackPanel IsItemsHost="True" />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="DropDownToggle" Property="BorderBrush" Value="{DynamicResource AppAccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="{DynamicResource AppTextMutedBrush}" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="Padding" Value="14,11" />
+            <Setter Property="Width" Value="168" />
+            <Setter Property="MinHeight" Value="42" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Tab" Background="Transparent" BorderBrush="Transparent"
+                                BorderThickness="3,0,0,0" Padding="{TemplateBinding Padding}"
+                                Margin="0,2,14,2" CornerRadius="0,8,8,0">
+                            <ContentPresenter ContentSource="Header" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Tab" Property="Background" Value="{DynamicResource AppControlHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+                                <Setter TargetName="Tab" Property="BorderBrush" Value="{DynamicResource AppAccentBrush}" />
+                                <Setter TargetName="Tab" Property="Background" Value="{DynamicResource AppSelectionBrush}" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Tab" Property="Background" Value="{DynamicResource AppSubtleFocusBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ProgressBar">
+            <Setter Property="Height" Value="10" />
+            <Setter Property="Background" Value="{DynamicResource AppMeterTrackBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AppAccentBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid x:Name="PART_Track" ClipToBounds="True">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="4" />
+                            <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}"
+                                    HorizontalAlignment="Left" CornerRadius="5" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Background="{DynamicResource AppTitleBarBrush}" MouseLeftButtonDown="TitleBar_OnMouseLeftButtonDown">
+            <TextBlock Text="EGOIST VOICE" Margin="14,0" VerticalAlignment="Center"
+                       FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AppIconBrush}" />
+            <Button Content="&#xE711;" FontFamily="Segoe Fluent Icons" FontSize="10"
+                    Width="44" Height="32" MinHeight="0" Padding="0" BorderThickness="0"
+                    HorizontalAlignment="Right" Click="CloseButton_OnClick"
+                    AutomationProperties.Name="Закрыть настройки" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
+        </Grid>
+
+        <Viewbox x:Name="ContentViewport" Grid.Row="1" Stretch="Uniform" StretchDirection="DownOnly"
+                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch" SizeChanged="ContentViewport_OnSizeChanged">
+        <Grid x:Name="SettingsContent" Margin="24,18,24,22">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="assets/EgoistVoice.png" Width="42" Height="52" Margin="0,0,14,0" VerticalAlignment="Center"
+                           RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.Name="Egoist Voice" />
+                    <StackPanel>
+                    <TextBlock Text="Центр управления" FontSize="28" FontWeight="SemiBold" />
+                    <TextBlock Text="Диктовка, микрофон, перевод и внешний вид — в одном окне."
+                               Style="{StaticResource Hint}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </StackPanel>
+                <Border Grid.Column="1" Background="{DynamicResource AppSurfaceBrush}"
+                        BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
+                        CornerRadius="10" Padding="12,8" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse x:Name="VoiceStatusDot" Width="8" Height="8" Margin="0,0,8,0"
+                                 Fill="{DynamicResource AppSuccessBrush}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="VoiceStatusText" Text="Готово к диктовке" FontSize="12.5"
+                                   FontWeight="SemiBold" VerticalAlignment="Center"
+                                   AutomationProperties.LiveSetting="Polite" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <TabControl x:Name="SettingsTabs" Grid.Row="1" TabStripPlacement="Left"
+                        Background="Transparent" BorderThickness="0" Padding="0"
+                        SelectionChanged="SettingsTabs_OnSelectionChanged">
+                <TabItem x:Name="GeneralTab" Header="Главная">
+                    <Border Padding="18,2,0,0">
+                        <StackPanel>
+                            <Border Style="{StaticResource Card}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,20,0">
+                                        <TextBlock x:Name="VoiceStateTitle" Text="Готово к диктовке" Style="{StaticResource SectionTitle}" />
+                                        <TextBlock x:Name="VoiceStateDetail" Text="Нажмите кнопку запуска или используйте назначенное сочетание."
+                                                   Style="{StaticResource Hint}" AutomationProperties.LiveSetting="Polite" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button x:Name="GeneralPauseButton" Content="Приостановить" Margin="0,0,8,0"
+                                                MinWidth="124" Padding="12,8"
+                                                Click="PauseButton_OnClick" AutomationProperties.Name="Приостановить микрофон" />
+                                        <Button x:Name="StartStopButton" Content="Начать"
+                                                Style="{StaticResource PrimaryButton}" Click="StartStopButton_OnClick"
+                                                AutomationProperties.Name="Начать диктовку" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="Кнопка запуска" Style="{StaticResource SectionTitle}" />
+                                    <TextBlock Text="Выберите привычный способ. Своя клавиша настраивается отдельной кнопкой."
+                                               Style="{StaticResource Hint}" Margin="0,0,0,12" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="ActivationCombo" SelectionChanged="ActivationCombo_OnSelectionChanged"
+                                                  AutomationProperties.Name="Кнопка запуска диктовки" />
+                                        <Button Grid.Column="1" Content="Своя клавиша…" Style="{StaticResource CompactButton}"
+                                                Click="CustomShortcutButton_OnClick"
+                                                AutomationProperties.Name="Настроить свою клавишу запуска" />
+                                    </Grid>
+                                    <TextBlock x:Name="ActivationStatus" Style="{StaticResource Hint}" Margin="0,9,0,0"
+                                               AutomationProperties.LiveSetting="Polite" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="Поведение приложения" Style="{StaticResource SectionTitle}" />
+                                    <CheckBox x:Name="RestoreClipboardCheck" Content="Возвращать содержимое буфера обмена"
+                                              Checked="GeneralSetting_OnChanged" Unchecked="GeneralSetting_OnChanged" />
+                                    <CheckBox x:Name="NotificationsCheck" Content="Показывать только важные уведомления"
+                                              Checked="GeneralSetting_OnChanged" Unchecked="GeneralSetting_OnChanged"
+                                              AutomationProperties.Name="Показывать важные уведомления" />
+                                    <TextBlock Text="Успешная диктовка не создаёт всплывающих уведомлений."
+                                               Style="{StaticResource Hint}" Margin="0,5,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Дополнительно" Style="{StaticResource SectionTitle}" />
+                                        <TextBlock Text="Словарь помогает закрепить имена, бренды и профессиональные термины."
+                                                   Style="{StaticResource Hint}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Content="Открыть словарь" Style="{StaticResource CompactButton}"
+                                                Click="OpenDictionaryButton_OnClick" AutomationProperties.Name="Открыть пользовательский словарь" />
+                                        <Button x:Name="ExitButton" Content="Выйти из приложения" Style="{StaticResource DangerButton}"
+                                                Click="ExitButton_OnClick" AutomationProperties.Name="Выйти из Egoist Voice" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </TabItem>
+
+                <TabItem x:Name="AudioTab" Header="Аудио">
+                    <Border Padding="18,2,0,0">
+                        <StackPanel>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="Микрофон" Style="{StaticResource SectionTitle}" />
+                                    <TextBlock Text="Системный вариант следует за устройством по умолчанию Windows. Выбранный вручную микрофон не подменяется другим при отключении."
+                                               Style="{StaticResource Hint}" Margin="0,0,0,12" />
+                                    <ComboBox x:Name="MicrophoneCombo" SelectionChanged="MicrophoneCombo_OnSelectionChanged"
+                                              AutomationProperties.Name="Микрофон" />
+                                    <TextBlock x:Name="MicrophoneStatus" Margin="0,10,0,0" FontSize="12.5"
+                                               Foreground="{DynamicResource AppTextMutedBrush}"
+                                               AutomationProperties.LiveSetting="Polite" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,24,0">
+                                        <TextBlock Text="Живой уровень" Style="{StaticResource SectionTitle}" />
+                                        <TextBlock Text="Говорите обычным голосом. Звук не записывается и не сохраняется для этого индикатора."
+                                                   Style="{StaticResource Hint}" Margin="0,0,0,14" />
+                                        <ProgressBar x:Name="LevelMeter" Minimum="0" Maximum="100" Value="0"
+                                                     AutomationProperties.Name="Уровень микрофона" />
+                                        <TextBlock x:Name="LevelLabel" Text="Тихо" Margin="0,8,0,0"
+                                                   FontSize="12.5" Foreground="{DynamicResource AppTextMutedBrush}" />
+                                    </StackPanel>
+                                    <Button x:Name="PauseButton" Grid.Column="1" MinWidth="156"
+                                            VerticalAlignment="Center"
+                                            Click="PauseButton_OnClick" Content="Приостановить"
+                                            AutomationProperties.Name="Приостановить микрофон" />
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="Звуковые сигналы" Style="{StaticResource SectionTitle}" />
+                                    <TextBlock Text="Короткие сигналы подтверждают начало, остановку и ошибку. Планировщик исключает их из окна распознавания."
+                                               Style="{StaticResource Hint}" Margin="0,0,0,6" />
+                                    <CheckBox x:Name="SoundCheck" Content="Использовать звуковые сигналы"
+                                              Checked="GeneralSetting_OnChanged" Unchecked="GeneralSetting_OnChanged"
+                                              AutomationProperties.Name="Использовать звуковые сигналы" />
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="56" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Slider x:Name="SoundVolumeSlider" Minimum="0" Maximum="1"
+                                                SmallChange="0.05" LargeChange="0.1" VerticalAlignment="Center"
+                                                ValueChanged="SoundVolumeSlider_OnValueChanged"
+                                                AutomationProperties.Name="Громкость звуковых сигналов" />
+                                        <TextBlock x:Name="SoundVolumeLabel" Grid.Column="1" Text="40%"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                   Style="{StaticResource Hint}" />
+                                        <Button x:Name="SoundPreviewButton" Grid.Column="2" Content="Прослушать"
+                                                Style="{StaticResource CompactButton}"
+                                                Click="SoundPreviewButton_OnClick"
+                                                AutomationProperties.Name="Прослушать звуковой сигнал" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </TabItem>
+
+                <TabItem x:Name="RecognitionTab" Header="Распознавание">
+                    <Border Padding="18,2,0,0">
+                        <StackPanel>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="Как оформить диктовку" Style="{StaticResource SectionTitle}" />
+                                    <DockPanel Margin="0,0,0,10"><Button DockPanel.Dock="Right" Content="Настроить Qwen" Click="OpenModelsTab_OnClick" Style="{StaticResource CompactButton}" /><TextBlock x:Name="RuntimeProfileText" Style="{StaticResource Hint}" VerticalAlignment="Center" /></DockPanel>
+                                    <ComboBox x:Name="FormattingModeCombo" SelectionChanged="FormattingMode_OnChanged"
+                                              AutomationProperties.Name="Режим оформления диктовки">
+                                        <ComboBoxItem Content="Быстро · обычная диктовка" Tag="fast" />
+                                        <ComboBoxItem Content="Qwen · пунктуация и абзацы" Tag="qwen" />
+                                    </ComboBox>
+                                    <TextBlock Text="Qwen получает только текст и сохраняет порядок слов. При изменении слов или ожидании дольше 2 секунд вставляется обычный результат. Исправить оговорки можно с просмотром во вкладке «Текст»."
+                                               Style="{StaticResource Hint}" Margin="0,10,0,0" />
+                                    <TextBlock x:Name="LastTimingText" Style="{StaticResource Hint}" Margin="0,10,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="Распознавание и вставка" Style="{StaticResource SectionTitle}" />
+                                    <CheckBox x:Name="MixedLanguageCheck" Content="Смешанная русско-английская речь" Checked="GeneralSetting_OnChanged" Unchecked="GeneralSetting_OnChanged" />
+                                    <CheckBox x:Name="NumbersCheck" Content="Преобразовывать числа в цифры" Checked="GeneralSetting_OnChanged" Unchecked="GeneralSetting_OnChanged" />
+                                    <CheckBox x:Name="VoiceCommandsCheck" Content="Выполнять голосовые команды" Checked="GeneralSetting_OnChanged" Unchecked="GeneralSetting_OnChanged" />
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="TranslationEngineCard" Style="{StaticResource Card}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,20,0">
+                                        <TextBlock Text="Локальный перевод" Style="{StaticResource SectionTitle}" />
+                                        <TextBlock x:Name="TranslationEngineStateText" Text="Запускаю движок перевода"
+                                                   FontSize="14" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="TranslationEngineDetailText"
+                                                   Text="Проверяю локальный пакет в фоне."
+                                                   Style="{StaticResource Hint}" Margin="0,5,0,0"
+                                                   AutomationProperties.LiveSetting="Polite" />
+                                    </StackPanel>
+                                    <Button x:Name="TranslationEngineRefreshButton" Grid.Column="1" Content="Проверить"
+                                            Style="{StaticResource CompactButton}" VerticalAlignment="Center"
+                                            Click="TranslationEngineRefreshButton_OnClick"
+                                            AutomationProperties.Name="Проверить движок перевода" />
+                                </Grid>
+                            </Border>
+
+                        </StackPanel>
+                    </Border>
+                </TabItem>
+
+                <TabItem x:Name="ModelsTab" Header="Модели">
+                    <Border Padding="18,2,0,0">
+                        <StackPanel>
+                            <Border Style="{StaticResource Card}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Модели распознавания" Style="{StaticResource SectionTitle}" />
+                                        <TextBlock x:Name="RecognitionModelStatusText" Text="GigaAM + Whisper"
+                                                   Style="{StaticResource Hint}" AutomationProperties.LiveSetting="Polite" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button x:Name="ShowModelDownloadsButton" Content="Показать загрузку"
+                                                Style="{StaticResource CompactButton}" Click="ShowModelDownloadsButton_OnClick" />
+                                        <Button x:Name="RetryModelDownloadsButton" Content="Повторить"
+                                                Style="{StaticResource CompactButton}" Click="RetryModelDownloadsButton_OnClick" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="Текстовая Qwen" Style="{StaticResource SectionTitle}" />
+                                <StackPanel Margin="0,12,0,0">
+                                    <TextBlock Text="Локальная модель оформляет текст и предлагает исправления. Подключение — через встроенный запуск, Ollama или LM Studio."
+                                               Style="{StaticResource Hint}" Margin="0,0,0,12" />
+                                    <Button x:Name="StartLocalQwenButton" Content="Запустить локальную Qwen" Click="StartLocalQwen_OnClick" HorizontalAlignment="Left" Margin="0,0,0,8" />
+                                    <CheckBox x:Name="AutoQwenCheck" Content="Запускать Qwen вместе с Voice"
+                                              Checked="AutoQwen_OnChanged" Unchecked="AutoQwen_OnChanged" />
+                                    <TextBlock x:Name="LocalQwenStatusText" Style="{StaticResource Hint}" Margin="0,0,0,12" />
+                                    <TextBlock Text="Адрес локального сервера" Style="{StaticResource Hint}" Margin="0,0,0,5" />
+                                    <DockPanel>
+                                        <Button x:Name="FindTextModelsButton" DockPanel.Dock="Right" Content="Найти модели"
+                                                Style="{StaticResource CompactButton}" Click="FindTextModels_OnClick" />
+                                        <TextBox x:Name="TextEndpointBox" MaxLength="120" LostFocus="TextEndpoint_OnLostFocus"
+                                                 AutomationProperties.Name="Адрес локального сервера текстовой модели" />
+                                    </DockPanel>
+                                    <ComboBox x:Name="TextModelCombo" Margin="0,10,0,0" SelectionChanged="TextModel_OnChanged"
+                                              AutomationProperties.Name="Текстовая модель" />
+                                    <TextBlock x:Name="TextModelStatusText" Style="{StaticResource Hint}" Margin="0,10,0,0"
+                                               AutomationProperties.LiveSetting="Polite" />
+                                </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </TabItem>
+
+                <TabItem x:Name="TextTab" Header="Текст">
+                    <Grid Margin="18,2,0,0">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Border Grid.Row="0" Grid.ColumnSpan="2" Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="Из речи — в готовый текст" Style="{StaticResource SectionTitle}" />
+                                    <TextBlock Text="Откройте аудиофайл или вставьте текст. Записи до 30 минут обрабатываются локально. Текст остаётся только в этом окне."
+                                               Style="{StaticResource Hint}" Margin="0,0,0,12" />
+                                    <WrapPanel>
+                                        <Button x:Name="OpenAudioButton" Content="Открыть аудио" Click="OpenAudio_OnClick" Margin="0,0,8,8" />
+                                        <Button x:Name="CancelTextButton" Content="Отменить" Click="CancelText_OnClick" IsEnabled="False" Margin="0,0,8,8" />
+                                        <Button x:Name="ClearTextButton" Content="Очистить" Click="ClearText_OnClick" Margin="0,0,0,8" />
+                                    </WrapPanel>
+                                    <TextBlock x:Name="TextWorkStatus" Text="WAV, MP3, M4A, FLAC · без загрузки в облако"
+                                               Style="{StaticResource Hint}" AutomationProperties.LiveSetting="Polite" />
+                                    <ProgressBar x:Name="TextWorkProgress" IsIndeterminate="True" Height="3" Margin="0,10,0,0"
+                                                 Visibility="Collapsed" AutomationProperties.Name="Обработка текста" />
+                                </StackPanel>
+                            </Border>
+                        <Border Grid.Row="1">
+                            <Border.Style>
+                                <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                    <Setter Property="Grid.ColumnSpan" Value="2" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Visibility, ElementName=TextResultCard}" Value="Visible">
+                                            <Setter Property="Grid.ColumnSpan" Value="1" />
+                                            <Setter Property="Margin" Value="0,0,8,0" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <TextBlock Text="Исходный текст" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox x:Name="EditorTextBox" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto" MaxLength="150000" TextChanged="EditorText_OnChanged"
+                                         AutomationProperties.Name="Исходный текст для редактирования" />
+                                <WrapPanel Grid.Row="2" Margin="0,12,0,0">
+                                    <Button x:Name="PunctuateTextButton" Content="Оформить" Click="PunctuateText_OnClick" Margin="0,0,8,8" />
+                                    <Button x:Name="CorrectTextButton" Content="Исправить оговорки" Click="CorrectText_OnClick" Margin="0,0,8,8" />
+                                    <Button x:Name="CopySourceButton" Content="Копировать" Click="CopySource_OnClick" Margin="0,0,0,8" />
+                                </WrapPanel>
+                                <TextBlock Grid.Row="3" Text="Qwen обработает весь текст или выделение. Исправления слов проверьте перед копированием." Style="{StaticResource Hint}" />
+                            </Grid>
+                        </Border>
+                        <Border x:Name="TextResultCard" Grid.Row="1" Grid.Column="1" Style="{StaticResource Card}" Margin="8,0,0,0" Visibility="Collapsed">
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <TextBlock Text="Результат Qwen" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBox x:Name="EditorResultBox" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto" MaxLength="16000" AutomationProperties.Name="Предложенный результат" />
+                                <Button Grid.Row="2" Content="Копировать результат" HorizontalAlignment="Left" Margin="0,12,0,0" Click="CopyResult_OnClick" />
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </TabItem>
+
+                <TabItem x:Name="AppearanceTab" Header="Внешний вид">
+                    <Border Padding="18,2,0,0">
+                        <StackPanel>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="Тема" Style="{StaticResource SectionTitle}" />
+                                    <TextBlock Text="Системная тема следует за настройкой приложений Windows. Светлая и тёмная темы фиксируются независимо."
+                                               Style="{StaticResource Hint}" Margin="0,0,0,12" />
+                                    <ComboBox x:Name="ThemeCombo" SelectionChanged="ThemeCombo_OnSelectionChanged"
+                                              AutomationProperties.Name="Тема приложения" />
+                                    <TextBlock x:Name="ThemeStatus" Style="{StaticResource Hint}" Margin="0,10,0,0"
+                                               AutomationProperties.LiveSetting="Polite" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="Движение" Style="{StaticResource SectionTitle}" />
+                                    <TextBlock x:Name="MotionStatus" Style="{StaticResource Hint}"
+                                               AutomationProperties.Name="Состояние анимаций" />
+                                    <TextBlock Text="Egoist Voice автоматически упрощает переходы и отключает непрерывные эффекты, когда Windows выключает анимации или включает высокую контрастность."
+                                               Style="{StaticResource Hint}" Margin="0,8,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </TabItem>
+
+                <TabItem x:Name="HistoryTab" Header="История">
+                    <Border Padding="18,2,0,0">
+                        <StackPanel>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="Последние записи" Style="{StaticResource SectionTitle}" />
+                                    <TextBlock Text="Слушайте и распознавайте три последние записи — в том числе после сбоя. «Получить текст» откроет результат в редакторе. Аудио хранится только на этом компьютере."
+                                               Style="{StaticResource Hint}" Margin="0,0,0,12" />
+                                    <CheckBox x:Name="HistorySaveCheck"
+                                              Content="Сохранять три последние записи"
+                                              ToolTip="Сохраняется только сжатое аудио, дата, длительность и статус. Текст, приложение и название микрофона не сохраняются."
+                                              Checked="HistorySave_OnChanged"
+                                              Unchecked="HistorySave_OnChanged"
+                                              AutomationProperties.Name="Сохранять три последние записи" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="На этом компьютере" Style="{StaticResource SectionTitle}" Margin="0" />
+                                            <TextBlock x:Name="HistorySummaryText" Style="{StaticResource Hint}" Margin="0,4,8,0" />
+                                        </StackPanel>
+                                        <Button x:Name="ClearHistoryButton" Grid.Column="1" Content="Очистить всё"
+                                                Style="{StaticResource CompactButton}" Click="ClearHistoryButton_OnClick"
+                                                AutomationProperties.Name="Очистить всю историю записей" />
+                                    </Grid>
+
+                                    <TextBlock x:Name="HistoryStateMessage" Grid.Row="1" Style="{StaticResource Hint}"
+                                               Margin="0,8,0,4" AutomationProperties.LiveSetting="Polite" />
+
+                                    <Grid Grid.Row="2" Margin="0,8,0,0">
+                                        <TextBlock x:Name="HistoryEmptyState"
+                                                   Text="Записей пока нет. Завершённая диктовка появится здесь автоматически."
+                                                   Style="{StaticResource Hint}" Padding="0,10,0,8" />
+                                        <ItemsControl x:Name="HistoryItemsControl">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{DynamicResource AppSurfaceRaisedBrush}"
+                                                            BorderBrush="{DynamicResource AppListBorderBrush}" BorderThickness="1"
+                                                            CornerRadius="10" Padding="12" Margin="0,0,0,8">
+                                                        <WrapPanel>
+                                                            <StackPanel Width="204" Margin="0,0,8,0" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding TimeLabel}" FontSize="14"
+                                                                           FontWeight="SemiBold" />
+                                                                <TextBlock Text="{Binding DetailLabel}" Style="{StaticResource Hint}"
+                                                                           Margin="0,3,8,0" />
+                                                            </StackPanel>
+                                                            <WrapPanel Margin="0,4,0,0" VerticalAlignment="Center">
+                                                            <Button Content="Получить текст" Tag="{Binding Id}"
+                                                                    Style="{StaticResource CompactButton}"
+                                                                    Click="HistoryTranscribeButton_OnClick"
+                                                                    ToolTip="Распознать запись заново и открыть текст в редакторе"
+                                                                    AutomationProperties.Name="Повторно распознать запись и открыть текст" />
+                                                            <Button Content="{Binding PlayLabel}"
+                                                                    Tag="{Binding Id}" Style="{StaticResource CompactButton}"
+                                                                    Click="HistoryPlayButton_OnClick"
+                                                                    AutomationProperties.Name="{Binding PlayAutomationName}" />
+                                                            <Button Content="Удалить" Tag="{Binding Id}"
+                                                                    Style="{StaticResource CompactButton}"
+                                                                    Click="HistoryDeleteButton_OnClick"
+                                                                    AutomationProperties.Name="Удалить запись" />
+                                                            </WrapPanel>
+                                                        </WrapPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </TabItem>
+            </TabControl>
+
+            <TextBlock Grid.Row="2" Text="Esc — скрыть в трей · настройки сохраняются автоматически"
+                       Style="{StaticResource Hint}" HorizontalAlignment="Right" Margin="0,12,0,0" />
+        </Grid>
+        </Viewbox>
+    </Grid>
+</Window>

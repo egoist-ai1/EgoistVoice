@@ -1,145 +1,96 @@
 <div align="center">
-  <img src="assets/EgoistVoice-icon-master.png" width="112" alt="Логотип Egoist Voice" />
+  <img src="assets/EgoistVoice.png" alt="Egoist Voice" width="104" height="104">
   <h1>Egoist Voice</h1>
-  <p><strong>Говорите. Текст уже там.</strong></p>
-  <p>Локальная русская диктовка и голосовой перевод для Windows 10/11.</p>
-
+  <p><strong>Говорите. Текст появляется там, где нужен.</strong></p>
+  <p>Локальная диктовка для Windows — в маленькой капсуле поверх рабочего стола.<br>Русская речь, смешанные фразы и аккуратный текст без облачного аккаунта.</p>
   <p>
-    <a href="https://github.com/egoist-ai1/EgoistVoice/releases/tag/v2.2.0-preview.1"><img alt="Egoist Voice 2.2.0 Preview 1" src="https://img.shields.io/badge/release-2.2.0--preview.1-ff334f?style=for-the-badge" /></a>
-    <a href="https://github.com/egoist-ai1/EgoistVoice/actions/workflows/checks.yml"><img alt="Windows CI" src="https://img.shields.io/github/actions/workflow/status/egoist-ai1/EgoistVoice/checks.yml?branch=main&amp;style=for-the-badge&amp;label=CI" /></a>
-    <img alt="Windows 10 и 11 x64" src="https://img.shields.io/badge/Windows-10%20%7C%2011-2563eb?style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
-    <img alt="Локальная обработка" src="https://img.shields.io/badge/ASR-local-16a34a?style=for-the-badge" />
-    <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-7c3aed?style=for-the-badge" /></a>
+    <a href="https://github.com/egoist-ai1/EgoistVoice/releases/tag/v2.2.0-preview.2"><img alt="2.2 Preview 2" src="https://img.shields.io/badge/2.2-Preview_2-f22b49?style=flat-square&labelColor=171719"></a>
+    <img alt="Windows 10 и 11, x64" src="https://img.shields.io/badge/Windows-10_%C2%B7_11_x64-171719?style=flat-square">
+    <a href="LICENSE"><img alt="Исходники MIT" src="https://img.shields.io/badge/Исходники-MIT-171719?style=flat-square"></a>
   </p>
-
-  <p>
-    <a href="https://github.com/egoist-ai1/EgoistVoice/releases/download/v2.2.0-preview.1/EgoistVoice-Web-Setup-2.2.0.exe"><strong>Скачать Web Installer</strong></a>
-    ·
-    <a href="#полностью-офлайн-установка">Полностью офлайн</a>
-    ·
-    <a href="CHANGELOG.md">История изменений</a>
-    ·
-    <a href="https://boosty.to/eg01stgames"><strong>Поддержать автора</strong></a>
-  </p>
+  <p><a href="#скачать"><strong>↓ Скачать</strong></a> · <a href="docs/USER-GUIDE.md">Руководство</a> · <a href="docs/SCREENSHOTS.md">Скриншоты</a> · <a href="docs/releases/2.2.0-preview.2.md">Что нового</a> · <a href="https://boosty.to/eg01stgames">Поддержать</a></p>
 </div>
 
-![Egoist Voice — локальная диктовка для Windows](docs/images/egoist-voice-social.png)
+<p align="center"><img src="docs/images/preview2/capsule-dark.png" alt="Капсула во время записи" width="480"></p>
 
-> [!IMPORTANT]
-> `2.2.0-preview.1` — публичный unsigned field-test candidate. Исходники и точный payload прошли `480/480` тестов, проверку SHA-256 и download/resume fixture, но полный clean Windows Sandbox/Hyper-V lifecycle ещё не закрыт. Для стабильного канала используйте [2.1.0](https://github.com/egoist-ai1/EgoistVoice/releases/tag/v2.1.0).
+## Скачать
 
-## Зачем нужен Egoist Voice
+| | **Compact RU** | **Full + Qwen** |
+|---|---|---|
+| Для чего | Русская диктовка и перенос на другой ПК | Русская и смешанная речь, оформление текста и перевод |
+| Распознавание | GigaAM INT8, CPU | GigaAM + Whisper large-v3-turbo Q5, CPU / GPU |
+| Оформление | Словарь, числа и голосовые команды | Всё из Compact + Qwen3-4B Q4_K_M |
+| Перевод | Не включён | Hy-MT2-1.8B Q8 и локальный движок |
+| Поставка | EXE или portable ZIP; папка около **519 МБ** | EXE-загрузчик и большой офлайн-комплект |
+| Комплект | .NET и русская модель уже внутри | .NET, обе ASR-модели, Qwen, перевод и runtime |
+| Скачать | **[Установщик EXE](https://github.com/egoist-ai1/EgoistVoice/releases/download/v2.2.0-preview.2/EgoistVoice-Setup-Compact-RU-2.2.0-win-x64.exe)** · **[Portable ZIP](https://github.com/egoist-ai1/EgoistVoice/releases/download/v2.2.0-preview.2/EgoistVoice-Portable-RU-2.2.0-preview.2-win-x64.zip)** | **[Установщик Full + Qwen](https://github.com/egoist-ai1/EgoistVoice/releases/download/v2.2.0-preview.2/EgoistVoice-Full-Setup-2.2.0-preview.2.exe)** · **[Офлайн-комплект](docs/INSTALL.md#полная-версия-без-интернета)** |
 
-Egoist Voice превращает речь в текст прямо в активном приложении. Удерживаете `Mouse 5`, говорите, отпускаете — локальные модели распознают фразу, нормализуют пунктуацию и безопасно вставляют результат туда, где находится курсор.
+**Это предварительная неподписанная сборка.** Персональная точность, вся матрица GPU и Windows 10 ещё не проверены. [Стабильная 2.1.0](https://github.com/egoist-ai1/EgoistVoice/releases/tag/v2.1.0) остаётся доступна. Точные размеры, SHA-256 и откат — в [инструкции](docs/INSTALL.md).
 
-- **Никакого облачного ASR.** Аудио и распознанный текст не отправляются во внешние сервисы.
-- **Русский без ожидания Whisper.** GigaAM v3 работает основным движком; Whisper Large v3 Turbo подключается только для смешанной RU/EN речи.
-- **Технические термины из коробки.** GitHub, Docker, Claude Code, Vue.js, Egoist Voice и другие названия восстанавливаются детерминированно.
-- **Голосовой перевод.** Явная команда «переведи» использует локальный общий EGOIST Translation Engine; обычная диктовка остаётся независимой от его состояния.
-- **Безопасная вставка.** Voice не вставляет и не копирует текст в поля паролей, а пользовательский clipboard восстанавливается после доставки.
-- **Не мешает играм.** Боковая кнопка мыши не перехватывается, когда активно игровое приложение.
+Compact прошёл установку, распознавание и удаление в чистой Windows. Проверка установки Full была прервана; её полный цикл на новом ПК пока **не подтверждён**. [Проверки и ограничения выпуска](docs/releases/2.2.0-preview.2.md#ограничения-preview).
 
-## Как это работает
+## От голоса до текста
 
-```text
-Удержать Mouse 5 → сказать фразу → отпустить
-        ↓
-WASAPI в памяти → GigaAM → при необходимости Whisper
-        ↓
-словарь + команды + пунктуация → безопасная вставка
-        ↓
-«переведи …» → локальный EGOIST Translation Engine → вставка перевода
-```
+1. Откройте поле ввода в мессенджере, заметке, документе или редакторе.
+2. Нажмите **Mouse 5** или **Ctrl + Alt + Space**, произнесите фразу и завершите запись той же кнопкой.
+3. Egoist Voice распознает речь локально, применит обработку и вставит результат. Собственную клавишу можно назначить в меню.
 
-Запись запускается удержанием `Mouse 5`; резервная комбинация — `Ctrl + Alt + Space`. В tray можно выбрать Mouse 4, клавиатуру, совместный режим или собственную глобальную комбинацию.
+Капсула показывает запись, распознавание и результат. Меню открывается через значок в трее: микрофон, модели, оформление и история собраны в одном окне.
 
-## Интерфейс
+<p align="center"><img src="docs/images/preview2/control-center.png" alt="Центр управления: запуск, горячая клавиша и поведение приложения" width="960"></p>
 
-Капсула появляется над панелью задач только на время диктовки. Интерфейс полностью нативный: WPF, PerMonitorV2, Reduce Motion и High Contrast — без web view.
+## Возможности
 
-<table>
-  <tr>
-    <td width="50%"><strong>Слушаю</strong><br />Живая waveform и таймер записи.</td>
-    <td width="50%"><strong>Распознаю</strong><br />Единое спокойное состояние для коротких и длинных фраз.</td>
-  </tr>
-  <tr>
-    <td><img src="docs/v2/images/listening.png" alt="Egoist Voice записывает речь" /></td>
-    <td><img src="docs/v2/images/processing.png" alt="Egoist Voice распознаёт запись" /></td>
-  </tr>
-  <tr>
-    <td><strong>Вставлено</strong><br />Результат доставлен в активное поле.</td>
-    <td><strong>Настройка кнопки</strong><br />Mouse 5, Mouse 4, клавиатура или своя комбинация.</td>
-  </tr>
-  <tr>
-    <td><img src="docs/v2/images/success.png" alt="Текст успешно вставлен" /></td>
-    <td><img src="docs/v2/images/tray.png" alt="Меню выбора кнопки запуска Egoist Voice" /></td>
-  </tr>
-</table>
+- **Диктовка в активное приложение.** Возврат прежнего содержимого буфера, собственная горячая клавиша и пауза микрофона.
+- **Контроль звука.** Выбор устройства или системного микрофона, индикатор уровня и громкость сигналов.
+- **Личный словарь.** Имена, бренды и игровые термины в нужном написании. Подтверждённые варианты «Ростов-на-Дону», Egoist Games и Path of Exile 2 включены во встроенный словарь.
+- **Редактор текста.** Исходник и результат рядом, копирование и ручное исправление оговорок через локальную модель.
+- **Последние записи.** При включённой истории — три последних сжатых аудиозаписи: прослушать, повторно распознать или удалить.
+- **Чистый интерфейс.** Светлая, тёмная и системная темы, высокая контрастность, меню без общей вертикальной прокрутки.
 
-## Установка
+<p align="center"><img src="docs/images/preview2/text-editor.png" alt="Редактор Full: исходник и результат обработки" width="960"></p>
 
-### Web Installer — рекомендуется
+## Как работает Qwen
 
-1. Скачайте [`EgoistVoice-Web-Setup-2.2.0.exe`](https://github.com/egoist-ai1/EgoistVoice/releases/download/v2.2.0-preview.1/EgoistVoice-Web-Setup-2.2.0.exe) — около 75 КБ.
-2. Запустите файл. Он скачает около 3,19 ГБ из закреплённого GitHub Release.
-3. Bootstrapper возобновляет оборванную загрузку, проверяет размер и SHA-256 каждого файла и только затем запускает установку.
-4. После успешной установки временный download cache удаляется автоматически. При сбое он сохраняется для продолжения.
+Речь распознают **GigaAM и Whisper**. **Текстовая Qwen3-4B** получает уже распознанный текст и оформляет регистр, пунктуацию и абзацы. Это отдельная модель от Qwen TTS в VoiceStudio; звук она не переслушивает.
 
-Нужны Windows 10/11 x64 и не менее 14 ГБ свободного места для временных файлов и чистой Full Offline установки. .NET и Python отдельно устанавливать не требуется.
+Автоматическая обработка ограничена **2 секундами**. Если модель недоступна, задерживается или меняет защищённые данные, сохраняется исходный результат. Числа, ссылки и пути защищены проверками. Более свободное «Исправить оговорки» запускается вручную в редакторе: результат можно проверить перед копированием.
 
-### Полностью офлайн установка
+Словарь и форматирование помогают с известными ошибками, но не гарантируют восстановления любого неправильно услышанного слова. Для смешанной русско-английской речи в Full есть отдельный режим распознавания.
 
-Скачайте из одного release и положите в одну папку четыре файла:
+## Ваши данные
 
-```text
-EgoistVoice-Web-Setup-2.2.0.exe
-EgoistVoice-Setup-2.2.0-inner.exe
-EgoistVoice-Setup-2.2.0-inner-1.bin
-EgoistVoice-Setup-2.2.0-inner-2.bin
-```
+Аудио и текст обрабатываются на компьютере. После установки обычной диктовке не нужны облачный API, подписка или ключ. EXE-загрузчик Full получает файлы через интернет, если их нет рядом; скачивание моделей из меню тоже требует сети.
 
-Запустите `EgoistVoice-Web-Setup-2.2.0.exe`. Bootstrapper увидит локальный payload, проверит его и не будет обращаться к сети. Для жёсткого offline-режима можно запустить `EgoistVoice-Web-Setup-2.2.0.exe --offline`.
+Свежие Compact и Full Preview 2 поставляются с выключенным сохранением аудио. При обновлении Full прежняя настройка сохраняется. В portable данные находятся в `Data` рядом с EXE, в Full — в `%LOCALAPPDATA%\EgoistVoice`. Приложение не пишет аудио и распознанный текст в диагностические логи.
 
-Контрольные суммы находятся в `SHA256SUMS-2.2.0-preview.1.txt` на странице релиза.
+## Рассмотрите поближе
 
-> [!WARNING]
-> Сборка пока не подписана CA-trusted Authenticode-сертификатом. SmartScreen может показать предупреждение, а Smart App Control — заблокировать запуск. Не отключайте системную защиту ради установки; сверяйте SHA-256 или дождитесь подписанного релиза.
+| | |
+|---|---|
+| [![Аудио](docs/images/preview2/audio.png)](docs/SCREENSHOTS.md#аудио) | [![Модели](docs/images/preview2/models.png)](docs/SCREENSHOTS.md#модели) |
+| **Микрофон и уровень звука** | **ASR и локальная Qwen** |
+| [![История](docs/images/preview2/history.png)](docs/SCREENSHOTS.md#история) | [![Светлая тема](docs/images/preview2/light-theme.png)](docs/SCREENSHOTS.md#темы) |
+| **Повторная транскрибация** | **Светлая тема и компактное окно** |
 
-## Что нового в 2.2 Preview
+Снимки показывают действующий интерфейс Full на демонстрационных данных. В диагностическом режиме микрофон приостановлен; статусы на снимке не являются отчётом об установленной системе. [Все скриншоты →](docs/SCREENSHOTS.md)
 
-- один Full Offline payload включает GigaAM, условный Whisper, CUDA/Vulkan/CPU runtime и закреплённый EGOIST Translation Engine 1.0.0;
-- диктовка работает при отсутствующем или неисправном движке перевода;
-- общий движок устанавливается owner-safe и не удаляется, пока его использует другой EGOIST-продукт;
-- inline-команды пунктуации не ломают обычные выражения вроде «точка входа» и идентификаторы `Vue.js`, `example.com`, `config.json`;
-- варианты произношения названий продуктов приводятся к `Egoist Voice` и `EGOIST Translator`;
-- новый web/offline bootstrapper использует только version-pinned GitHub assets и запускает внутренний installer после полной hash-проверки.
+- [Установка, офлайн-комплект и SHA-256](docs/INSTALL.md)
+- [Горячие клавиши, словарь, Qwen и решение проблем](docs/USER-GUIDE.md)
+- [Изменения и проверка Preview 2](docs/releases/2.2.0-preview.2.md)
+- [Сборка из исходников](docs/BUILD.md)
+- [Сообщить об ошибке](https://github.com/egoist-ai1/EgoistVoice/issues/new?template=bug_report.yml)
 
-Полные технические заметки: [2.2.0-preview.1](docs/releases/2.2.0-preview.1.md) и [CHANGELOG](CHANGELOG.md).
+## Для разработчиков
 
-## Приватность и безопасность
-
-- обычная диктовка и перевод выполняются локально после установки;
-- приложение не логирует аудио, распознанный или переведённый текст;
-- парольные поля и чувствительные цели обрабатываются fail-closed;
-- downloader принимает payload только по HTTPS из закреплённого release tag, разрешает редиректы лишь на GitHub asset hosts и проверяет SHA-256 до запуска;
-- модели, runtime и сторонние библиотеки сохраняют собственные лицензии — см. [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
-
-## Технологии и проверка
-
-.NET 8 · WPF · NAudio/WASAPI · GigaAM v3 · Whisper Large v3 Turbo · HY-MT2 · llama.cpp · Inno Setup
+**WPF · .NET 8 · C# · Windows x64.** Закреплённый клиент перевода включён в `vendor/translation-client`; соседний checkout для сборки приложения не нужен. Большие модели поставляются через Releases.
 
 ```powershell
-dotnet test .\Egoist.Voice.sln -c Release
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-EgoistVoiceWebInstaller.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-EgoistVoiceWebInstaller.ps1
+dotnet restore Egoist.Voice.sln
+dotnet test Egoist.Voice.sln -c Release
+dotnet publish Egoist.Voice.csproj -c Release -r win-x64 --self-contained true
 ```
 
-Кандидат проходит 480 source/release tests, проверку embedded manifest и всех payload SHA-256, PE identity bootstrapper и локальный HTTP fixture с оборванной загрузкой и `Range` resume. Installer execution, upgrade, coexistence и uninstall на чистых Windows остаются отдельным release gate.
+В опубликованном снимке **634 теста прошли, пропусков нет**. Это проверка программных контрактов, а не метрика точности речи. Проверки установщиков и ограничения перечислены в release notes.
 
-## Поддержать автора
-
-Egoist Voice — бесплатный открытый продукт мастерской **Egoist Ai One**. Если приложение экономит вам время, можно поддержать дальнейшую разработку, тестовые стенды и подпись будущих релизов на [Boosty](https://boosty.to/eg01stgames).
-
-## Лицензии
-
-Исходный код — [MIT](LICENSE). Речевые модели, GPU runtime и нативные библиотеки распространяются по собственным лицензиям, перечисленным в [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Исходники — [MIT](LICENSE). Модели и библиотеки — по [отдельным лицензиям](THIRD-PARTY-NOTICES.md). Сделано **EGOIST**.

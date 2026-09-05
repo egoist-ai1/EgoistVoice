@@ -4,6 +4,37 @@ namespace Egoist.Voice.Core;
 
 public static class ModelProgressFormatter
 {
+    public static RecognitionModelPresentation ControlCenter(
+        bool allModelsReady,
+        ModelTransferProgress? progress)
+    {
+        if (allModelsReady)
+        {
+            return new RecognitionModelPresentation(
+                "GigaAM + Whisper · готовы к работе",
+                IsFailure: false,
+                ShowProgress: false,
+                CanRetry: false);
+        }
+
+        if (progress?.Stage == ModelTransferStage.Failed)
+        {
+            return new RecognitionModelPresentation(
+                $"Не удалось подготовить {progress.ModelName}. Повторите загрузку.",
+                IsFailure: true,
+                ShowProgress: false,
+                CanRetry: true);
+        }
+
+        return new RecognitionModelPresentation(
+            progress is null || progress.Stage == ModelTransferStage.Waiting
+                ? "GigaAM + Whisper · ожидают подготовки"
+                : Detail(progress),
+            IsFailure: false,
+            ShowProgress: true,
+            CanRetry: false);
+    }
+
     public static string Capsule(ModelTransferProgress progress)
     {
         var stage = progress.Stage switch
@@ -70,3 +101,9 @@ public static class ModelProgressFormatter
 
     private static string Truncate(string value, int length) => value.Length <= length ? value : value[..(length - 1)] + "…";
 }
+
+public sealed record RecognitionModelPresentation(
+    string StatusText,
+    bool IsFailure,
+    bool ShowProgress,
+    bool CanRetry);

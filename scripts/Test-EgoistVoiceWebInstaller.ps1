@@ -1,13 +1,14 @@
-param()
+param([switch]$Apply)
+if (!$Apply) { @{planOnly=$true;scope='Loopback synthetic web-bootstrap fixture'} | ConvertTo-Json; exit 0 }
 
 $ErrorActionPreference = "Stop"
 $projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $source = Join-Path $projectRoot "installer\EgoistVoiceWebBootstrap.cs"
 $compiler = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
-$testRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("EgoistVoiceWebTest-" + [guid]::NewGuid().ToString("N"))
+$testRoot = Join-Path $projectRoot ("artifacts\web-fixture-" + [guid]::NewGuid().ToString("N"))
 $serverRoot = Join-Path $testRoot "server"
 $cacheRoot = Join-Path $testRoot "cache"
-$manifestSource = Join-Path $testRoot "TestManifest.cs"
+$manifestSource = Join-Path $testRoot "TestManifest.cs.txt"
 $testInstaller = Join-Path $testRoot "EgoistVoiceWebBootstrap.test.exe"
 $requestLog = Join-Path $testRoot "requests.log"
 
@@ -184,6 +185,6 @@ internal static class EgoistVoiceReleaseManifest
 }
 finally {
     if (Test-Path -LiteralPath $testRoot) {
-        Remove-Item -LiteralPath $testRoot -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Output ("Retained scoped fixture: " + $testRoot)
     }
 }

@@ -8,6 +8,11 @@
 
 $ErrorActionPreference = "Stop"
 $projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+$sourceRevision = (& git -C $projectRoot rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or $sourceRevision -notmatch '^[0-9a-f]{40}$') {
+    throw "Unable to resolve the source revision for the installer receipt."
+}
+$sourceTreeDirty = [bool](@(& git -C $projectRoot status --porcelain --untracked-files=all).Count)
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
     $csproj = Join-Path $projectRoot "Egoist.Voice.csproj"
@@ -48,7 +53,7 @@ $translationVendorRoot = Join-Path $projectRoot "vendor\translation-client\1.0.0
 $translationManifestPath = Join-Path $translationVendorRoot "manifest.json"
 
 if ([string]::IsNullOrWhiteSpace($TranslationEngineBundleRoot)) {
-    $TranslationEngineBundleRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot "..\egoist-translator\dist\engine-bundle-1.0.0"))
+    $TranslationEngineBundleRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot "..\egoist-translator\dist\engine-bundle-1.0.1"))
 } else {
     $TranslationEngineBundleRoot = [System.IO.Path]::GetFullPath($TranslationEngineBundleRoot)
 }
@@ -99,10 +104,21 @@ if (-not (Test-Path -LiteralPath $engineBundleManifestPath -PathType Leaf)) {
 }
 $engineBundleManifest = Get-Content -LiteralPath $engineBundleManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 if ([int]$engineBundleManifest.schemaVersion -ne 1 -or
-    [string]$engineBundleManifest.engineVersion -ne "1.0.0" -or
+    [string]$engineBundleManifest.engineVersion -ne "1.0.1" -or
     [string]$engineBundleManifest.selectedModelId -ne "hy-mt2-1.8b-q8_0" -or
-    [string]$engineBundleManifest.runtimeId -ne "llama-b10219-vulkan-win-x64") {
+    [string]$engineBundleManifest.runtimeId -ne "llama-b10219-vulkan-win-x64-vc143") {
     throw "Pinned translation engine bundle has an incompatible identity."
+}
+$requiredRuntimeDependencies = @(
+    "offline-pack/msvcp140.dll",
+    "offline-pack/vcruntime140.dll",
+    "offline-pack/vcruntime140_1.dll"
+)
+$declaredEnginePaths = @($engineBundleManifest.files | ForEach-Object { ([string]$_.path).Replace('\', '/').ToLowerInvariant() })
+foreach ($requiredDependency in $requiredRuntimeDependencies) {
+    if ($requiredDependency.ToLowerInvariant() -notin $declaredEnginePaths) {
+        throw "Pinned translation engine bundle is missing required VC143 runtime dependency: $requiredDependency"
+    }
 }
 $declaredBundleFiles = @{}
 foreach ($entry in @($engineBundleManifest.files)) {
@@ -156,6 +172,13 @@ dotnet publish $project `
     -p:Version=$Version `
     -o $staging
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE" }
+
+$managedApp = Join-Path $staging "Egoist.Voice.dll"
+if (-not (Test-Path -LiteralPath $managedApp -PathType Leaf)) {
+    throw "Published Voice payload is missing Egoist.Voice.dll"
+}
+$managedAppSha256 = (Get-FileHash -LiteralPath $managedApp -Algorithm SHA256).Hash.ToLowerInvariant()
+$managedAppBytes = (Get-Item -LiteralPath $managedApp).Length
 
 foreach ($translationAssembly in @("Egoist.Translation.Client.dll", "Egoist.Translation.Contracts.dll")) {
     if (-not (Test-Path -LiteralPath (Join-Path $staging $translationAssembly) -PathType Leaf)) {
@@ -347,6 +370,7 @@ try {
         "/DSourceDir=$staging" `
         "/DModelSourceDir=$modelStaging" `
         "/DEngineBundleDir=$TranslationEngineBundleRoot" `
+        "/DEngineVersion=$($engineBundleManifest.engineVersion)" `
         "/DOutputDir=$spanStaging" `
         "/DOutputBaseFilename=$innerInstallerBaseName" `
         "/DMyAppVersion=$Version" `
@@ -446,6 +470,10 @@ Set-Content -LiteralPath $checksum -Value "$hash  $([System.IO.Path]::GetFileNam
 [System.IO.File]::WriteAllText($buildReceipt, (([ordered]@{
     schemaVersion = 3
     applicationVersion = $Version
+    sourceRevision = $sourceRevision
+    sourceTreeDirty = $sourceTreeDirty
+    managedAppBytes = $managedAppBytes
+    managedAppSha256 = $managedAppSha256
     engineVersion = [string]$engineBundleManifest.engineVersion
     engineBundleManifestSha256 = $engineBundleManifestSha256
     selectedModelId = [string]$engineBundleManifest.selectedModelId

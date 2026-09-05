@@ -8,7 +8,10 @@
   #define ModelSourceDir "..\artifacts\release\model-staging"
 #endif
 #ifndef EngineBundleDir
-  #define EngineBundleDir "..\..\egoist-translator\dist\engine-bundle-1.0.0"
+  #define EngineBundleDir "..\..\egoist-translator\dist\engine-bundle-1.0.1"
+#endif
+#ifndef EngineVersion
+  #define EngineVersion "1.0.1"
 #endif
 #ifndef MyAppVersion
   #define MyAppVersion "2.1.0"
@@ -488,7 +491,7 @@ begin
   FootnoteLabel.Top := ScaleY(264);
   FootnoteLabel.Width := ScaleX(330);
   FootnoteLabel.Height := ScaleY(20);
-  FootnoteLabel.Caption := 'Windows 10/11 x64 · офлайн · 1,3 ГБ';
+  FootnoteLabel.Caption := 'Windows 10/11 x64 · офлайн · около 3,2 ГБ';
   StyleLabel(FootnoteLabel, 8, DisabledTextColor, False);
 end;
 
@@ -615,7 +618,7 @@ begin
     Parameters := '-NoProfile -ExecutionPolicy Bypass -File ' +
       QuotePowerShellArgument(ExpandConstant('{app}\setup\translation-engine\invoke-engine-bootstrap.ps1')) +
       ' -Action InstallOwner -OwnerId egoist-voice' +
-      ' -OwnerVersion {#MyAppVersion} -EngineVersion 1.0.0' +
+      ' -OwnerVersion {#MyAppVersion} -EngineVersion {#EngineVersion}' +
       ' -OwnerInstallPath ' + QuotePowerShellArgument(ExpandConstant('{app}')) +
       ' -OwnerUninstallKey ' + QuotePowerShellArgument('HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{79A42D80-A0E3-45CA-BBBC-E6B2E48EBBE2}_is1') +
       ' -HostPayload ' + QuotePowerShellArgument(ExpandConstant('{tmp}\egoist-translation-engine\host-payload')) +

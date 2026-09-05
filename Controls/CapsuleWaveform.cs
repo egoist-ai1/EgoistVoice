@@ -45,6 +45,12 @@ public sealed class CapsuleWaveform : FrameworkElement
     private readonly double[] _levels = new double[SampleCount];
     private double _opacityFactor = 1;
     private bool _highContrast;
+    private bool _lightTheme;
+    public bool LightTheme
+    {
+        get => _lightTheme;
+        set { if (_lightTheme == value) return; _lightTheme = value; InvalidateVisual(); }
+    }
 
     private static readonly Brush BodyBrush = CreateBodyBrush();
     private static readonly Brush HaloBrush = CreateHaloBrush();
@@ -136,6 +142,10 @@ public sealed class CapsuleWaveform : FrameworkElement
         if (_highContrast)
         {
             drawingContext.DrawGeometry(System.Windows.SystemColors.HighlightBrush, null, body);
+        }
+        else if (_lightTheme)
+        {
+            drawingContext.DrawGeometry(TryFindResource("AppAccentBrush") as Brush ?? Brushes.Firebrick, null, body);
         }
         else
         {

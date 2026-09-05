@@ -33,8 +33,7 @@ internal static class AppLog
         var isolatedPath = Environment.GetEnvironmentVariable("EGOISTVOICE_LOG_DIRECTORY");
         return string.IsNullOrWhiteSpace(isolatedPath)
             ? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "EgoistVoice",
+                Egoist.Voice.Core.VoiceRuntimeProfile.DataRoot,
                 "Logs")
             : Path.GetFullPath(isolatedPath);
     }

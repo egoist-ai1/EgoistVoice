@@ -32,8 +32,14 @@ public sealed class FeedbackSoundService : IDisposable
 
     private readonly Dictionary<FeedbackSound, byte[]> _cues = new();
     private readonly object _sync = new();
+    private readonly Action<TimeSpan>? _captureIsolation;
     private SoundPlayer? _player;
     private bool _disposed;
+
+    public FeedbackSoundService(Action<TimeSpan>? captureIsolation = null)
+    {
+        _captureIsolation = captureIsolation;
+    }
 
     public bool Enabled { get; set; } = true;
 
@@ -42,7 +48,17 @@ public sealed class FeedbackSoundService : IDisposable
 
     public void Play(FeedbackSound sound)
     {
-        if (_disposed || !Enabled || Volume <= 0)
+        Queue(sound, requireEnabled: true);
+    }
+
+    public void Preview(FeedbackSound sound)
+    {
+        Queue(sound, requireEnabled: false);
+    }
+
+    private void Queue(FeedbackSound sound, bool requireEnabled)
+    {
+        if (_disposed || requireEnabled && !Enabled || Volume <= 0)
         {
             return;
         }
@@ -61,6 +77,9 @@ public sealed class FeedbackSoundService : IDisposable
             }
         });
     }
+
+    internal static TimeSpan CaptureExclusionWindow(FeedbackSound sound) =>
+        CueDuration(sound) + TimeSpan.FromMilliseconds(120);
 
     private void PlayCore(FeedbackSound sound)
     {
@@ -89,6 +108,10 @@ public sealed class FeedbackSoundService : IDisposable
                 return;
             }
             _player.Stream = stream;
+            // The isolation window begins immediately before actual playback, not when the cue
+            // was queued. Thread-pool or synthesis delay therefore cannot move speaker audio
+            // beyond the capture fence.
+            _captureIsolation?.Invoke(CaptureExclusionWindow(sound));
             _player.Play();
         }
     }
@@ -104,13 +127,7 @@ public sealed class FeedbackSoundService : IDisposable
 
     internal static byte[] Synthesize(FeedbackSound sound, double volume)
     {
-        var (startHz, endHz, milliseconds) = sound switch
-        {
-            FeedbackSound.RecordingStarted => (660d, 990d, 60),
-            FeedbackSound.RecordingStopped => (880d, 620d, 60),
-            FeedbackSound.TextInserted => (1_180d, 1_180d, 30),
-            _ => (320d, 240d, 120)
-        };
+        var (startHz, endHz, milliseconds) = SoundShape(sound);
 
         var sampleCount = SampleRate * milliseconds / 1000;
         var samples = new short[sampleCount];
@@ -131,6 +148,18 @@ public sealed class FeedbackSoundService : IDisposable
 
         return BuildWave(samples);
     }
+
+    private static (double StartHz, double EndHz, int Milliseconds) SoundShape(FeedbackSound sound) =>
+        sound switch
+        {
+            FeedbackSound.RecordingStarted => (660d, 990d, 60),
+            FeedbackSound.RecordingStopped => (880d, 620d, 60),
+            FeedbackSound.TextInserted => (1_180d, 1_180d, 30),
+            _ => (320d, 240d, 120)
+        };
+
+    private static TimeSpan CueDuration(FeedbackSound sound) =>
+        TimeSpan.FromMilliseconds(SoundShape(sound).Milliseconds);
 
     private static double Envelope(int index, int count)
     {
