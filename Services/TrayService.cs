@@ -425,6 +425,9 @@ public sealed class TrayService : IDisposable
         }
     }
 
+    public void ShowSettingsWindowPublic() => ShowSettingsWindow();
+    public void ShowHistoryWindowPublic() => ShowHistoryWindow();
+
     private void ShowSettingsWindow()
     {
         var started = System.Diagnostics.Stopwatch.GetTimestamp();

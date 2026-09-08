@@ -301,6 +301,7 @@ public partial class SettingsWindow : Window
         {
             var settings = _settingsService.Load();
             LoadTextSettings(settings);
+            DirectFastModeCheck.IsChecked = settings.DirectGigaamFastMode;
             MixedLanguageCheck.IsChecked = settings.MixedLanguageMode && !VoiceRuntimeProfile.IsPortable;
             MixedLanguageCheck.IsEnabled = !VoiceRuntimeProfile.IsPortable;
             NumbersCheck.IsChecked = settings.ApplyNumberNormalization;
@@ -554,6 +555,7 @@ public partial class SettingsWindow : Window
         var current = _settingsService.Load();
         _settingsService.Save(current with
         {
+            DirectGigaamFastMode = DirectFastModeCheck.IsChecked == true,
             MixedLanguageMode = MixedLanguageCheck.IsChecked == true,
             ApplyNumberNormalization = NumbersCheck.IsChecked == true,
             ApplyVoiceCommands = VoiceCommandsCheck.IsChecked == true,

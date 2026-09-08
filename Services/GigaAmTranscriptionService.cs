@@ -503,7 +503,7 @@ internal sealed record DecodedAudioChunk(string Text, bool ParagraphBreakBefore)
 
 internal static class GigaAmAudioChunker
 {
-    private const int MaxSeconds = 22;
+    internal const int DefaultMaxSeconds = 35;
     private const int SearchSeconds = 4;
     private const int MinimumSilenceMilliseconds = 240;
     private const int ParagraphSilenceMilliseconds = 1050;
@@ -521,9 +521,12 @@ internal static class GigaAmAudioChunker
     private const double NoiseFloorPercentile = 0.15;
     private const double NoiseFloorHeadroom = 1.8;
 
-    internal static IReadOnlyList<GigaAmAudioChunk> Split(float[] samples, int sampleRate)
+    internal static IReadOnlyList<GigaAmAudioChunk> Split(
+        float[] samples,
+        int sampleRate,
+        int maxSeconds = DefaultMaxSeconds)
     {
-        var maxSamples = MaxSeconds * sampleRate;
+        var maxSamples = maxSeconds * sampleRate;
         if (samples.Length <= maxSamples)
         {
             return [new GigaAmAudioChunk(samples.AsMemory(), false)];

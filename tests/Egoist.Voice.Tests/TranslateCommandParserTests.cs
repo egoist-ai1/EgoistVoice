@@ -360,6 +360,19 @@ public sealed class TranslateCommandParserTests
         Assert.True(falsePositives.Count == 0, $"False commands: {string.Join(", ", falsePositives)}");
     }
 
+    [Theory]
+    [InlineData("Перевод на английский: привет, как дела?", "привет, как дела?", "English")]
+    [InlineData("Перевод на английский привет, как дела", "привет, как дела", "English")]
+    [InlineData("Сделай перевод на английский: всё готово", "всё готово", "English")]
+    [InlineData("Привет, как дела. Перевод на английский.", "Привет, как дела.", "English")]
+    public void Perevod_with_target_language_triggers_translation(string input, string expectedPayload, string expectedLang)
+    {
+        var d = TranslateCommandParser.TryParse(input);
+        Assert.NotNull(d);
+        Assert.Equal(expectedLang, d.TargetLanguage);
+        Assert.Equal(expectedPayload, d.Payload);
+    }
+
     private static string FindProjectFile(params string[] relativeParts)
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory);

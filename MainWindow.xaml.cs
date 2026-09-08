@@ -81,6 +81,10 @@ public partial class MainWindow : Window, IDisposable
     private double _wavePhase;
     private double _audioLevelCurrent;
     private volatile float _audioLevelTarget;
+    private double _timbreBassCurrent;
+    private volatile float _timbreBassTarget;
+    private double _timbreTrebleCurrent;
+    private volatile float _timbreTrebleTarget;
     private bool _positionInitialized;
     private bool _hideRequested;
     private bool _forceHideAfterCancellation;
@@ -125,6 +129,7 @@ public partial class MainWindow : Window, IDisposable
 
         BuildWaveform();
         _audioCapture.LevelChanged += OnAudioLevelChanged;
+        _audioCapture.TimbreChanged += OnAudioTimbreChanged;
         _audioCapture.StateChanged += OnAudioCaptureStateChanged;
         _pushToTalk.SetPaused(_audioCapture.GetState().IsPaused);
         _modelManager.ProgressChanged += OnModelProgressChanged;
@@ -546,6 +551,8 @@ public partial class MainWindow : Window, IDisposable
         // element most likely to collide with the waveform when either one is resized.
         _recordingStartedUtc = DateTime.UtcNow - PreviewElapsedTime;
         _audioLevelTarget = 0.72f;
+        _timbreBassTarget = 0.55f;
+        _timbreTrebleTarget = 0.45f;
         for (var frame = 0; frame < 18; frame++)
         {
             AnimateWaveformFrame();
@@ -658,16 +665,14 @@ public partial class MainWindow : Window, IDisposable
 
         try
         {
-            _audioCapture.Start();
-            AppLog.Write($"Audio capture started, target=0x{_targetWindow:X}");
-            PlayFeedback(FeedbackSound.RecordingStarted);
-
-            // The keyboard hook is armed only for the duration of a dictation: a dictation tool
-            // has no business watching every keystroke of the session.
+            // Arm cancel key and present the capsule immediately for zero perceived latency
             _cancelKey.Arm();
             _isRecording = true;
             SetListeningState();
             ShowCapsule();
+            PlayFeedback(FeedbackSound.RecordingStarted);
+            _audioCapture.Start();
+            AppLog.Write($"Audio capture started, target=0x{_targetWindow:X}");
         }
         catch (Exception exception)
         {
@@ -679,6 +684,7 @@ public partial class MainWindow : Window, IDisposable
     private async Task StopAndTranscribeAsync()
     {
         AppLog.Write($"StopAndTranscribe requested, held={(DateTime.UtcNow - _recordingStartedUtc).TotalSeconds:0.00}s");
+        PlayFeedback(FeedbackSound.RecordingStopped);
         _isRecording = false;
         _isProcessing = true;
         SetProcessingState("Распознаю", null);
@@ -693,7 +699,6 @@ public partial class MainWindow : Window, IDisposable
         try
         {
             var capture = await _audioCapture.StopAsync(cancellationToken);
-            PlayFeedback(FeedbackSound.RecordingStopped);
             completedCapture = capture;
             trace.Mark(DictationStage.CaptureStopped);
             audioPath = capture.Path;
@@ -786,7 +791,7 @@ public partial class MainWindow : Window, IDisposable
                 var budget = double.IsFinite(textSettings.FormatBudgetSeconds)
                     ? Math.Clamp(textSettings.FormatBudgetSeconds, 0.5, 5) : 2;
                 var formatted = await _textFormatter.FormatAsync(text, textSettings.TextModelEndpoint,
-                    textSettings.TextModelId, TimeSpan.FromSeconds(budget), false, cancellationToken);
+                    textSettings.TextModelId, TimeSpan.FromSeconds(budget), true, cancellationToken);
                 text = formatted.Text;
                 formattingMessage = formatted.Message;
                 AppLog.Write($"Text formatting status={formatted.Status}; elapsedMs={formatted.Elapsed.TotalMilliseconds:0}; characters={text.Length}");
@@ -862,6 +867,8 @@ public partial class MainWindow : Window, IDisposable
             {
                 TryDelete(audioPath);
             }
+
+            _ = Task.Delay(3000).ContinueWith(_ => HybridTranscriptionService.TrimWorkingSet(), TaskScheduler.Default);
         }
     }
 
@@ -917,10 +924,21 @@ public partial class MainWindow : Window, IDisposable
         }
     }
 
+    public Action? RequestOpenSettings { get; set; }
+    public Action? RequestOpenHistory { get; set; }
+    public Action? RequestExit { get; set; }
+
     private void RootBorder_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (FindVisualParent<System.Windows.Controls.Button>(e.OriginalSource as DependencyObject) is not null)
         {
+            return;
+        }
+
+        if (e.ClickCount >= 2)
+        {
+            e.Handled = true;
+            RequestOpenSettings?.Invoke();
             return;
         }
 
@@ -931,6 +949,43 @@ public partial class MainWindow : Window, IDisposable
         _positionService.Save(Left, Top, Width);
         AppLog.Write($"Capsule moved: left={Left:0}, top={Top:0}");
     }
+
+    private void CapsuleContextMenu_OnOpened(object sender, RoutedEventArgs e)
+    {
+        var settings = _settingsService.Load();
+        MenuDirectFastMode.IsChecked = settings.DirectGigaamFastMode;
+        MenuFormatWithQwen.IsChecked = settings.FormatWithQwen;
+        MenuSoundFeedback.IsChecked = _sounds.Enabled;
+    }
+
+    private void MenuSettings_OnClick(object sender, RoutedEventArgs e) => RequestOpenSettings?.Invoke();
+
+    private void MenuHistory_OnClick(object sender, RoutedEventArgs e) => RequestOpenHistory?.Invoke();
+
+    private void MenuDirectFastMode_OnClick(object sender, RoutedEventArgs e)
+    {
+        var current = _settingsService.Load();
+        _settingsService.Save(current with { DirectGigaamFastMode = MenuDirectFastMode.IsChecked });
+        ApplyDictationSettings();
+    }
+
+    private void MenuFormatWithQwen_OnClick(object sender, RoutedEventArgs e)
+    {
+        var current = _settingsService.Load();
+        _settingsService.Save(current with { FormatWithQwen = MenuFormatWithQwen.IsChecked });
+        ApplyDictationSettings();
+    }
+
+    private void MenuSoundFeedback_OnClick(object sender, RoutedEventArgs e)
+    {
+        var current = _settingsService.Load();
+        _settingsService.Save(current with { SoundFeedback = MenuSoundFeedback.IsChecked });
+        ApplyDictationSettings();
+    }
+
+    private void MenuHide_OnClick(object sender, RoutedEventArgs e) => HideCapsuleAnimated();
+
+    private void MenuExit_OnClick(object sender, RoutedEventArgs e) => RequestExit?.Invoke();
 
     private void ShowCapsule()
     {
@@ -1076,6 +1131,7 @@ public partial class MainWindow : Window, IDisposable
         if (_transcription is HybridTranscriptionService hybrid)
         {
             hybrid.MixedLanguageMode = settings.MixedLanguageMode;
+            hybrid.FastModeNoWhisperRefinement = settings.DirectGigaamFastMode && !settings.MixedLanguageMode;
 
             // Every dictionary term also becomes a suspicion for the mixed-speech detector, so a
             // user-added word starts pulling in the fallback without a second list to maintain.
@@ -1296,6 +1352,7 @@ public partial class MainWindow : Window, IDisposable
         _mouseHotkey?.Dispose();
         _modelManager.ProgressChanged -= OnModelProgressChanged;
         _audioCapture.LevelChanged -= OnAudioLevelChanged;
+        _audioCapture.TimbreChanged -= OnAudioTimbreChanged;
         _audioCapture.StateChanged -= OnAudioCaptureStateChanged;
         _themeService.ThemeChanged -= OnCapsuleThemeChanged;
         _sounds.Dispose();

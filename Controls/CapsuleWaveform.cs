@@ -103,13 +103,21 @@ public sealed class CapsuleWaveform : FrameworkElement
     }
 
     /// <summary>Advances the animation by one frame and repaints.</summary>
-    public void Advance(double level, double phase, double deltaSeconds, bool reducedMotion)
+    public void Advance(
+        double level,
+        double phase,
+        double deltaSeconds,
+        bool reducedMotion,
+        double bass = 0,
+        double mid = 0,
+        double treble = 0)
     {
         // Computed once per frame rather than once per sample: it depends only on elapsed time.
         var alpha = 1 - Math.Exp(-Math.Clamp(deltaSeconds, 1d / 240d, 0.05) / 0.035);
         for (var index = 0; index < _levels.Length; index++)
         {
-            var target = CapsuleWaveformProfile.TargetScale(index, _levels.Length, level, phase, reducedMotion);
+            var target = CapsuleWaveformProfile.TargetScale(
+                index, _levels.Length, level, phase, reducedMotion, bass, mid, treble);
             _levels[index] += (target - _levels[index]) * alpha;
         }
 

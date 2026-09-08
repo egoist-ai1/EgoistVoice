@@ -35,9 +35,13 @@ public sealed class AudioCaptureService : IAudioCaptureService
     private bool _disposed;
     private Exception? _monitoringFailure;
     private float _smoothedLevel;
+    private float _smoothedBass;
+    private float _smoothedMid;
+    private float _smoothedTreble;
     private long _feedbackSuppressedUntilTimestamp;
 
     public event EventHandler<float>? LevelChanged;
+    public event EventHandler<VoiceTimbreLevel>? TimbreChanged;
     public event EventHandler<float[]>? SamplesAvailable;
     public event EventHandler<AudioCaptureStateChangedEventArgs>? StateChanged;
 
@@ -257,11 +261,13 @@ public sealed class AudioCaptureService : IAudioCaptureService
                 return;
             }
 
+            // Bound feedback acoustic suppression to the actual sound tone duration (max 40 ms)
+            // so human speech is never clipped or delayed.
+            var effectiveMs = Math.Min(duration.TotalMilliseconds, 40d);
             var now = System.Diagnostics.Stopwatch.GetTimestamp();
             var deadline = now + (long)Math.Ceiling(
-                duration.TotalSeconds * System.Diagnostics.Stopwatch.Frequency);
+                effectiveMs / 1000d * System.Diagnostics.Stopwatch.Frequency);
             _feedbackSuppressedUntilTimestamp = Math.Max(_feedbackSuppressedUntilTimestamp, deadline);
-            _buffer?.DiscardAudioPreservingSession();
             _smoothedLevel = 0;
         }
     }
@@ -427,7 +433,10 @@ public sealed class AudioCaptureService : IAudioCaptureService
             _buffer?.Append(args.Buffer.AsSpan(0, args.BytesRecorded));
         }
 
-        if (format is null || !PcmLevelMeter.TryMeasure(args.Buffer, args.BytesRecorded, format, out var rms, out var peak))
+        if (format is null || !PcmLevelMeter.TryMeasureTimbre(
+            args.Buffer, args.BytesRecorded, format,
+            out var rms, out var peak,
+            out var rawBass, out var rawMid, out var rawTreble))
         {
             return;
         }
@@ -435,7 +444,15 @@ public sealed class AudioCaptureService : IAudioCaptureService
         var rmsLevel = DbToLevel(rms, -62, -14);
         var peakLevel = DbToLevel(peak, -56, -7);
         var level = (float)Math.Clamp((rmsLevel * 0.76) + (peakLevel * 0.24), 0, 1);
+
+        var bassLevel = (float)Math.Clamp(DbToLevel(rawBass, -60, -16), 0, 1);
+        var midLevel = (float)Math.Clamp(DbToLevel(rawMid, -62, -18), 0, 1);
+        var trebleLevel = (float)Math.Clamp(DbToLevel(rawTreble, -58, -12), 0, 1);
+
         float smoothedLevel;
+        float smoothedBass;
+        float smoothedMid;
+        float smoothedTreble;
         lock (_sync)
         {
             // The endpoint may have changed while level calculation ran outside the lock.
@@ -445,11 +462,19 @@ public sealed class AudioCaptureService : IAudioCaptureService
             }
             var smoothing = level > _smoothedLevel ? 0.62f : 0.20f;
             _smoothedLevel += (level - _smoothedLevel) * smoothing;
+            _smoothedBass += (bassLevel - _smoothedBass) * smoothing;
+            _smoothedMid += (midLevel - _smoothedMid) * smoothing;
+            _smoothedTreble += (trebleLevel - _smoothedTreble) * (level > _smoothedLevel ? 0.75f : 0.25f);
+
             smoothedLevel = _smoothedLevel;
+            smoothedBass = _smoothedBass;
+            smoothedMid = _smoothedMid;
+            smoothedTreble = _smoothedTreble;
         }
         try
         {
             LevelChanged?.Invoke(this, smoothedLevel);
+            TimbreChanged?.Invoke(this, new VoiceTimbreLevel(smoothedLevel, smoothedBass, smoothedMid, smoothedTreble));
         }
         catch (Exception exception)
         {
@@ -999,10 +1024,24 @@ internal sealed class DownmixToMonoSampleProvider : ISampleProvider
 
 internal static class PcmLevelMeter
 {
-    internal static bool TryMeasure(byte[] buffer, int bytesRecorded, WaveFormat format, out double rms, out double peak)
+    internal static bool TryMeasure(byte[] buffer, int bytesRecorded, WaveFormat format, out double rms, out double peak) =>
+        TryMeasureTimbre(buffer, bytesRecorded, format, out rms, out peak, out _, out _, out _);
+
+    internal static bool TryMeasureTimbre(
+        byte[] buffer,
+        int bytesRecorded,
+        WaveFormat format,
+        out double rms,
+        out double peak,
+        out double bass,
+        out double mid,
+        out double treble)
     {
         rms = 0;
         peak = 0;
+        bass = 0;
+        mid = 0;
+        treble = 0;
         var readable = format.AsStandardWaveFormat();
         var bytesPerSample = readable.BitsPerSample / 8;
         if (bytesPerSample <= 0 || bytesRecorded < bytesPerSample)
@@ -1010,8 +1049,20 @@ internal static class PcmLevelMeter
             return false;
         }
 
+        var sampleRate = readable.SampleRate > 0 ? readable.SampleRate : 16000;
+        // 1-pole low-pass cutoff at ~300 Hz
+        var alphaLow = Math.Clamp(2 * Math.PI * 300 / sampleRate, 0.01, 0.4);
+        // 1-pole high-pass cutoff at ~2800 Hz
+        var alphaHigh = Math.Clamp(2 * Math.PI * 2800 / sampleRate, 0.1, 0.85);
+
+        double lowState = 0;
+        double highState = 0;
         double sum = 0;
+        double bassSum = 0;
+        double midSum = 0;
+        double trebleSum = 0;
         var count = 0;
+
         for (var offset = 0; offset + bytesPerSample <= bytesRecorded; offset += bytesPerSample)
         {
             double sample;
@@ -1042,7 +1093,16 @@ internal static class PcmLevelMeter
             {
                 continue;
             }
+
+            lowState += alphaLow * (sample - lowState);
+            highState += alphaHigh * (sample - highState);
+            var highSample = sample - highState;
+            var midSample = highState - lowState;
+
             sum += sample * sample;
+            bassSum += lowState * lowState;
+            midSum += midSample * midSample;
+            trebleSum += highSample * highSample;
             peak = Math.Max(peak, Math.Abs(sample));
             count++;
         }
@@ -1051,6 +1111,9 @@ internal static class PcmLevelMeter
             return false;
         }
         rms = Math.Sqrt(sum / count);
+        bass = Math.Sqrt(bassSum / count);
+        mid = Math.Sqrt(midSum / count);
+        treble = Math.Sqrt(trebleSum / count);
         return true;
     }
 }

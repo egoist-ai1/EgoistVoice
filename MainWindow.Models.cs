@@ -29,6 +29,7 @@ public partial class MainWindow
                 SetReadyState();
                 ShowCapsule();
                 ScheduleHide();
+                _ = Task.Delay(2000).ContinueWith(_ => HybridTranscriptionService.TrimWorkingSet(), TaskScheduler.Default);
             }
         }
         catch (OperationCanceledException)

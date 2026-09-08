@@ -21,6 +21,13 @@ public partial class MainWindow
         _audioLevelTarget = Math.Clamp(level, 0, 1);
     }
 
+    private void OnAudioTimbreChanged(object? sender, VoiceTimbreLevel timbre)
+    {
+        _audioLevelTarget = Math.Clamp(timbre.Overall, 0, 1);
+        _timbreBassTarget = Math.Clamp(timbre.Bass, 0, 1);
+        _timbreTrebleTarget = Math.Clamp(timbre.Treble, 0, 1);
+    }
+
     private void AnimateWaveformFrame(double deltaSeconds = 1d / 60d)
     {
         if (!_isRecording)
@@ -29,13 +36,15 @@ public partial class MainWindow
         }
 
         _audioLevelCurrent = CapsuleWaveformProfile.SmoothLevel(_audioLevelCurrent, _audioLevelTarget, deltaSeconds);
+        _timbreBassCurrent = CapsuleWaveformProfile.SmoothLevel(_timbreBassCurrent, _timbreBassTarget, deltaSeconds);
+        _timbreTrebleCurrent = CapsuleWaveformProfile.SmoothLevel(_timbreTrebleCurrent, _timbreTrebleTarget, deltaSeconds);
         var frameFactor = Math.Clamp(deltaSeconds * 60, 0.25, 3);
-        _wavePhase += (0.09 + (_audioLevelCurrent * 0.14)) * frameFactor;
-        Waveform.Advance(_audioLevelCurrent, _wavePhase, deltaSeconds, IsReducedMotion);
+        _wavePhase += (0.09 + (_audioLevelCurrent * 0.14) + (_timbreTrebleCurrent * 0.05)) * frameFactor;
+        Waveform.Advance(_audioLevelCurrent, _wavePhase, deltaSeconds, IsReducedMotion, _timbreBassCurrent, 0, _timbreTrebleCurrent);
         // Make the microphone halo follow the actual voice, on the existing bounded frame loop.
-        // Reduced motion keeps its size fixed; no blur or additional animation timer is needed.
-        StateHalo.Opacity = IsReducedMotion ? 0.3 : 0.12 + _audioLevelCurrent * 0.56;
-        var haloScale = IsReducedMotion ? 1 : 0.94 + _audioLevelCurrent * 0.2;
+        // Reduced motion keeps its size fixed; radial gradient delivers soft luminescent feathering.
+        StateHalo.Opacity = IsReducedMotion ? 0.3 : 0.14 + (_audioLevelCurrent * 0.62) + (_timbreBassCurrent * 0.16);
+        var haloScale = IsReducedMotion ? 1 : 0.94 + (_audioLevelCurrent * 0.26) + (_timbreBassCurrent * 0.08);
         StateHaloScale.ScaleX = StateHaloScale.ScaleY = haloScale;
         UpdateRecordingTimer();
     }
@@ -61,6 +70,10 @@ public partial class MainWindow
         StateHaloScale.ScaleX = StateHaloScale.ScaleY = 0.94;
         _audioLevelCurrent = 0;
         _audioLevelTarget = 0;
+        _timbreBassCurrent = 0;
+        _timbreBassTarget = 0;
+        _timbreTrebleCurrent = 0;
+        _timbreTrebleTarget = 0;
         StartWaveformAnimation();
     }
 
@@ -233,11 +246,8 @@ public partial class MainWindow
     /// <summary>Beyond this the clock is wrong, not the dictation long.</summary>
     private static readonly TimeSpan MaximumDisplayedDuration = TimeSpan.FromHours(2);
 
-    /// <summary>
-    /// Ten minutes is far past any real dictation and far short of anything that hurts. It exists
-    /// for the case where the release event was lost, not for the user who talks a lot.
-    /// </summary>
-    private static readonly TimeSpan MaximumRecordingDuration = TimeSpan.FromMinutes(10);
+    /// Thirty minutes accommodates long uninterrupted dictations without overflowing memory.
+    private static readonly TimeSpan MaximumRecordingDuration = TimeSpan.FromMinutes(30);
 
     private void BeginStateStoryboard(string resourceKey)
     {
@@ -393,6 +403,12 @@ public partial class MainWindow
         DownloadIcon.Opacity = 1;
         CheckScale.ScaleX = 1;
         CheckScale.ScaleY = 1;
+        ProcessingDot1.Opacity = 0.4;
+        ProcessingDot2.Opacity = 0.4;
+        ProcessingDot3.Opacity = 0.4;
+        ProcessingDot1Scale.ScaleX = ProcessingDot1Scale.ScaleY = 1;
+        ProcessingDot2Scale.ScaleX = ProcessingDot2Scale.ScaleY = 1;
+        ProcessingDot3Scale.ScaleX = ProcessingDot3Scale.ScaleY = 1;
 
         CapsuleBody.BeginAnimation(FrameworkElement.WidthProperty, null);
         CapsuleBody.Width = _lastVisualStateKind switch
@@ -430,6 +446,7 @@ public partial class MainWindow
             DownloadProgress.Foreground = System.Windows.SystemColors.HighlightBrush;
             DownloadProgress.Background = System.Windows.SystemColors.ControlBrush;
             SurfaceGradient.Visibility = Visibility.Collapsed;
+            InnerSpecularBorder.Visibility = Visibility.Collapsed;
             HoverSurface.Visibility = Visibility.Collapsed;
             SuccessFlash.Visibility = Visibility.Collapsed;
             ShadowSurface.Visibility = Visibility.Collapsed;
@@ -447,13 +464,16 @@ public partial class MainWindow
             DetailText.Foreground = PrimaryTextBrush;
             ProcessingLabel.Foreground = PrimaryTextBrush;
             SetMicStroke(PrimaryTextBrush);
-            SetStroke(CheckIcon, PrimaryTextBrush);
+            SetStroke(CheckIcon, ThemeBrush("AppSuccessBrush"));
             ClipboardIcon.Foreground = PrimaryTextBrush;
             DownloadIcon.Foreground = AccentBrush;
             SetStroke(ErrorIcon, ErrorBrush);
             DownloadProgress.Foreground = AccentBrush;
             DownloadProgress.Background = ProgressTrackBrush;
             SurfaceGradient.Visibility = EffectiveTheme == EffectiveAppTheme.Dark
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            InnerSpecularBorder.Visibility = EffectiveTheme == EffectiveAppTheme.Dark
                 ? Visibility.Visible
                 : Visibility.Collapsed;
             HoverSurface.Visibility = Visibility.Visible;
@@ -513,8 +533,8 @@ public partial class MainWindow
         {
             From = currentWidth,
             To = targetWidth,
-            Duration = TimeSpan.FromMilliseconds(200),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            Duration = TimeSpan.FromMilliseconds(210),
+            EasingFunction = new QuinticEase { EasingMode = EasingMode.EaseOut },
             FillBehavior = FillBehavior.HoldEnd
         };
         CapsuleBody.BeginAnimation(
@@ -541,7 +561,7 @@ public partial class MainWindow
         var elapsed = _lastWaveFrame == TimeSpan.Zero
             ? TimeSpan.FromSeconds(1d / 60d)
             : rendering.RenderingTime - _lastWaveFrame;
-        if (_lastWaveFrame != TimeSpan.Zero && elapsed < TimeSpan.FromMilliseconds(IsReducedMotion ? 50 : 16))
+        if (_lastWaveFrame != TimeSpan.Zero && elapsed < TimeSpan.FromMilliseconds(IsReducedMotion ? 50 : 2))
         {
             return;
         }

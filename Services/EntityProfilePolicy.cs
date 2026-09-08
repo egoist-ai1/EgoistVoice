@@ -23,7 +23,10 @@ internal static class EntityProfilePolicy
         "гитхаб", "gitlab", "гитлаб", "docker", "докер", "kubernetes", "кубернетес",
         "python", "пайтон", "javascript", "джаваскрипт", "visual studio", "vs code",
         "api", "эй пи ай", "pull request", "пул реквест", "бэкенд", "backend",
-        "кодекс", "codex", "клауд", "cloud code", "курсор", "cursor", "мета"
+        "кодекс", "codex", "клауд", "cloud code", "курсор", "cursor", "мета",
+        "rtx", "ртх", "ссд", "ssd", "райзен", "ryzen", "процессор", "видеокарта",
+        "сервер", "деплой", "deploy", "пайплайн", "pipeline", "ci/cd", "devops",
+        "девопс", "фронтенд", "frontend", "fullstack", "фулстек"
     ];
 
     private static readonly string[] GamingAnchors =
@@ -31,7 +34,8 @@ internal static class EntityProfilePolicy
         "игра", "игровой", "матч", "геймплей", "playstation", "плейстейшен", "xbox",
         "иксбокс", "minecraft", "майнкрафт", "fortnite", "фортнайт", "counter strike",
         "контр страйк", "dota", "дота", "epic games", "эпик геймс", "unreal engine",
-        "анриал энджин", "unity", "юнити"
+        "анриал энджин", "unity", "юнити", "стим", "steam", "steam deck", "стим дек",
+        "кс", "кс2", "cs2", "тарков", "апекс", "варзон", "вар тандер", "ps5", "нинтендо"
     ];
 
     internal static EntityProfile ResolveForWindow(

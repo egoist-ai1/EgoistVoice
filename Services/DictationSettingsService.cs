@@ -34,8 +34,11 @@ public sealed record DictationSettings
     /// <summary>Forces the mixed-language fallback for every dictation.</summary>
     [JsonPropertyName("mixedLanguageMode")] public bool MixedLanguageMode { get; init; }
 
-    [JsonPropertyName("soundFeedback")] public bool SoundFeedback { get; init; } = true;
-    [JsonPropertyName("soundVolume")] public double SoundVolume { get; init; } = 0.4;
+    /// <summary>Bypasses Whisper refinement for ultra-fast direct ASR when speaking Russian.</summary>
+    [JsonPropertyName("directGigaamFastMode")] public bool DirectGigaamFastMode { get; init; } = true;
+
+    [JsonPropertyName("soundFeedback")] public bool SoundFeedback { get; init; } = false;
+    [JsonPropertyName("soundVolume")] public double SoundVolume { get; init; } = 0.32;
 
     [JsonPropertyName("theme")] public AppTheme Theme { get; init; } = AppTheme.System;
 
@@ -51,7 +54,7 @@ public sealed record DictationSettings
     /// <summary>A deliberate pause survives restarts and never opens the microphone in background.</summary>
     [JsonPropertyName("isPaused")] public bool IsCapturePaused { get; init; }
 
-    public static DictationSettings Default { get; } = new() { SaveRecentRecordings = !VoiceRuntimeProfile.IsPortable };
+    public static DictationSettings Default { get; } = new() { SoundFeedback = false, SaveRecentRecordings = true };
 
     public PostProcessingOptions ToPostProcessingOptions() =>
         new(ApplyDictionary, ApplyVoiceCommands, ApplyNumberNormalization);

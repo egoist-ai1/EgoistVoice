@@ -26,7 +26,7 @@ public sealed class HybridTranscriptionService :
             ? new MixedSpeechDecision(MixedSpeechTrigger.Requested, "primary engine failed")
             : _mixedSpeech.Inspect(giga.Result.Text, MixedLanguageMode);
 
-        if (!decision.NeedsFallback)
+        if (!decision.NeedsFallback || (FastModeNoWhisperRefinement && !string.IsNullOrWhiteSpace(giga.Result?.Text) && !MixedLanguageMode))
         {
             return giga.Result! with { Elapsed = pipeline.Elapsed };
         }
@@ -94,6 +94,12 @@ public sealed class HybridTranscriptionService :
     /// </summary>
     public bool MixedLanguageMode { get; set; }
 
+    /// <summary>
+    /// When true and MixedLanguageMode is false, skips the secondary Whisper pass if GigaAM succeeded.
+    /// Qwen handles term transliteration and English brand casing without paying Whisper's decode latency.
+    /// </summary>
+    public bool FastModeNoWhisperRefinement { get; set; }
+
     /// <summary>Extends the suspicion map with russifications derived from the user dictionary.</summary>
     public void UpdateVocabulary(IEnumerable<string> spokenForms) =>
         _mixedSpeech = new MixedSpeechDetector(MixedSpeechDetector.DeriveRussifiedForms(spokenForms));
@@ -105,9 +111,8 @@ public sealed class HybridTranscriptionService :
     private volatile bool _whisperUnloaded;
     private volatile bool _disposed;
 
-    /// <summary>Ten minutes: long enough that a working session never pays a reload, short enough
-    /// that an abandoned tray icon does not hold 600 MB overnight.</summary>
-    private const long WhisperIdleUnloadMs = 10 * 60 * 1000;
+    /// <summary>Two minutes: keeps fallback warm during active sessions, frees ~600 MB quickly when idle.</summary>
+    private const long WhisperIdleUnloadMs = 2 * 60 * 1000;
 
     public HybridTranscriptionService(
         IModelManager modelManager,
@@ -179,7 +184,7 @@ public sealed class HybridTranscriptionService :
     }
 
     /// <summary>
-    /// Releases the fallback model after a long idle stretch. Checked on a timer rather than at the
+    /// Releases the fallback model after an idle stretch. Checked on a timer rather than at the
     /// end of a dictation so the memory comes back even when the user simply walks away.
     /// </summary>
     private void OnIdleCheck(object? state)
@@ -205,7 +210,31 @@ public sealed class HybridTranscriptionService :
             _whisperReady = false;
             _whisperUnloaded = true;
             _whisperWarmUp = null;
+            TrimWorkingSet();
         }
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool SetProcessWorkingSetSize(IntPtr hProcess, IntPtr dwMinimumWorkingSetSize, IntPtr dwMaximumWorkingSetSize);
+
+    public static void TrimWorkingSet()
+    {
+        try
+        {
+            GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+            GC.WaitForPendingFinalizers();
+            GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+            using var process = Process.GetCurrentProcess();
+            SetProcessWorkingSetSize(process.Handle, (IntPtr)(-1), (IntPtr)(-1));
+        }
+        catch { }
+
+        try
+        {
+            LocalQwenHost.NotifyActivity();
+        }
+        catch { }
     }
 
     public async Task<TranscriptionResult> TranscribeAsync(
@@ -245,7 +274,7 @@ public sealed class HybridTranscriptionService :
             ? new MixedSpeechDecision(MixedSpeechTrigger.Requested, "primary engine failed")
             : _mixedSpeech.Inspect(giga.Result.Text, MixedLanguageMode);
 
-        if (!decision.NeedsFallback)
+        if (!decision.NeedsFallback || (FastModeNoWhisperRefinement && !string.IsNullOrWhiteSpace(giga.Result?.Text) && !MixedLanguageMode))
         {
             return CompleteObservation(
                 giga.Result!, giga, fallback: null, decision, "GigaAM",

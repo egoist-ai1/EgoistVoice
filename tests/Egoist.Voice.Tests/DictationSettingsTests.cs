@@ -20,6 +20,7 @@ public sealed class DictationSettingsTests : IDisposable
 
         Assert.True(settings.ApplyDictionary);
         Assert.True(settings.ApplyVoiceCommands);
+        Assert.True(settings.DirectGigaamFastMode);
         Assert.True(settings.RestoreClipboard);
         Assert.True(settings.SaveRecentRecordings);
         Assert.True(settings.DesktopNotifications);
@@ -28,6 +29,7 @@ public sealed class DictationSettingsTests : IDisposable
         // Number normalization is the one step that rewrites text the user did not ask to rewrite,
         // so it has to be opt-in.
         Assert.False(settings.ApplyNumberNormalization);
+        Assert.False(settings.SoundFeedback);
     }
 
     [Fact]
@@ -37,6 +39,7 @@ public sealed class DictationSettingsTests : IDisposable
         service.Save(DictationSettings.Default with
         {
             ApplyNumberNormalization = true,
+            DirectGigaamFastMode = false,
             MixedLanguageMode = true,
             SoundVolume = 0.75,
             CaptureDeviceId = "endpoint-stable-id",
@@ -49,6 +52,7 @@ public sealed class DictationSettingsTests : IDisposable
         var loaded = service.Load();
 
         Assert.True(loaded.ApplyNumberNormalization);
+        Assert.False(loaded.DirectGigaamFastMode);
         Assert.True(loaded.MixedLanguageMode);
         Assert.Equal(0.75, loaded.SoundVolume);
         Assert.Equal("endpoint-stable-id", loaded.CaptureDeviceId);

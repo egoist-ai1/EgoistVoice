@@ -436,6 +436,9 @@ public partial class App : System.Windows.Application
         window.BeginTranslationEngineWarmup();
         window.BeginTextModelWarmup();
         _tray = new TrayService(window, modelManager, settingsService, _themeService, Shutdown);
+        window.RequestOpenSettings = () => _tray?.ShowSettingsWindowPublic();
+        window.RequestOpenHistory = () => _tray?.ShowHistoryWindowPublic();
+        window.RequestExit = Shutdown;
         window.InitializeHotkey();
         var background = e.Args.Contains("--background", StringComparer.OrdinalIgnoreCase);
         if (!background)

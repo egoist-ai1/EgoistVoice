@@ -185,6 +185,63 @@ public partial class SettingsWindow
         RefreshHistory();
     }
 
+    private async void HistoryQuickCopyButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button button || button.Tag is not string id) return;
+        if (_textOperation is not null)
+        {
+            HistoryStateMessage.Text = "Дождитесь завершения текущей обработки.";
+            HistoryStateMessage.Visibility = Visibility.Visible;
+            return;
+        }
+
+        var originalContent = button.Content;
+        button.IsEnabled = false;
+        button.Content = "Распознаю…";
+        HistoryStateMessage.Text = "Распознаю запись для буфера обмена…";
+        HistoryStateMessage.Visibility = Visibility.Visible;
+
+        using var operation = BeginTextOperation();
+        try
+        {
+            var result = await _mainWindow.TranscribeHistoryForEditorAsync(id, null, operation.Token);
+            operation.Token.ThrowIfCancellationRequested();
+            var text = result.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                HistoryStateMessage.Text = "Запись пуста или не содержит речи.";
+                button.Content = "Пусто";
+            }
+            else
+            {
+                System.Windows.Clipboard.SetText(text);
+                HistoryStateMessage.Text = $"Скопировано в буфер ({result.Elapsed.TotalSeconds:0.0} с, {text.Length:N0} симв.)";
+                button.Content = "Скопировано!";
+            }
+            await Task.Delay(1400);
+        }
+        catch (OperationCanceledException)
+        {
+            HistoryStateMessage.Text = "Отменено.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            HistoryStateMessage.Text = ex.Message;
+        }
+        catch (Exception)
+        {
+            HistoryStateMessage.Text = "Не удалось распознать запись.";
+        }
+        finally
+        {
+            button.Content = originalContent;
+            button.IsEnabled = true;
+            EndTextOperation();
+            RefreshHistory();
+        }
+    }
+
+
     private async Task TranscribeIntoEditorAsync(
         Func<IProgress<ModelProgress>, CancellationToken, Task<TranscriptionResult>> transcribe)
     {

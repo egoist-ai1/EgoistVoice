@@ -259,5 +259,41 @@ public sealed class PostProcessingTests
     public void Pipeline_returns_empty_for_blank_input() =>
         Assert.Equal(string.Empty, new TranscriptPostProcessor().Process("   "));
 
+    [Fact]
+    public void Pipeline_repairs_spontaneous_english_russian_context_and_anglicisms()
+    {
+        var processor = new TranscriptPostProcessor(UserDictionary.BuiltIn);
+
+        // 1. Spontaneous English + Russian in one sentence
+        Assert.Equal(
+            "Hello, my friend, how are you, я установил Docker и RTX 4090",
+            processor.Process("хелло май френд хау ар ю, я установил докер и ртх 4090"));
+
+        // 2. Russian hyphenation + subordinate conjunction comma + question detection
+        Assert.Equal(
+            "Ты уверен, что из-за этого всё-таки не работает?",
+            processor.Process("ты уверен что из за этого все таки не работает"));
+
+        // 3. Gaming + Hardware in one sentence + question
+        Assert.Equal(
+            "Почему в CS2 и Dota 2 такой высокий FPS?",
+            processor.Process("почему в кс 2 и дота 2 такой высокий фпс"));
+
+        // 4. Code review / DevOps / tech in one sentence
+        Assert.Equal(
+            "Я сделал pull request и настроил CI/CD pipeline",
+            processor.Process("я сделал пул реквест и настроил си ай си ди пайплайн"));
+
+        // 5. PoE 2 short form + Russian hyphenated adverbs
+        Assert.Equal(
+            "Когда выйдет Path of Exile 2 и S.T.A.L.K.E.R. 2 надо по-быстрому чуть-чуть подготовиться",
+            processor.Process("когда выйдет пое 2 и сталкер 2 надо по быстрому чуть чуть подготовиться"));
+
+        // 6. Direct interrogative question with Russian grammar
+        Assert.Equal(
+            "Где логи сервера и сколько FPS выдает видеокарта?",
+            processor.Process("где логи сервера и сколько фпс выдает видеокарта"));
+    }
+
     private static string Normalized(string text) => TranscriptNormalizer.Normalize(text);
 }

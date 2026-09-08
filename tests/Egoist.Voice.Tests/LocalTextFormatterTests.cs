@@ -112,6 +112,78 @@ public sealed class LocalTextFormatterTests
     }
 
     [Fact]
+    public async Task Manual_correction_preserves_markdown_bold_and_guillemets()
+    {
+        using var service = new LocalTextFormatter(new StubHandler((_, _) => Task.FromResult(Reply("Завтра встреча в **Discord**."))));
+        var result = await service.FormatAsync("завтра встреча в дискорде выдели жирным последнее слово", "http://127.0.0.1:11434/v1", "qwen3:4b",
+            TimeSpan.FromSeconds(1), true, CancellationToken.None);
+        Assert.Equal(TextFormattingStatus.Applied, result.Status);
+        Assert.Equal("Завтра встреча в **Discord**.", result.Text);
+    }
+
+    [Fact]
+    public async Task Manual_correction_preserves_quoted_terms()
+    {
+        using var service = new LocalTextFormatter(new StubHandler((_, _) => Task.FromResult(Reply("«Egoist Shield»"))));
+        var result = await service.FormatAsync("агатхилд возьми в кавычки", "http://127.0.0.1:11434/v1", "qwen3:4b",
+            TimeSpan.FromSeconds(1), true, CancellationToken.None);
+        Assert.Equal(TextFormattingStatus.Applied, result.Status);
+        Assert.Equal("«Egoist Shield»", result.Text);
+    }
+
+    [Fact]
+    public async Task Manual_correction_supports_exclamation_marks_command()
+    {
+        using var service = new LocalTextFormatter(new StubHandler((_, _) => Task.FromResult(Reply("Поздравляю!!!"))));
+        var result = await service.FormatAsync("поздравляю поставь 3 восклицательных знака", "http://127.0.0.1:11434/v1", "qwen3:4b",
+            TimeSpan.FromSeconds(1), true, CancellationToken.None);
+        Assert.Equal(TextFormattingStatus.Applied, result.Status);
+        Assert.Equal("Поздравляю!!!", result.Text);
+    }
+
+    [Fact]
+    public async Task Manual_correction_rejects_hallucinated_expansion_for_short_phrases()
+    {
+        // When user says "продолжить", a hallucinated response with 15 words must be rejected.
+        const string hallucination = "Продолжаю выполнение задачи: 1. Проверить API. 2. Залить на GitHub. 3. Протестировать.";
+        using var service = new LocalTextFormatter(new StubHandler((_, _) => Task.FromResult(Reply(hallucination))));
+        var result = await service.FormatAsync("продолжить", "http://127.0.0.1:11434/v1", "qwen3:4b",
+            TimeSpan.FromSeconds(1), true, CancellationToken.None);
+        Assert.Equal(TextFormattingStatus.Rejected, result.Status);
+        Assert.Equal("продолжить", result.Text);
+    }
+
+    [Fact]
+    public async Task Manual_correction_accepts_clean_continuation_word()
+    {
+        using var service = new LocalTextFormatter(new StubHandler((_, _) => Task.FromResult(Reply("Продолжить."))));
+        var result = await service.FormatAsync("продолжить", "http://127.0.0.1:11434/v1", "qwen3:4b",
+            TimeSpan.FromSeconds(1), true, CancellationToken.None);
+        Assert.Equal(TextFormattingStatus.Applied, result.Status);
+        Assert.Equal("Продолжить.", result.Text);
+    }
+
+    [Fact]
+    public async Task Manual_correction_supports_ellipsis_and_caps()
+    {
+        using var service = new LocalTextFormatter(new StubHandler((_, _) => Task.FromResult(Reply("Я подумаю…"))));
+        var result = await service.FormatAsync("я подумаю поставить троеточие", "http://127.0.0.1:11434/v1", "qwen3:4b",
+            TimeSpan.FromSeconds(1), true, CancellationToken.None);
+        Assert.Equal(TextFormattingStatus.Applied, result.Status);
+        Assert.Equal("Я подумаю…", result.Text);
+    }
+
+    [Fact]
+    public async Task Manual_correction_strips_hallucinated_prompt_leak_prefix()
+    {
+        using var service = new LocalTextFormatter(new StubHandler((_, _) => Task.FromResult(Reply("Ты уверен? Привет всем, как дела."))));
+        var result = await service.FormatAsync("привет всем как дела", "http://127.0.0.1:11434/v1", "qwen3:4b",
+            TimeSpan.FromSeconds(1), true, CancellationToken.None);
+        Assert.Equal(TextFormattingStatus.Applied, result.Status);
+        Assert.Equal("Привет всем, как дела.", result.Text);
+    }
+
+    [Fact]
     public async Task Timeout_returns_original_without_retry()
     {
         var handler = new StubHandler(async (_, token) => { await Task.Delay(10_000, token); return Reply("unused"); });
@@ -190,6 +262,13 @@ public sealed class LocalTextFormatterTests
         Assert.Equal(326_322_304L, models.Sum(m => m.SizeBytes));
         Assert.DoesNotContain(ModelCatalog.Whisper, models);
         Assert.All(models, m => Assert.Contains(m, ModelCatalog.CreateRequiredModels()));
+    }
+
+    [Fact]
+    public void LocalQwenHost_TrimWorkingSet_ExecutesSafely()
+    {
+        var exception = Record.Exception(() => LocalQwenHost.TrimWorkingSet());
+        Assert.Null(exception);
     }
 
     private static Task<TextFormattingResult> Format(LocalTextFormatter service, string text, CancellationToken token = default) =>

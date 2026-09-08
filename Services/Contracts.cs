@@ -1,8 +1,15 @@
 namespace Egoist.Voice.Services;
 
+public readonly record struct VoiceTimbreLevel(
+    float Overall,
+    float Bass,
+    float Mid,
+    float Treble);
+
 public interface IAudioCaptureService : IDisposable
 {
     event EventHandler<float>? LevelChanged;
+    event EventHandler<VoiceTimbreLevel>? TimbreChanged;
     event EventHandler<AudioCaptureStateChangedEventArgs>? StateChanged;
 
     /// <summary>

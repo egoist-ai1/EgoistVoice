@@ -37,7 +37,7 @@ public sealed class VoiceCommandProcessor
 
     public static IReadOnlyList<VoiceCommand> DefaultCommands { get; } =
     [
-        new(["новая строка", "с новой строки", "новая строчка"], "\n", VoiceCommandGlue.NoSpaceAfter),
+        new(["новая строка", "с новой строки", "новая строчка", "перенести строку", "перенеси строку"], "\n", VoiceCommandGlue.NoSpaceAfter),
         new(["новый абзац", "с нового абзаца"], "\n\n", VoiceCommandGlue.NoSpaceAfter),
         new(["запятая"], ","),
         new(["точка"], "."),
@@ -46,6 +46,7 @@ public sealed class VoiceCommandProcessor
         new(["тире", "длинное тире"], " —"),
         new(["вопросительный знак"], "?"),
         new(["восклицательный знак"], "!"),
+        new(["многоточие", "троеточие", "три точки"], "…"),
         new(["открыть скобку", "скобка открывается"], " (", VoiceCommandGlue.NoSpaceAfter),
         new(["закрыть скобку", "скобка закрывается"], ")"),
         new(["открыть кавычки", "кавычки открываются"], " «", VoiceCommandGlue.NoSpaceAfter),
@@ -68,7 +69,7 @@ public sealed class VoiceCommandProcessor
         }
 
         _inlinePunctuation = selectedCommands
-            .Where(command => command.Replacement is "," or "." or ";" or ":" or "?" or "!")
+            .Where(command => command.Replacement is "," or "." or ";" or ":" or "?" or "!" or "…")
             .SelectMany(command => command.Spoken.Select(spoken => new InlineCommand(
                 BuildInlineExpression(spoken),
                 spoken,

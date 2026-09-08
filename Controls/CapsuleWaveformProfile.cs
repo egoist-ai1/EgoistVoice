@@ -41,7 +41,15 @@ internal static class CapsuleWaveformProfile
     /// third is fast and narrow, which is what produces the small irregular crests that read as
     /// individual syllables.
     /// </remarks>
-    internal static double TargetScale(int index, int count, double level, double phase, bool reducedMotion)
+    internal static double TargetScale(
+        int index,
+        int count,
+        double level,
+        double phase,
+        bool reducedMotion,
+        double bass = 0,
+        double mid = 0,
+        double treble = 0)
     {
         var normalizedIndex = count <= 1
             ? 0
@@ -63,7 +71,13 @@ internal static class CapsuleWaveformProfile
         var idle = reducedMotion ? MinimumScale : 0.115 + (0.022 * Math.Sin((phase * 0.24) + (index * 0.42)));
         var motion = (primary * 0.54) + (secondary * 0.28) + (detail * 0.18);
 
-        return Math.Clamp(idle + (activity * centerEnvelope * motion), MinimumScale, 1);
+        // Timbre reactivity:
+        // Bass expands the belly in the center without spilling over the ends.
+        var bassExpansion = bass > 0 ? bass * (1.0 - Math.Pow(distance, 1.35)) * 0.32 : 0;
+        // Treble/sibilants create energetic micro-crests across the wave top.
+        var trebleSpikes = treble > 0 ? treble * 0.24 * Math.Abs(Math.Sin((phase * 3.4) + (index * 1.85))) : 0;
+
+        return Math.Clamp(idle + ((activity * centerEnvelope * (motion + trebleSpikes)) + bassExpansion), MinimumScale, 1);
     }
 
     internal static double OpacityForLevel(double level) =>

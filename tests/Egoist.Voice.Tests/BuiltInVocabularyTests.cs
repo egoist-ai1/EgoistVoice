@@ -10,6 +10,8 @@ public sealed class BuiltInVocabularyTests
 {
     [Theory]
     [InlineData("Открой гитхаб и посмотри коммиты.", "GitHub")]
+    [InlineData("Готов ли он для залития на гетхаб и финального релиза?", "GitHub")]
+    [InlineData("Перенеси проект на гетлаб.", "GitLab")]
     [InlineData("Спроси у клод код про эту ошибку.", "Claude Code")]
     [InlineData("Я использую клод каждый день.", "Claude")]
     [InlineData("Разверни докер и проверь бэкенд.", "Docker")]
@@ -200,5 +202,103 @@ public sealed class BuiltInVocabularyTests
         };
 
         Assert.All(expected, entity => Assert.Contains(entity, written));
+    }
+
+    [Fact]
+    public void Complex_user_gaming_and_ecosystem_phrase_is_repaired_accurately()
+    {
+        var input = "Hello, my friend, How You, я с Ростова-на-Дону From Russia. Сегодня мы делаем репозиторий и проверку Astrater. Как это будет работать с Githap, Discord, другими провайдерами: эгоист шилт, Egoist Voice, всевозможные Egoist-аскаунт-менеджер, также другие игрызай 2 И всевозможные Conrov King Says. Всё это будет чепута Текопа.";
+        var result = UserDictionary.BuiltIn.Apply(input);
+        
+        Assert.Equal(
+            "Hello, my friend, how are you, я с Ростова-на-Дону from Russia. Сегодня мы делаем репозиторий и проверку Astra Terra. Как это будет работать с GitHub, Discord, другими провайдерами: Egoist Shield, Egoist Voice, всевозможные Egoist Account Manager, также другие игры: Path of Exile 2 И всевозможные Honor of Kings. Всё это будет типа крутого сетапа.",
+            result);
+    }
+
+    [Theory]
+    [InlineData("хелло май френд хау ар ю", "Hello, my friend, how are you")]
+    [InlineData("хэлло май френд", "Hello, my friend")]
+    [InlineData("бай зе вей", "by the way")]
+    [InlineData("джаст ин кейс", "just in case")]
+    [InlineData("чек зис аут", "check this out")]
+    [InlineData("летс гоу", "Let's go")]
+    [InlineData("сенк ю соу мач", "Thank you so much")]
+    [InlineData("гуд лак", "Good luck")]
+    [InlineData("лукс гуд ту ми", "looks good to me")]
+    [InlineData("дет мейкс сенс", "that makes sense")]
+    [InlineData("фром скретч", "from scratch")]
+    [InlineData("фром раша виз лав", "from Russia with love")]
+    [InlineData("ноу проблем", "no problem")]
+    [InlineData("ту би хонест", "to be honest")]
+    [InlineData("гуд джоб", "Good job")]
+    [InlineData("вел дан", "Well done")]
+    [InlineData("си ю лейтер", "See you later")]
+    [InlineData("тейк кер", "Take care")]
+    [InlineData("ван мор синг", "one more thing")]
+    [InlineData("ар ю шур", "Are you sure?")]
+    [InlineData("ай донт ноу", "I don't know")]
+    [InlineData("оф корс", "of course")]
+    [InlineData("хэв э найс дей", "Have a nice day")]
+    [InlineData("бест регардс", "Best regards")]
+    [InlineData("кип ин тач", "keep in touch")]
+    public void Spontaneous_english_in_russian_phonetics_is_canonicalized(string spoken, string expected)
+    {
+        Assert.Equal(expected, UserDictionary.BuiltIn.Apply(spoken));
+    }
+
+    [Theory]
+    [InlineData("купи ртх 4090 и ртх 5090", "RTX 4090", "RTX 5090")]
+    [InlineData("поставь ссд и нвме", "SSD", "NVMe")]
+    [InlineData("процессор райзен или кор ай 9", "Ryzen", "Core i9")]
+    [InlineData("видеокарта джифорс ртх", "GeForce RTX", "")]
+    [InlineData("материнка асус или асрок", "ASUS", "ASRock")]
+    [InlineData("наушники хайперикс", "HyperX", "")]
+    [InlineData("мышь логитек или рейзер", "Logitech", "Razer")]
+    [InlineData("кабель тайп си и хдми", "Type-C", "HDMI")]
+    [InlineData("проверь вайфай и блютуз", "Wi-Fi", "Bluetooth")]
+    public void Hardware_and_components_are_canonicalized(string spoken, string expected1, string expected2)
+    {
+        var result = UserDictionary.BuiltIn.Apply(spoken);
+        Assert.Contains(expected1, result, StringComparison.Ordinal);
+        if (!string.IsNullOrEmpty(expected2))
+        {
+            Assert.Contains(expected2, result, StringComparison.Ordinal);
+        }
+    }
+
+    [Theory]
+    [InlineData("запусти кс 2 и дота 2", "CS2", "Dota 2")]
+    [InlineData("побег из таркова и вар тандер", "Escape from Tarkov", "War Thunder")]
+    [InlineData("запусти варзон и апекс", "Warzone", "Apex Legends")]
+    [InlineData("играй в киберпанк 2077 или гта 5", "Cyberpunk 2077", "GTA 5")]
+    [InlineData("консоль пс5 или нинтендо свитч", "PS5", "Nintendo Switch")]
+    [InlineData("напиши в ватсап", "WhatsApp", "")]
+    [InlineData("когда выйдет пое 2 и сталкер 2", "Path of Exile 2", "S.T.A.L.K.E.R. 2")]
+    [InlineData("играем в дедлок и балдурс гейт 3", "Deadlock", "Baldur's Gate 3")]
+    [InlineData("запусти элден ринг и хеллдайверс 2", "Elden Ring", "Helldivers 2")]
+    [InlineData("поставь hd резко и лейзи медиа делюкс", "HDRezka", "LazyMedia Deluxe")]
+    [InlineData("запусти торрсервер", "TorrServer", "")]
+    public void Gaming_and_platforms_are_canonicalized(string spoken, string expected1, string expected2)
+    {
+        var result = UserDictionary.BuiltIn.Apply(spoken);
+        Assert.Contains(expected1, result, StringComparison.Ordinal);
+        if (!string.IsNullOrEmpty(expected2))
+        {
+            Assert.Contains(expected2, result, StringComparison.Ordinal);
+        }
+    }
+
+    [Theory]
+    [InlineData("настрой си ай си ди пайплайн", "CI/CD", "pipeline")]
+    [InlineData("собери фуллстек проект", "fullstack", "")]
+    [InlineData("проверь сваггер и сделай деплой", "Swagger", "deploy")]
+    public void Dev_tools_and_workflows_are_canonicalized(string spoken, string expected1, string expected2)
+    {
+        var result = UserDictionary.BuiltIn.Apply(spoken);
+        Assert.Contains(expected1, result, StringComparison.Ordinal);
+        if (!string.IsNullOrEmpty(expected2))
+        {
+            Assert.Contains(expected2, result, StringComparison.Ordinal);
+        }
     }
 }

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
 namespace Egoist.Voice.Services;
@@ -63,11 +64,15 @@ public sealed class LocalQwenHost : IDisposable
         {
             if (!IsInstalled) { Status = "Нужны текстовая Qwen и локальный runtime."; return false; }
             Status = "Проверяю текстовую модель…";
-            await using (var file = new FileStream(ModelPath, FileMode.Open, FileAccess.Read, FileShare.Read, 1024 * 1024, true))
+            var isCustomModel = Environment.GetEnvironmentVariable("EGOIST_VOICE_QWEN_MODEL_PATH") is { Length: > 0 };
+            if (!isCustomModel)
             {
-                if (file.Length != ModelBytes || !Convert.ToHexString(await SHA256.HashDataAsync(file, _lifetime.Token))
-                        .Equals(ModelSha256, StringComparison.OrdinalIgnoreCase))
-                { Status = "Текстовая модель повреждена. Нужна повторная установка."; return false; }
+                await using (var file = new FileStream(ModelPath, FileMode.Open, FileAccess.Read, FileShare.Read, 1024 * 1024, true))
+                {
+                    if (file.Length != ModelBytes || !Convert.ToHexString(await SHA256.HashDataAsync(file, _lifetime.Token))
+                            .Equals(ModelSha256, StringComparison.OrdinalIgnoreCase))
+                    { Status = "Текстовая модель повреждена. Нужна повторная установка."; return false; }
+                }
             }
             _lifetime.Token.ThrowIfCancellationRequested();
             var start = CreateStartInfo();
@@ -97,6 +102,7 @@ public sealed class LocalQwenHost : IDisposable
                     { Status = "Qwen не ответила при прогреве. Повторите запуск."; StopChild(); return false; }
                     Status = "Qwen готова · локально · GPU";
                     AppLog.Write("Local Qwen ready; loopback-only; text logging disabled");
+                    TrimWorkingSet();
                     return true;
                 }
                 await Task.Delay(250, _lifetime.Token).ConfigureAwait(false);
@@ -119,8 +125,9 @@ public sealed class LocalQwenHost : IDisposable
             WorkingDirectory = Path.GetDirectoryName(RuntimePath)!
         };
         foreach (var arg in new[] { "--model", ModelPath, "--alias", ModelId, "--host", "127.0.0.1", "--port", Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            "--ctx-size", "8192", "--parallel", "1", "--n-gpu-layers", "99", "--split-mode", "none", "--jinja",
+            "--ctx-size", "2048", "-fa", "on", "--no-mmap", "--parallel", "1", "--n-gpu-layers", "99", "--split-mode", "none", "--jinja",
             "--chat-template-kwargs", "{\"enable_thinking\":false}", "--api-key", AuthenticationToken,
+            "-b", "2048", "-ub", "2048", "-t", "8", "-tb", "8",
             "--log-disable" }) start.ArgumentList.Add(arg);
         return start;
     }
@@ -148,5 +155,59 @@ public sealed class LocalQwenHost : IDisposable
         StopChild();
         // The startup task can still observe the process/token; handles are released after it ends.
         _ = (_start ?? Task.CompletedTask).ContinueWith(_ => { _process?.Dispose(); _lifetime.Dispose(); }, TaskScheduler.Default);
+    }
+
+    [DllImport("psapi.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool EmptyWorkingSet(IntPtr hProcess);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetProcessWorkingSetSize(IntPtr hProcess, IntPtr dwMinimumWorkingSetSize, IntPtr dwMaximumWorkingSetSize);
+
+    public static void TrimWorkingSet()
+    {
+        try
+        {
+            foreach (var name in new[] { "llama-server", "llama-server-real" })
+            {
+                foreach (var p in Process.GetProcessesByName(name))
+                {
+                    try
+                    {
+                        using (p)
+                        {
+                            if (!p.HasExited)
+                            {
+                                EmptyWorkingSet(p.Handle);
+                                SetProcessWorkingSetSize(p.Handle, (IntPtr)(-1), (IntPtr)(-1));
+                            }
+                        }
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch { }
+    }
+
+    private static long _lastActivityTicks = Environment.TickCount64;
+    private static readonly System.Threading.Timer _idleTrimTimer = new(OnIdleTrimCheck, null, 10_000, 10_000);
+
+    public static void NotifyActivity()
+    {
+        Interlocked.Exchange(ref _lastActivityTicks, Environment.TickCount64);
+    }
+
+    private static void OnIdleTrimCheck(object? state)
+    {
+        try
+        {
+            if (Environment.TickCount64 - Interlocked.Read(ref _lastActivityTicks) >= 20_000)
+            {
+                TrimWorkingSet();
+            }
+        }
+        catch { }
     }
 }

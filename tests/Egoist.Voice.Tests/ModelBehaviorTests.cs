@@ -138,17 +138,22 @@ public sealed class ModelBehaviorTests
     public void GigaAmChunkerKeepsAllSamplesAndLimitsChunkLength()
     {
         const int sampleRate = 100;
+        const int maxSeconds = 22;
         var samples = Enumerable.Range(0, 5_500).Select(value => (float)value).ToArray();
 
-        var chunks = GigaAmAudioChunker.Split(samples, sampleRate);
+        var chunks = GigaAmAudioChunker.Split(samples, sampleRate, maxSeconds);
 
         Assert.True(chunks.Count >= 3);
-        Assert.All(chunks, chunk => Assert.InRange(chunk.Samples.Length, 1, 22 * sampleRate));
+        Assert.All(chunks, chunk => Assert.InRange(chunk.Samples.Length, 1, maxSeconds * sampleRate));
         Assert.All(chunks, chunk =>
         {
             Assert.True(MemoryMarshal.TryGetArray(chunk.Samples, out var segment));
             Assert.Same(samples, segment.Array);
         });
+
+        var defaultChunks = GigaAmAudioChunker.Split(samples, sampleRate);
+        Assert.True(defaultChunks.Count >= 2);
+        Assert.All(defaultChunks, chunk => Assert.InRange(chunk.Samples.Length, 1, GigaAmAudioChunker.DefaultMaxSeconds * sampleRate));
     }
 
     [Fact]

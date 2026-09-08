@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$OutputDirectory = '',
     [string]$InstalledModelsRoot = (Join-Path $env:LOCALAPPDATA 'EgoistVoice\Models'),
@@ -63,7 +63,7 @@ Egoist Voice Portable — Windows 10 (1903 и новее) / Windows 11, x64
 Запустите Egoist.Voice.exe из установленной или перенесённой целиком папки.
 .NET и отдельная видеокарта не нужны. Модели уже включены; сеть не требуется.
 Удерживайте настроенную кнопку мыши или выберите сочетание клавиш в меню трея.
-Настройки и журнал пишутся в Data рядом с приложением. История записей изначально отключена.
+Настройки и журнал пишутся в Data рядом с приложением. История 3 последних записей включена по умолчанию для надёжности.
 Переносите всю папку. Перед переносом закройте приложение.
 
 Состав: GigaAM v3 INT8, русский язык, CPU. Whisper и переводчик не входят.
@@ -79,6 +79,21 @@ $files = @(Get-ChildItem -LiteralPath $destination -File -Recurse | Sort-Object 
 })
 $total = ($files | Measure-Object bytes -Sum).Sum
 if ($total -gt 600000000) { throw "Compact folder exceeds 600 MB: $total bytes" }
-$receipt = [ordered]@{ schemaVersion=1; generatedAt=[DateTime]::UtcNow.ToString('o'); flavor='Russian CPU Portable'; unpackedBytes=$total; fileCount=$files.Count; sourceRevision=(& git -C $projectRoot rev-parse HEAD).Trim(); sourceDirty=[bool](@(& git -C $projectRoot status --porcelain).Count); files=$files }
+$gitCmd = Get-Command git.exe -ErrorAction SilentlyContinue
+$gitExe = if ($gitCmd) { $gitCmd.Source } else { $null }
+if (!$gitExe -and (Test-Path 'C:\Users\Egoist\AppData\Local\GitHubDesktop\app-3.6.5\resources\app\git\cmd\git.exe')) {
+    $gitExe = 'C:\Users\Egoist\AppData\Local\GitHubDesktop\app-3.6.5\resources\app\git\cmd\git.exe'
+}
+$sourceRev = "release-compact-2.2.0"
+$sourceDirty = $false
+if ($gitExe) {
+    try {
+        $rev = (& $gitExe -C $projectRoot rev-parse HEAD 2>$null)
+        if ($rev) { $sourceRev = $rev.Trim() }
+        $dirty = @(& $gitExe -C $projectRoot status --porcelain 2>$null)
+        $sourceDirty = [bool]($dirty.Count)
+    } catch { }
+}
+$receipt = [ordered]@{ schemaVersion=1; generatedAt=[DateTime]::UtcNow.ToString('o'); flavor='Russian CPU Portable'; unpackedBytes=$total; fileCount=$files.Count; sourceRevision=$sourceRev; sourceDirty=$sourceDirty; files=$files }
 $receipt | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path (Split-Path -Parent $destination) 'portable-stage.manifest.json') -Encoding utf8
 [pscustomobject]@{ Staging=$destination; Files=$files.Count; Bytes=$total; MB=[math]::Round($total / 1000000, 2) } | ConvertTo-Json

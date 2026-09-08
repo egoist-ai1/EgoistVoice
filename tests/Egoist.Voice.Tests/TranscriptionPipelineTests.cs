@@ -10,7 +10,16 @@ namespace Egoist.Voice.Tests;
 public sealed class TranscriptionPipelineTests
 {
     private const int SampleRate = 100;
-    private const int MaxChunkSamples = 22 * SampleRate;
+    private const int MaxChunkSeconds = 22;
+    private const int MaxChunkSamples = MaxChunkSeconds * SampleRate;
+
+    [Fact]
+    public void Chunker_defaults_to_35_second_continuous_window()
+    {
+        var samples = new float[30 * SampleRate];
+        var chunks = GigaAmAudioChunker.Split(samples, SampleRate);
+        Assert.Single(chunks);
+    }
 
     [Fact]
     public void Chunker_overlaps_every_boundary_including_detected_pauses()
@@ -21,7 +30,7 @@ public sealed class TranscriptionPipelineTests
         var samples = LoudSignal(5_000);
         Silence(samples, 1_900, 100);
 
-        var chunks = GigaAmAudioChunker.Split(samples, SampleRate);
+        var chunks = GigaAmAudioChunker.Split(samples, SampleRate, MaxChunkSeconds);
 
         Assert.True(chunks.Count >= 2);
         var first = SegmentOf(chunks[0]);
@@ -40,7 +49,7 @@ public sealed class TranscriptionPipelineTests
         Silence(samples, 1_850, 150);
         Silence(samples, 2_100, 40);
 
-        var chunks = GigaAmAudioChunker.Split(samples, SampleRate);
+        var chunks = GigaAmAudioChunker.Split(samples, SampleRate, MaxChunkSeconds);
         var first = SegmentOf(chunks[0]);
 
         Assert.InRange(first.Count, 1_850, 2_000);

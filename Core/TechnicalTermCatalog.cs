@@ -12,12 +12,13 @@ internal static class TechnicalTermCatalog
         .Where(term => term.Any(character => character is >= 'A' and <= 'Z' or >= 'a' and <= 'z'))
         .Concat(
         [
-            "Arc", "Bash", "branch", "cache", "CHANGELOG", "Chrome", "CI", "CLI", "commit",
-            "CUDA", "deploy", "dependency injection", "desktop", "Excel", "exception", "framework",
+            "API", "Arc", "Bash", "branch", "cache", "CHANGELOG", "Chrome", "CI", "CLI", "commit",
+            "CUDA", "deploy", "dependency injection", "desktop", "Discord", "Egoist Shield", "Egoist Voice",
+            "Excel", "exception", "framework",
             "Git", "GitHub Copilot", "Google Chrome", "health check", "issue", "LICENSE", "logs",
             "main", "Neon", "overlay", "package", "Paper", "pipeline", "plugin", "pod", "Radeon",
             "README", "Redis", "REST", "rollback", "serverless", "signature", "Steam", "Swift",
-            "texture", "Vite", "webhook", "Windows 11"
+            "Telegram", "texture", "Vite", "webhook", "Windows 11"
         ])
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .OrderByDescending(term => term.Length)
@@ -34,9 +35,10 @@ internal static class TechnicalTermCatalog
     /// </remarks>
     internal static string WhisperPrompt =>
         "Точная русская речь с правильной пунктуацией, в которой встречаются английские " +
-        "технические названия в латинице. Например: попроси Claude Code и Anthropic проверить " +
-        "проект, открой GitHub и создай pull request, запусти Docker Compose и Kubernetes, " +
-        "напиши скрипт на Python и TypeScript, обнови JSON-конфиг, открой Visual Studio Code, " +
+        "технические названия в латинице. Например: открой Discord и Egoist Shield, проверь API, " +
+        "попроси Claude Code проверить проект, открой GitHub и создай pull request, " +
+        "запусти Docker Compose и Kubernetes, напиши скрипт на Python и TypeScript, " +
+        "обнови JSON-конфиг, открой Visual Studio Code, отправь сообщение в Telegram, " +
         "сравни ChatGPT и Gemini, разверни backend на AWS, посмотри Grafana; в играх сохраняй " +
         "Steam, Unreal Engine, Minecraft и Counter-Strike.";
 }

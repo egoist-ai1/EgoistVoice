@@ -20,12 +20,11 @@
             previously had no easing at all, which is why dismissal read as a cut rather than
             a movement.
         -->
-        <KeySpline x:Key="DecelerateSpline">0.1,0.9 0.2,1.0</KeySpline>
+        <KeySpline x:Key="DecelerateSpline">0.16,1.0 0.3,1.0</KeySpline>
         <KeySpline x:Key="AccelerateSpline">0.7,0.0 1.0,0.5</KeySpline>
-        <KeySpline x:Key="MorphSpline">0.22,1.0 0.36,1.0</KeySpline>
+        <KeySpline x:Key="MorphSpline">0.16,1.0 0.3,1.0</KeySpline>
 
-        <!-- Variable speed, not linear: a constant sweep reads as a mechanism, an accelerating and
-             decelerating one reads as effort. Same trick every system progress ring uses. -->
+        <!-- 21st.dev / Dynamic Island active loop: spinner rotation + wave breathing processing dots -->
         <Storyboard x:Key="SpinStoryboard" RepeatBehavior="Forever">
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="SpinnerOrbitRotate"
                                            Storyboard.TargetProperty="Angle">
@@ -33,19 +32,68 @@
                 <SplineDoubleKeyFrame KeyTime="0:0:0.55" Value="200" KeySpline="0.4,0.0 0.2,1.0" />
                 <SplineDoubleKeyFrame KeyTime="0:0:1.1" Value="360" KeySpline="0.4,0.0 0.2,1.0" />
             </DoubleAnimationUsingKeyFrames>
+
+            <!-- Cascading micro-dot waves for active thinking/recognition -->
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ProcessingDot1" Storyboard.TargetProperty="Opacity">
+                <SplineDoubleKeyFrame KeyTime="0:0:0" Value="0.25" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.22" Value="1.0" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.48" Value="0.25" />
+            </DoubleAnimationUsingKeyFrames>
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ProcessingDot1Scale" Storyboard.TargetProperty="ScaleY">
+                <SplineDoubleKeyFrame KeyTime="0:0:0" Value="0.85" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.22" Value="1.25" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.48" Value="0.85" />
+            </DoubleAnimationUsingKeyFrames>
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ProcessingDot1Scale" Storyboard.TargetProperty="ScaleX">
+                <SplineDoubleKeyFrame KeyTime="0:0:0" Value="0.85" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.22" Value="1.25" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.48" Value="0.85" />
+            </DoubleAnimationUsingKeyFrames>
+
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ProcessingDot2" Storyboard.TargetProperty="Opacity">
+                <SplineDoubleKeyFrame KeyTime="0:0:0.16" Value="0.25" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.38" Value="1.0" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.64" Value="0.25" />
+            </DoubleAnimationUsingKeyFrames>
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ProcessingDot2Scale" Storyboard.TargetProperty="ScaleY">
+                <SplineDoubleKeyFrame KeyTime="0:0:0.16" Value="0.85" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.38" Value="1.25" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.64" Value="0.85" />
+            </DoubleAnimationUsingKeyFrames>
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ProcessingDot2Scale" Storyboard.TargetProperty="ScaleX">
+                <SplineDoubleKeyFrame KeyTime="0:0:0.16" Value="0.85" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.38" Value="1.25" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.64" Value="0.85" />
+            </DoubleAnimationUsingKeyFrames>
+
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ProcessingDot3" Storyboard.TargetProperty="Opacity">
+                <SplineDoubleKeyFrame KeyTime="0:0:0.32" Value="0.25" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.54" Value="1.0" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.80" Value="0.25" />
+            </DoubleAnimationUsingKeyFrames>
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ProcessingDot3Scale" Storyboard.TargetProperty="ScaleY">
+                <SplineDoubleKeyFrame KeyTime="0:0:0.32" Value="0.85" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.54" Value="1.25" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.80" Value="0.85" />
+            </DoubleAnimationUsingKeyFrames>
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ProcessingDot3Scale" Storyboard.TargetProperty="ScaleX">
+                <SplineDoubleKeyFrame KeyTime="0:0:0.32" Value="0.85" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.54" Value="1.25" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.80" Value="0.85" />
+            </DoubleAnimationUsingKeyFrames>
         </Storyboard>
 
         <Storyboard x:Key="ListenPulseStoryboard" RepeatBehavior="Forever" AutoReverse="True">
             <DoubleAnimation Storyboard.TargetName="StateHalo" Storyboard.TargetProperty="Opacity"
-                             From="0.05" To="0.24" Duration="0:0:1.4">
+                             From="0.08" To="0.28" Duration="0:0:1.3">
                 <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
             <DoubleAnimation Storyboard.TargetName="StateHaloScale" Storyboard.TargetProperty="ScaleX"
-                             From="0.94" To="1.07" Duration="0:0:1.4">
+                             From="0.94" To="1.08" Duration="0:0:1.3">
                 <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
             <DoubleAnimation Storyboard.TargetName="StateHaloScale" Storyboard.TargetProperty="ScaleY"
-                             From="0.94" To="1.07" Duration="0:0:1.4">
+                             From="0.94" To="1.08" Duration="0:0:1.3">
                 <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
         </Storyboard>
@@ -61,22 +109,19 @@
 
         <Storyboard x:Key="SuccessStoryboard">
             <DoubleAnimation Storyboard.TargetName="CheckScale" Storyboard.TargetProperty="ScaleX"
-                             From="0.64" To="1" Duration="0:0:0.18">
-                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.16" /></DoubleAnimation.EasingFunction>
+                             From="0.45" To="1" Duration="0:0:0.24">
+                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.25" /></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
             <DoubleAnimation Storyboard.TargetName="CheckScale" Storyboard.TargetProperty="ScaleY"
-                             From="0.64" To="1" Duration="0:0:0.18">
-                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.16" /></DoubleAnimation.EasingFunction>
+                             From="0.45" To="1" Duration="0:0:0.24">
+                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.25" /></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
             <DoubleAnimation Storyboard.TargetName="SuccessFlash" Storyboard.TargetProperty="Opacity"
-                             From="0.18" To="0" Duration="0:0:0.28" />
+                             From="0.28" To="0" Duration="0:0:0.35">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
         </Storyboard>
 
-        <!--
-            The shake moves the whole capsule. It used to move only the 28×28 status disc, where
-            an amplitude of 2.5 px was small enough that the gesture went unnoticed — an error
-            animation nobody sees is an error nobody notices.
-        -->
         <Storyboard x:Key="ErrorStoryboard">
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ShellTranslate" Storyboard.TargetProperty="X">
                 <EasingDoubleKeyFrame Value="0" KeyTime="0:0:0" />
@@ -87,95 +132,176 @@
             </DoubleAnimationUsingKeyFrames>
         </Storyboard>
 
-        <!--
-            The entrance scale used to be 0.972/0.95, a difference small enough that the animation
-            was effectively an opacity fade. 0.92 makes the movement readable without turning it
-            into a bounce.
-        -->
+        <!-- Fluid Dynamic Island Entrance with crisp arrival curve and micro-spring settle -->
         <Storyboard x:Key="EnterStoryboard">
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ShellScale" Storyboard.TargetProperty="ScaleX">
-                <SplineDoubleKeyFrame KeyTime="0:0:0" Value="0.92" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0" Value="0.88" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.14" Value="1.018" KeySpline="{StaticResource DecelerateSpline}" />
                 <SplineDoubleKeyFrame KeyTime="0:0:0.22" Value="1" KeySpline="{StaticResource DecelerateSpline}" />
             </DoubleAnimationUsingKeyFrames>
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ShellScale" Storyboard.TargetProperty="ScaleY">
-                <SplineDoubleKeyFrame KeyTime="0:0:0" Value="0.92" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0" Value="0.88" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.14" Value="1.018" KeySpline="{StaticResource DecelerateSpline}" />
                 <SplineDoubleKeyFrame KeyTime="0:0:0.22" Value="1" KeySpline="{StaticResource DecelerateSpline}" />
             </DoubleAnimationUsingKeyFrames>
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ShellTranslate" Storyboard.TargetProperty="Y">
-                <SplineDoubleKeyFrame KeyTime="0:0:0" Value="8" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0" Value="12" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.14" Value="-1.5" KeySpline="{StaticResource DecelerateSpline}" />
                 <SplineDoubleKeyFrame KeyTime="0:0:0.22" Value="0" KeySpline="{StaticResource DecelerateSpline}" />
             </DoubleAnimationUsingKeyFrames>
             <DoubleAnimation Storyboard.TargetName="CapsuleShell" Storyboard.TargetProperty="Opacity"
-                             From="0" To="1" Duration="0:0:0.16" />
+                             From="0" To="1" Duration="0:0:0.12">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
             <DoubleAnimation Storyboard.TargetName="ShadowSurface" Storyboard.TargetProperty="Opacity"
-                             From="0" To="1" Duration="0:0:0.22" />
+                             From="0" To="1" Duration="0:0:0.18">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
         </Storyboard>
 
         <Storyboard x:Key="ExitStoryboard">
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ShellScale" Storyboard.TargetProperty="ScaleX">
-                <SplineDoubleKeyFrame KeyTime="0:0:0.14" Value="0.94" KeySpline="{StaticResource AccelerateSpline}" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.13" Value="0.94" KeySpline="{StaticResource AccelerateSpline}" />
             </DoubleAnimationUsingKeyFrames>
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ShellScale" Storyboard.TargetProperty="ScaleY">
-                <SplineDoubleKeyFrame KeyTime="0:0:0.14" Value="0.94" KeySpline="{StaticResource AccelerateSpline}" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.13" Value="0.94" KeySpline="{StaticResource AccelerateSpline}" />
             </DoubleAnimationUsingKeyFrames>
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ShellTranslate" Storyboard.TargetProperty="Y">
-                <SplineDoubleKeyFrame KeyTime="0:0:0.14" Value="6" KeySpline="{StaticResource AccelerateSpline}" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.13" Value="5" KeySpline="{StaticResource AccelerateSpline}" />
             </DoubleAnimationUsingKeyFrames>
             <DoubleAnimation Storyboard.TargetName="CapsuleShell" Storyboard.TargetProperty="Opacity"
-                             To="0" Duration="0:0:0.13" />
+                             To="0" Duration="0:0:0.11" />
             <DoubleAnimation Storyboard.TargetName="ShadowSurface" Storyboard.TargetProperty="Opacity"
-                             To="0" Duration="0:0:0.13" />
+                             To="0" Duration="0:0:0.11" />
         </Storyboard>
 
-        <!-- Иконка гаснет и проявляется вместе с центральной зоной, а не подменяется мгновенно:
-             без этого смена состояния читается как рывок, каким бы плавным ни был морфинг ширины. -->
         <Storyboard x:Key="StateTransitionStoryboard">
             <DoubleAnimation Storyboard.TargetName="CenterContent" Storyboard.TargetProperty="Opacity"
-                             From="0.32" To="1" Duration="0:0:0.16"
+                             From="0.20" To="1" Duration="0:0:0.16"
                              EasingFunction="{StaticResource DirectEase}" />
             <DoubleAnimation Storyboard.TargetName="StateContentTranslate" Storyboard.TargetProperty="X"
-                             From="2.5" To="0" Duration="0:0:0.18"
+                             From="4" To="0" Duration="0:0:0.18"
                              EasingFunction="{StaticResource DirectEase}" />
             <DoubleAnimation Storyboard.TargetName="StateDisc" Storyboard.TargetProperty="Opacity"
-                             From="0.25" To="1" Duration="0:0:0.20"
+                             From="0.25" To="1" Duration="0:0:0.18"
                              EasingFunction="{StaticResource DirectEase}" />
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="StateDiscScale" Storyboard.TargetProperty="ScaleX">
                 <SplineDoubleKeyFrame KeyTime="0:0:0" Value="0.86" />
-                <SplineDoubleKeyFrame KeyTime="0:0:0.20" Value="1" KeySpline="{StaticResource DecelerateSpline}" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.18" Value="1" KeySpline="{StaticResource DecelerateSpline}" />
             </DoubleAnimationUsingKeyFrames>
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="StateDiscScale" Storyboard.TargetProperty="ScaleY">
                 <SplineDoubleKeyFrame KeyTime="0:0:0" Value="0.86" />
-                <SplineDoubleKeyFrame KeyTime="0:0:0.20" Value="1" KeySpline="{StaticResource DecelerateSpline}" />
+                <SplineDoubleKeyFrame KeyTime="0:0:0.18" Value="1" KeySpline="{StaticResource DecelerateSpline}" />
             </DoubleAnimationUsingKeyFrames>
         </Storyboard>
+
+        <!-- 21st.dev / Windows 11 Fluent 2 Floating Dark Context Menu -->
+        <Style TargetType="ContextMenu">
+            <Setter Property="Background" Value="#14141B" />
+            <Setter Property="BorderBrush" Value="#2C2C38" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Padding" Value="4,4" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10" Padding="{TemplateBinding Padding}">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="22" ShadowDepth="6" Direction="270"
+                                                  Color="#000000" Opacity="0.55" />
+                            </Border.Effect>
+                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="MenuItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="8,0,10,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border x:Name="ItemBorder" Background="{TemplateBinding Background}"
+                                CornerRadius="6" Margin="1,1" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="22" SharedSizeGroup="MenuItemIconColumn" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Icon host -->
+                                <ContentPresenter x:Name="IconHost" Grid.Column="0"
+                                                  ContentSource="Icon" VerticalAlignment="Center" HorizontalAlignment="Center" />
+
+                                <!-- Clean accent checkmark for toggle items -->
+                                <Path x:Name="CheckMark" Grid.Column="0" Visibility="Collapsed"
+                                      Data="M 3,7.5 L 6.5,11 L 12.5,4.5"
+                                      Stroke="{DynamicResource AppAccentBrush}" StrokeThickness="1.6"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                      VerticalAlignment="Center" HorizontalAlignment="Center" />
+
+                                <ContentPresenter Grid.Column="1" ContentSource="Header"
+                                                  Margin="6,0,4,0" VerticalAlignment="Center"
+                                                  RecognizesAccessKey="True" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#22FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="IconHost" Property="Visibility" Value="Collapsed" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{DynamicResource AppTextDisabledBrush}" />
+                                <Setter TargetName="CheckMark" Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="Separator">
+            <Setter Property="Margin" Value="6,4" />
+            <Setter Property="Background" Value="#242430" />
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Separator">
+                        <Border Height="1" Background="{TemplateBinding Background}" Margin="{TemplateBinding Margin}" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid>
-        <!--
-            The HWND is a fixed 344×88 and never resizes. Width used to be animated on the window
-            itself, which meant a SetWindowPos and a full layout pass on every frame of every state
-            change — the single most expensive thing the capsule did, and the reason the chrome
-            cache could never hit. CapsuleBody carries the width now; the window merely contains it.
-            The gutter around the body is what the drop shadow blurs into.
-        -->
+        <!-- The HWND is a fixed 344×88; CapsuleBody carries width morphing smoothly -->
         <Grid x:Name="CapsuleBody" Width="218" Height="48"
               HorizontalAlignment="Center" VerticalAlignment="Center">
 
-            <!-- A real blurred shadow. The previous three concentric hairlines had no blur at all
-                 and read as nested rings against a light background. -->
+            <!-- Deep ambient occlusion shadow (21st.dev / Dynamic Island elevation) -->
             <Border x:Name="ShadowSurface" CornerRadius="24" Background="{DynamicResource AppSurfaceBrush}"
                     IsHitTestVisible="False" Opacity="1" CacheMode="BitmapCache">
                 <Border.Effect>
-                    <DropShadowEffect BlurRadius="18" ShadowDepth="4" Direction="270"
-                                      Color="#000000" Opacity="0.55" />
+                    <DropShadowEffect BlurRadius="26" ShadowDepth="4" Direction="270"
+                                      Color="#000000" Opacity="0.48" />
                 </Border.Effect>
             </Border>
 
-            <!--
-                A polite live region. The window is deliberately non-focusable, so a screen reader
-                can never navigate to it; announcing state changes from here is the only way the
-                capsule can say anything at all.
-            -->
             <Grid x:Name="CapsuleShell" Opacity="1" RenderTransformOrigin="0.5,0.5"
                   AutomationProperties.Name="Egoist Voice"
                   AutomationProperties.LiveSetting="Polite">
@@ -193,7 +319,36 @@
                     PhysicalStroke="1.6" RasterScale="4"
                     Cursor="SizeAll"
                     MouseLeftButtonDown="RootBorder_OnMouseLeftButtonDown"
-                    ToolTip="Перетащить">
+                    ToolTip="Перетащить (Двойной клик — настройки, правый клик — меню)">
+                <controls:PixelPerfectCapsuleBorder.ContextMenu>
+                    <ContextMenu x:Name="CapsuleContextMenu" Opened="CapsuleContextMenu_OnOpened">
+                        <MenuItem Header="Центр управления и настройки" Click="MenuSettings_OnClick">
+                            <MenuItem.Icon>
+                                <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons" FontSize="13" Foreground="{DynamicResource AppTextPrimaryBrush}" VerticalAlignment="Center" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="История записей" Click="MenuHistory_OnClick">
+                            <MenuItem.Icon>
+                                <TextBlock Text="&#xE81C;" FontFamily="Segoe Fluent Icons" FontSize="13" Foreground="{DynamicResource AppTextPrimaryBrush}" VerticalAlignment="Center" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem x:Name="MenuDirectFastMode" Header="Быстрый режим (Direct ASR)" IsCheckable="True" Click="MenuDirectFastMode_OnClick" />
+                        <MenuItem x:Name="MenuFormatWithQwen" Header="Qwen-форматирование" IsCheckable="True" Click="MenuFormatWithQwen_OnClick" />
+                        <MenuItem x:Name="MenuSoundFeedback" Header="Звуковые сигналы" IsCheckable="True" Click="MenuSoundFeedback_OnClick" />
+                        <Separator />
+                        <MenuItem Header="Скрыть капсулу" Click="MenuHide_OnClick">
+                            <MenuItem.Icon>
+                                <TextBlock Text="&#xE76C;" FontFamily="Segoe Fluent Icons" FontSize="13" Foreground="{DynamicResource AppTextMutedBrush}" VerticalAlignment="Center" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Выход" Click="MenuExit_OnClick">
+                            <MenuItem.Icon>
+                                <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons" FontSize="13" Foreground="{DynamicResource AppDangerBrush}" VerticalAlignment="Center" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </ContextMenu>
+                </controls:PixelPerfectCapsuleBorder.ContextMenu>
                 <controls:PixelPerfectCapsuleBorder.Triggers>
                     <EventTrigger RoutedEvent="MouseEnter">
                         <BeginStoryboard>
@@ -214,25 +369,36 @@
                 </controls:PixelPerfectCapsuleBorder.Triggers>
 
                 <Grid Margin="1">
+                    <!-- Obsidian Glass Surface Gradient -->
                     <Border x:Name="SurfaceGradient" CornerRadius="23" IsHitTestVisible="False">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#0D0D10" Offset="0" />
-                                <GradientStop Color="#050506" Offset="0.68" />
-                                <GradientStop Color="#020203" Offset="1" />
+                                <GradientStop Color="#1A1A24" Offset="0" />
+                                <GradientStop Color="#0F0F16" Offset="0.48" />
+                                <GradientStop Color="#08080C" Offset="1" />
                             </LinearGradientBrush>
                         </Border.Background>
                     </Border>
+
+                    <!-- Top Specular Rim Chamfer (21st.dev / Apple Dynamic Island specular glass refraction) -->
+                    <Border x:Name="InnerSpecularBorder" CornerRadius="23" BorderThickness="1" IsHitTestVisible="False">
+                        <Border.BorderBrush>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#34FFFFFF" Offset="0.0" />
+                                <GradientStop Color="#12FFFFFF" Offset="0.25" />
+                                <GradientStop Color="#00FFFFFF" Offset="0.70" />
+                                <GradientStop Color="#08FFFFFF" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.BorderBrush>
+                    </Border>
+
                     <Border x:Name="HoverSurface" CornerRadius="23" Background="{DynamicResource AppControlHoverBrush}"
                             Opacity="0" IsHitTestVisible="False" />
-                    <Border x:Name="SuccessFlash" CornerRadius="23" Background="{DynamicResource AppAccentBrush}"
+                    <!-- Emerald Mint Success Glow -->
+                    <Border x:Name="SuccessFlash" CornerRadius="23" Background="{DynamicResource AppSuccessBrush}"
                             Opacity="0" IsHitTestVisible="False" />
 
                     <Grid>
-                        <!-- Разделителей больше нет: расстояние разделяет не хуже, а жёсткая
-                             вертикальная черта была последним резким элементом среди
-                             растворяющегося контура и волосяной кривой волны. Колонки под них
-                             оставлены как отступы. -->
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="34" />
                             <ColumnDefinition Width="6" />
@@ -243,8 +409,15 @@
                         </Grid.ColumnDefinitions>
 
                         <Grid Grid.Column="0" Width="28" Height="28">
-                            <Ellipse x:Name="StateHalo" Fill="{DynamicResource AppAccentBrush}" Opacity="0"
-                                     RenderTransformOrigin="0.5,0.5">
+                            <!-- Soft organic radial halo breathing with voice amplitude -->
+                            <Ellipse x:Name="StateHalo" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.Fill>
+                                    <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+                                        <GradientStop Color="#80FF2634" Offset="0.0" />
+                                        <GradientStop Color="#30FF2634" Offset="0.55" />
+                                        <GradientStop Color="#00FF2634" Offset="1.0" />
+                                    </RadialGradientBrush>
+                                </Ellipse.Fill>
                                 <Ellipse.RenderTransform>
                                     <ScaleTransform x:Name="StateHaloScale" ScaleX="1" ScaleY="1" />
                                 </Ellipse.RenderTransform>
@@ -258,13 +431,6 @@
                                     </TransformGroup>
                                 </Border.RenderTransform>
                                 <Grid>
-                                    <!--
-                                        Векторный микрофон вместо глифа Segoe Fluent. Глиф рисуется
-                                        заливкой, а всё остальное на капсуле — контуром: рядом с
-                                        волосяной линией волны и тонким контуром пилюли залитая
-                                        иконка выглядела инородной. Здесь та же толщина линии и те
-                                        же скруглённые окончания.
-                                    -->
                                     <Canvas x:Name="MicIcon" Width="18" Height="18"
                                             HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <Path Stroke="{DynamicResource AppTextPrimaryBrush}" StrokeThickness="1.35"
@@ -274,24 +440,19 @@
                                                     M 3.7,9.1 A 5.3,5.3 0 0 0 14.3,9.1
                                                     M 9,14.4 L 9,16.1" />
                                     </Canvas>
-                                    <!-- Векторная галочка вместо глифа: та же толщина линии и те же
-                                         скруглённые окончания, что у микрофона и у гребня волны. -->
+                                    <!-- Mint Green vector checkmark on success -->
                                     <Canvas x:Name="CheckIcon" Visibility="Collapsed" Width="18" Height="18"
                                             HorizontalAlignment="Center" VerticalAlignment="Center"
                                             RenderTransformOrigin="0.5,0.5">
                                         <Canvas.RenderTransform><ScaleTransform x:Name="CheckScale" /></Canvas.RenderTransform>
-                                        <Path Stroke="{DynamicResource AppTextPrimaryBrush}" StrokeThickness="1.5"
+                                        <Path Stroke="{DynamicResource AppSuccessBrush}" StrokeThickness="1.6"
                                               StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                              StrokeLineJoin="Round" Opacity="0.94"
+                                              StrokeLineJoin="Round" Opacity="0.95"
                                               Data="M 4.2,9.4 L 7.6,12.9 L 13.8,5.6" />
                                     </Canvas>
                                     <TextBlock x:Name="ClipboardIcon" Visibility="Collapsed" Text="&#xE77F;"
                                                FontFamily="Segoe Fluent Icons" Foreground="{DynamicResource AppTextPrimaryBrush}" FontSize="14"
                                                TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    <!-- A 270° arc rather than four orbiting dots. The dots read as
-                                         a 2014 loading indicator and, being small, barely showed
-                                         motion at all; an arc with rounded caps is what every
-                                         current system spinner uses. -->
                                     <Grid x:Name="SpinnerIcon" Visibility="Collapsed" Width="18" Height="18">
                                         <Path Stroke="{DynamicResource AppAccentBrush}" StrokeThickness="1.9"
                                               StrokeStartLineCap="Round" StrokeEndLineCap="Round"
@@ -305,9 +466,6 @@
                                                TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <TextBlock.RenderTransform><TranslateTransform x:Name="DownloadArrowOffset" /></TextBlock.RenderTransform>
                                     </TextBlock>
-                                    <!-- Восклицательный знак в круге, нарисованный линией. Форма
-                                         намеренно отличается от галочки: цвет — не единственный
-                                         признак, по которому отказ отличается от успеха. -->
                                     <Canvas x:Name="ErrorIcon" Visibility="Collapsed" Width="18" Height="18"
                                             HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <Path Stroke="{DynamicResource AppWarningBrush}" StrokeThickness="1.4"
@@ -320,25 +478,36 @@
                             </Border>
                         </Grid>
 
-
                         <Grid x:Name="CenterContent" Grid.Column="2" Margin="9,0"
                               VerticalAlignment="Center" Height="24" Opacity="1">
                             <Grid.RenderTransform>
                                 <TranslateTransform x:Name="StateContentTranslate" />
                             </Grid.RenderTransform>
-                            <!-- Растянута, а не отцентрована: кривая занимает всю доступную ширину,
-                                 а поля разводят её с микрофоном слева и с таймером справа, чтобы
-                                 цифры никогда не ложились поверх волны. -->
                             <controls:CapsuleWaveform x:Name="Waveform"
                                                       VerticalAlignment="Center" HorizontalAlignment="Stretch"
                                                       Margin="2,0,12,0"
                                                       AutomationProperties.Name="Индикатор уровня звука" />
 
-                            <Grid x:Name="ProcessingDots" Visibility="Collapsed"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <!-- Active Thinking / Recognition with cascading micro-dots -->
+                            <StackPanel x:Name="ProcessingDots" Orientation="Horizontal" Visibility="Collapsed"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <TextBlock x:Name="ProcessingLabel" Text="Распознаю" Foreground="{DynamicResource AppTextPrimaryBrush}"
-                                           FontSize="12.5" FontWeight="SemiBold" />
-                            </Grid>
+                                           FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <StackPanel Orientation="Horizontal" Margin="5,2,0,0" VerticalAlignment="Center">
+                                    <Ellipse x:Name="ProcessingDot1" Width="3.5" Height="3.5" Margin="1.5,0"
+                                             Fill="{DynamicResource AppAccentBrush}" Opacity="0.25" RenderTransformOrigin="0.5,0.5">
+                                        <Ellipse.RenderTransform><ScaleTransform x:Name="ProcessingDot1Scale" /></Ellipse.RenderTransform>
+                                    </Ellipse>
+                                    <Ellipse x:Name="ProcessingDot2" Width="3.5" Height="3.5" Margin="1.5,0"
+                                             Fill="{DynamicResource AppAccentBrush}" Opacity="0.25" RenderTransformOrigin="0.5,0.5">
+                                        <Ellipse.RenderTransform><ScaleTransform x:Name="ProcessingDot2Scale" /></Ellipse.RenderTransform>
+                                    </Ellipse>
+                                    <Ellipse x:Name="ProcessingDot3" Width="3.5" Height="3.5" Margin="1.5,0"
+                                             Fill="{DynamicResource AppAccentBrush}" Opacity="0.25" RenderTransformOrigin="0.5,0.5">
+                                        <Ellipse.RenderTransform><ScaleTransform x:Name="ProcessingDot3Scale" /></Ellipse.RenderTransform>
+                                    </Ellipse>
+                                </StackPanel>
+                            </StackPanel>
 
                             <TextBlock x:Name="DetailText" Visibility="Collapsed" TextTrimming="CharacterEllipsis"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -349,33 +518,33 @@
                                          Foreground="{DynamicResource AppAccentBrush}" BorderThickness="0" />
                         </Grid>
 
-                        <!-- Tabular figures: proportional digits make the seconds column jitter
-                             on every tick, which reads as the whole capsule twitching. -->
                         <TextBlock x:Name="RecordingTimer" Grid.Column="3" Visibility="Collapsed"
                                    VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0"
                                    Foreground="{DynamicResource AppTextPrimaryBrush}" FontSize="11.5" FontWeight="SemiBold" Opacity="0.82"
                                    Typography.NumeralAlignment="Tabular"
                                    AutomationProperties.Name="Длительность записи" />
 
-
+                        <!-- Minimalist tactile cancel button with vector cross -->
                         <Button x:Name="CloseButton" Grid.Column="5" Click="CloseButton_OnClick"
-                                Width="26" Height="26" Background="Transparent" BorderThickness="0"
-                                Foreground="{DynamicResource AppIconBrush}" Focusable="False" Cursor="Hand" ToolTip="Отменить"
+                                Width="24" Height="24" Background="Transparent" BorderThickness="0"
+                                Foreground="{DynamicResource AppTextMutedBrush}" Focusable="False" Cursor="Hand" ToolTip="Отменить"
                                 AutomationProperties.Name="Отменить диктовку">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
-                                    <Border x:Name="ButtonBorder" CornerRadius="13" Background="{TemplateBinding Background}">
-                                        <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons"
-                                                   Foreground="{TemplateBinding Foreground}" FontSize="11"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Border x:Name="ButtonBorder" CornerRadius="12" Background="Transparent" SnapsToDevicePixels="True">
+                                        <Path x:Name="CrossPath" Data="M 7,7 L 13,13 M 13,7 L 7,13"
+                                              Stroke="{TemplateBinding Foreground}" StrokeThickness="1.3"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource AppControlHoverBrush}" />
-                                            <Setter Property="Foreground" Value="{DynamicResource AppAccentBrush}" />
+                                            <Setter TargetName="ButtonBorder" Property="Background" Value="#22FFFFFF" />
+                                            <Setter TargetName="CrossPath" Property="Stroke" Value="{DynamicResource AppDangerBrush}" />
                                         </Trigger>
                                         <Trigger Property="IsPressed" Value="True">
-                                            <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource AppControlPressedBrush}" />
+                                            <Setter TargetName="ButtonBorder" Property="Background" Value="#35FFFFFF" />
+                                            <Setter TargetName="CrossPath" Property="Stroke" Value="{DynamicResource AppAccentBrush}" />
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>

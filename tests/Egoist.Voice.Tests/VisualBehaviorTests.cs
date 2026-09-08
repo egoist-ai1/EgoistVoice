@@ -71,6 +71,30 @@ public sealed class VisualBehaviorTests
         Assert.InRange(CapsuleWaveformProfile.TotalWidth / availableWidth, 0.9, 1.0);
     }
 
+    [Fact]
+    public void Bass_timbre_expands_the_center_waveform_belly()
+    {
+        var neutralCenter = CapsuleWaveformProfile.TargetScale(12, 24, level: 0.5, phase: 1.0, reducedMotion: false, bass: 0);
+        var resonantCenter = CapsuleWaveformProfile.TargetScale(12, 24, level: 0.5, phase: 1.0, reducedMotion: false, bass: 0.8);
+
+        Assert.True(resonantCenter > neutralCenter, "Бас должен увеличивать амплитуду центральной части волны.");
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(0.5, 0.5)]
+    [InlineData(1.0, 1.0)]
+    public void Timbre_scales_stay_strictly_inside_bounds(double bass, double treble)
+    {
+        for (var index = 0; index < CapsuleWaveformProfile.BarCount; index++)
+        {
+            var scale = CapsuleWaveformProfile.TargetScale(
+                index, CapsuleWaveformProfile.BarCount, level: 0.7, phase: 2.3, reducedMotion: false, bass: bass, treble: treble);
+
+            Assert.InRange(scale, CapsuleWaveformProfile.MinimumScale, 1.0);
+        }
+    }
+
     [Theory]
     [InlineData(1.0, 4)]
     [InlineData(1.5, 4)]

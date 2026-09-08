@@ -36,7 +36,13 @@ if (!$Build) {
 if (Test-Path -LiteralPath $installer) { throw 'Existing installer preserved; choose a new artifact directory.' }
 $include = Join-Path $output 'compact-payload.iss'
 [IO.File]::WriteAllLines($include, [string[]]$lines, [Text.UTF8Encoding]::new($true))
-& $compiler ('/DPayloadInclude=' + $include) ('/DOutputDir=' + $output) (Join-Path $projectRoot 'installer\EgoistVoiceCompact.iss') > (Join-Path $output 'compact-installer-build.log')
+$issFile = Join-Path $projectRoot 'installer\EgoistVoiceCompact.iss'
+$issBytes = [IO.File]::ReadAllBytes($issFile)
+if ($issBytes.Length -lt 3 -or $issBytes[0] -ne 0xEF -or $issBytes[1] -ne 0xBB -or $issBytes[2] -ne 0xBF) {
+    $issContent = [IO.File]::ReadAllText($issFile, [Text.Encoding]::UTF8)
+    [IO.File]::WriteAllText($issFile, $issContent, [Text.UTF8Encoding]::new($true))
+}
+& $compiler ('/DPayloadInclude=' + $include) ('/DOutputDir=' + $output) $issFile > (Join-Path $output 'compact-installer-build.log')
 if ($LASTEXITCODE -ne 0) { throw 'Inno compilation failed; see compact-installer-build.log.' }
 $size = (Get-Item -LiteralPath $installer).Length
 if ($size -gt 600000000) { throw 'Installer exceeds 600 MB.' }

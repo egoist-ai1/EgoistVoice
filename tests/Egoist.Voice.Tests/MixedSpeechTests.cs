@@ -110,6 +110,37 @@ public sealed class MixedSpeechTests
     }
 
     [Fact]
+    public async Task Fast_mode_skips_whisper_refinement_when_primary_succeeded()
+    {
+        var whisper = new CountingEngine("Whisper", "Открой GitHub.");
+        using var service = CreateService(new CountingEngine("GigaAM", "Открой Github."), whisper);
+        service.FastModeNoWhisperRefinement = true;
+        service.MixedLanguageMode = false;
+        await service.WarmUpAsync(null, CancellationToken.None);
+        await WaitForWarmUpAsync(whisper);
+
+        var result = await service.TranscribeAsync("audio.wav", null, CancellationToken.None);
+
+        Assert.Equal("Открой Github.", result.Text);
+        Assert.Equal(0, whisper.TranscribeCalls);
+    }
+
+    [Fact]
+    public async Task Fast_mode_still_uses_whisper_when_explicit_mixed_mode_requested()
+    {
+        var whisper = new CountingEngine("Whisper", "Открой GitHub.");
+        using var service = CreateService(new CountingEngine("GigaAM", "Открой Github."), whisper);
+        service.FastModeNoWhisperRefinement = true;
+        service.MixedLanguageMode = true;
+        await service.WarmUpAsync(null, CancellationToken.None);
+        await WaitForWarmUpAsync(whisper);
+
+        await service.TranscribeAsync("audio.wav", null, CancellationToken.None);
+
+        Assert.Equal(1, whisper.TranscribeCalls);
+    }
+
+    [Fact]
     public async Task Refining_progress_is_reported_before_the_fallback_starts()
     {
         var whisper = new CountingEngine("Whisper", "Открой GitHub.");
