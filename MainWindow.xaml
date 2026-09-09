@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Egoist.Voice.Controls"
         Title="Egoist Voice"
-        Width="344" Height="88"
+        Width="280" Height="88"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
         Focusable="False" ShowActivated="False"
@@ -289,8 +289,8 @@
     </Window.Resources>
 
     <Grid>
-        <!-- The HWND is a fixed 344×88; CapsuleBody carries width morphing smoothly -->
-        <Grid x:Name="CapsuleBody" Width="320" Height="48"
+        <!-- A 256 DIP capsule with 12 DIP transparent margins in the native window. -->
+        <Grid x:Name="CapsuleBody" Width="256" Height="48"
               HorizontalAlignment="Center" VerticalAlignment="Center">
 
             <Border x:Name="ShadowSurface" Visibility="Collapsed" IsHitTestVisible="False" />
@@ -438,7 +438,7 @@
                         </Grid>
 
                         <Grid x:Name="CenterContent" Grid.Column="2" Margin="0,0,8,0"
-                              VerticalAlignment="Center" Height="28" Opacity="1">
+                              VerticalAlignment="Center" Height="34" Opacity="1">
                             <Grid.RenderTransform>
                                 <TranslateTransform x:Name="StateContentTranslate" />
                             </Grid.RenderTransform>

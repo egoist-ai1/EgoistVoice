@@ -420,7 +420,7 @@ internal static class EgoistVoiceBootstrap
         private readonly Package package;
         private readonly string[] arguments;
         private readonly bool silent;
-        private readonly ProgressBar progress;
+        private readonly ScarletProgress progress;
         private readonly Label status;
         private readonly Label percent;
         internal int ExitCode = 1603;
@@ -432,16 +432,16 @@ internal static class EgoistVoiceBootstrap
             this.silent = silent;
 
             Text = "Egoist Voice — подготовка";
+            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleMode = AutoScaleMode.Dpi;
             ClientSize = new Size(460, 142);
-            MinimumSize = Size;
-            MaximumSize = Size;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterScreen;
             MaximizeBox = false;
             MinimizeBox = false;
             ControlBox = false;
             ShowInTaskbar = !silent;
-            BackColor = Color.FromArgb(18, 21, 26);
+            BackColor = Color.FromArgb(8, 9, 12);
             Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
             Opacity = silent ? 0 : 1;
 
@@ -460,11 +460,8 @@ internal static class EgoistVoiceBootstrap
             status.SetBounds(24, 52, 410, 22);
             Controls.Add(status);
 
-            progress = new ProgressBar();
-            progress.Style = ProgressBarStyle.Continuous;
-            progress.Minimum = 0;
-            progress.Maximum = 1000;
-            progress.SetBounds(24, 84, 360, 18);
+            progress = new ScarletProgress();
+            progress.SetBounds(24, 90, 360, 4);
             Controls.Add(progress);
 
             percent = new Label();
@@ -475,6 +472,24 @@ internal static class EgoistVoiceBootstrap
             Controls.Add(percent);
 
             Shown += delegate { BeginWork(); };
+        }
+
+        private sealed class ScarletProgress : Control
+        {
+            private int value;
+            internal int Maximum { get { return 1000; } }
+            internal int Value
+            {
+                get { return value; }
+                set { this.value = Math.Max(0, Math.Min(Maximum, value)); Invalidate(); }
+            }
+            internal ScarletProgress() { DoubleBuffered = true; }
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                e.Graphics.Clear(Color.FromArgb(35, 37, 42));
+                using (SolidBrush brush = new SolidBrush(Color.FromArgb(255, 36, 72)))
+                    e.Graphics.FillRectangle(brush, 0, 0, Width * value / Maximum, Height);
+            }
         }
 
         private void BeginWork()

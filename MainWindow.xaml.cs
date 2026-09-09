@@ -742,7 +742,7 @@ public partial class MainWindow : Window, IDisposable
             // Голосовая команда «переведи …» / «… переведи на немецкий» идёт
             // только через проверенный current-user Engine Host. При ошибке
             // ничего не вставляем: оригинал нельзя выдавать за успешный перевод.
-            var directive = TranslateCommandParser.TryParse(text);
+            var directive = textSettings.PreserveSpokenWords ? null : TranslateCommandParser.TryParse(text);
             if (directive is not null)
             {
                 AppLog.Write($"Команда перевода: → {directive.TargetLanguage}, {directive.Payload.Length} симв.");
@@ -767,7 +767,7 @@ public partial class MainWindow : Window, IDisposable
             }
 
             string? formattingMessage = null;
-            if (directive is null && textSettings.FormatWithQwen)
+            if (directive is null && textSettings.FormatWithQwen && !textSettings.PreserveSpokenWords)
             {
                 SetProcessingState("Оформляю", null);
                 var budget = double.IsFinite(textSettings.FormatBudgetSeconds)
@@ -783,7 +783,8 @@ public partial class MainWindow : Window, IDisposable
             var deliveryResult = await _delivery.DeliverAsync(text, _targetWindow, cancellationToken);
             trace.Mark(DictationStage.Delivered);
             LastOperationSummary = $"От отпускания до результата: {trace.Total.TotalSeconds:0.00} с" +
-                (formattingMessage is null ? " · быстрое оформление" : " · " + formattingMessage);
+                (textSettings.PreserveSpokenWords ? " · дословно" :
+                    formattingMessage is null ? " · быстрое оформление" : " · " + formattingMessage);
             AppLog.Write($"Dictation timing: {trace.Format()}");
             switch (deliveryResult.Status)
             {
@@ -936,7 +937,7 @@ public partial class MainWindow : Window, IDisposable
         var settings = _settingsService.Load();
         MenuDirectFastMode.IsChecked = settings.DirectGigaamFastMode;
         MenuDirectFastMode.Visibility = VoiceRuntimeProfile.IsPortable ? Visibility.Collapsed : Visibility.Visible;
-        MenuFormatWithQwen.IsChecked = settings.FormatWithQwen;
+        MenuFormatWithQwen.IsChecked = settings.FormatWithQwen && !settings.PreserveSpokenWords;
         MenuSoundFeedback.IsChecked = _sounds.Enabled;
     }
 
@@ -954,7 +955,8 @@ public partial class MainWindow : Window, IDisposable
     private void MenuFormatWithQwen_OnClick(object sender, RoutedEventArgs e)
     {
         var current = _settingsService.Load();
-        _settingsService.Save(current with { FormatWithQwen = MenuFormatWithQwen.IsChecked });
+        _settingsService.Save(current with { FormatWithQwen = MenuFormatWithQwen.IsChecked,
+            PreserveSpokenWords = !MenuFormatWithQwen.IsChecked });
         ApplyDictationSettings();
     }
 
@@ -1097,7 +1099,7 @@ public partial class MainWindow : Window, IDisposable
         ApplyLocalQwenPreference(settings);
         var dictionary = _settingsService.LoadDictionary();
         _postProcessor = new TranscriptPostProcessor(dictionary, settings.ToPostProcessingOptions());
-        _mixedLanguageMode = settings.MixedLanguageMode && !VoiceRuntimeProfile.IsPortable;
+        _mixedLanguageMode = settings.MixedLanguageMode && !settings.PreserveSpokenWords && !VoiceRuntimeProfile.IsPortable;
         _saveRecentRecordings = settings.SaveRecentRecordings;
         _delivery.RestoreClipboard = settings.RestoreClipboard;
         _sounds.Enabled = settings.SoundFeedback;
@@ -1112,8 +1114,9 @@ public partial class MainWindow : Window, IDisposable
 
         if (_transcription is HybridTranscriptionService hybrid)
         {
-            hybrid.MixedLanguageMode = settings.MixedLanguageMode;
-            hybrid.FastModeNoWhisperRefinement = settings.DirectGigaamFastMode && !settings.MixedLanguageMode;
+            hybrid.MixedLanguageMode = settings.MixedLanguageMode && !settings.PreserveSpokenWords;
+            hybrid.FastModeNoWhisperRefinement = settings.PreserveSpokenWords ||
+                (settings.DirectGigaamFastMode && !settings.MixedLanguageMode);
 
             // Every dictionary term also becomes a suspicion for the mixed-speech detector, so a
             // user-added word starts pulling in the fallback without a second list to maintain.

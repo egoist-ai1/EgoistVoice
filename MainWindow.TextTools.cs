@@ -24,7 +24,8 @@ public partial class MainWindow
     private void ApplyLocalQwenPreference(DictationSettings settings)
     {
         if (!_textModelStartupAllowed) return;
-        if (settings.StartLocalQwen)
+        var autoStart = settings.StartLocalQwen && !settings.PreserveSpokenWords;
+        if (autoStart)
         {
             if (_localQwen is null)
             {
@@ -33,7 +34,7 @@ public partial class MainWindow
             }
         }
         else if (_previousAutoQwen) { _localQwen?.Dispose(); _localQwen = null; }
-        _previousAutoQwen = settings.StartLocalQwen;
+        _previousAutoQwen = autoStart;
     }
     public Task<bool> StartLocalQwenAsync() => (_localQwen ??= new LocalQwenHost()).StartAsync();
 
@@ -46,13 +47,6 @@ public partial class MainWindow
         var clock = Stopwatch.StartNew();
         try
         {
-            // Bound decoded memory before the ASR file reader allocates its sample buffer.
-            await Task.Run(() =>
-            {
-                using var reader = new AudioFileReader(path);
-                if (reader.TotalTime > TimeSpan.FromMinutes(30))
-                    throw new InvalidOperationException("Разделите запись на фрагменты до 30 минут.");
-            }, operation.Token);
             var result = await _transcription.TranscribeAsync(path, progress, operation.Token);
             operation.Token.ThrowIfCancellationRequested();
             return new(_postProcessor.Process(result.Text), clock.Elapsed);

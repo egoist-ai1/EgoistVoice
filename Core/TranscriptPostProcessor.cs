@@ -3,7 +3,8 @@ namespace Egoist.Voice.Core;
 public sealed record PostProcessingOptions(
     bool ApplyDictionary = true,
     bool ApplyVoiceCommands = true,
-    bool ApplyNumberNormalization = false)
+    bool ApplyNumberNormalization = false,
+    bool PreserveSpokenWords = false)
 {
     /// <summary>
     /// Number normalization is off by default on purpose. It is the one step that changes text the
@@ -41,6 +42,8 @@ public sealed class TranscriptPostProcessor
         {
             return string.Empty;
         }
+
+        if (Options.PreserveSpokenWords) return text.Trim();
 
         // Order matters. The dictionary runs first so its replacements are visible to the command
         // pass; numbers run before the commands so that "пять процентов, точка" resolves cleanly;

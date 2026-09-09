@@ -506,10 +506,11 @@
                                     <DockPanel Margin="0,0,0,10"><Button DockPanel.Dock="Right" Content="Настроить Qwen" Click="OpenModelsTab_OnClick" Style="{StaticResource CompactButton}" /><TextBlock x:Name="RuntimeProfileText" Style="{StaticResource Hint}" VerticalAlignment="Center" /></DockPanel>
                                     <ComboBox x:Name="FormattingModeCombo" SelectionChanged="FormattingMode_OnChanged"
                                               AutomationProperties.Name="Режим оформления диктовки">
-                                        <ComboBoxItem Content="Быстро · обычная диктовка" Tag="fast" />
+                                        <ComboBoxItem Content="Дословно · без замены слов" Tag="literal" />
+                                        <ComboBoxItem Content="Словарь и голосовые команды" Tag="fast" />
                                         <ComboBoxItem Content="Qwen · пунктуация и абзацы" Tag="qwen" />
                                     </ComboBox>
-                                    <TextBlock Text="Qwen получает только текст и сохраняет порядок слов. При изменении слов или ожидании дольше 2 секунд вставляется обычный результат. Исправить оговорки можно с просмотром во вкладке «Текст»."
+                                    <TextBlock Text="«Дословно» сохраняет результат русского распознавания: без словаря, команд, перевода и Qwen. Ошибки самого распознавателя возможны. Другие режимы включают словарь и команды; Qwen добавляет оформление."
                                                Style="{StaticResource Hint}" Margin="0,10,0,0" />
                                     <TextBlock x:Name="LastTimingText" Style="{StaticResource Hint}" Margin="0,10,0,0" />
                                 </StackPanel>
@@ -584,7 +585,7 @@
                                     <CheckBox x:Name="AutoQwenCheck" Content="Запускать Qwen вместе с Voice"
                                               Checked="AutoQwen_OnChanged" Unchecked="AutoQwen_OnChanged" />
                                     <TextBlock x:Name="LocalQwenStatusText" Style="{StaticResource Hint}" Margin="0,0,0,6" />
-                                    <TextBlock Text="После 5 минут без работы Qwen освобождает память. При следующем оформлении загружается снова. Диктовка работает и во время загрузки."
+                                    <TextBlock Text="Qwen остаётся в памяти до выключения или закрытия Voice. В режиме «Дословно» автоматический запуск отключён. Русский распознаватель остаётся готовым к диктовке."
                                                Style="{StaticResource Hint}" Margin="0,0,0,12" />
                                     <TextBlock Text="Адрес локального сервера" Style="{StaticResource Hint}" Margin="0,0,0,5" />
                                     <DockPanel>

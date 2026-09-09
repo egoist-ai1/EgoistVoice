@@ -18,6 +18,7 @@ public enum AppTheme
 /// </summary>
 public sealed record DictationSettings
 {
+    [JsonPropertyName("preserveSpokenWords")] public bool PreserveSpokenWords { get; init; } = true;
     [JsonPropertyName("formatWithQwen")] public bool FormatWithQwen { get; init; }
     [JsonPropertyName("startLocalQwen")] public bool StartLocalQwen { get; init; }
     [JsonPropertyName("textModelEndpoint")] public string TextModelEndpoint { get; init; } = "http://127.0.0.1:11434/v1";
@@ -57,7 +58,7 @@ public sealed record DictationSettings
     public static DictationSettings Default { get; } = new() { SoundFeedback = false, SaveRecentRecordings = true };
 
     public PostProcessingOptions ToPostProcessingOptions() =>
-        new(ApplyDictionary, ApplyVoiceCommands, ApplyNumberNormalization);
+        new(ApplyDictionary, ApplyVoiceCommands, ApplyNumberNormalization, PreserveSpokenWords);
 }
 
 /// <summary>

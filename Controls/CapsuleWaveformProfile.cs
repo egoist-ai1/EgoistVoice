@@ -8,15 +8,15 @@ internal static class CapsuleWaveformProfile
     internal const int BarCount = 15;
     internal const double BarWidth = 4;
     internal const double BarMargin = 2;
-    internal const double BarHeight = 28;
+    internal const double BarHeight = 34;
     internal const double MinimumScale = 0.06;
-    internal const double AmplitudeGamma = 0.65;
+    internal const double AmplitudeGamma = 0.55;
     internal static double TotalWidth => BarCount * (BarWidth + BarMargin * 2);
     internal static double PreferredWidth => TotalWidth;
 
     internal static double SmoothLevel(double current, double target, double deltaSeconds)
     {
-        var timeConstant = target > current ? 0.012 : 0.095;
+        var timeConstant = target > current ? 0.008 : 0.080;
         var alpha = 1 - Math.Exp(-Math.Clamp(deltaSeconds, 1d / 240d, 0.05) / timeConstant);
         return current + (target - current) * alpha;
     }
@@ -37,7 +37,7 @@ internal static class CapsuleWaveformProfile
         {
             // Eight independent bands fan out from the centre into fifteen mirrored bars.
             var band = count <= 1 ? 0 : (int)Math.Round(Math.Abs(index - (count - 1) / 2d) * 14 / (count - 1));
-            detail = 0.12 + Math.Pow(Math.Clamp(spectrum[Math.Clamp(band, 0, 7)], 0, 1), 0.7) * 1.05;
+            detail = 0.18 + Math.Pow(Math.Clamp(spectrum[Math.Clamp(band, 0, 7)], 0, 1), 0.65) * 1.15;
         }
         else
         {

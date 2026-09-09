@@ -3,9 +3,10 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [Parameter(Mandatory)][string]$WorkDirectory,
     [Parameter(Mandatory)][string]$SpeechModelsRoot,
-    [Parameter(Mandatory)][string]$TextModelPath,
-    [Parameter(Mandatory)][string]$TextRuntimeZip,
-    [Parameter(Mandatory)][string]$VcRuntimeDirectory,
+    [string]$TextModelPath,
+    [string]$TextRuntimeZip,
+    [string]$VcRuntimeDirectory,
+    [switch]$IncludeTextEditor,
     [switch]$Build
 )
 $ErrorActionPreference = 'Stop'
@@ -17,7 +18,12 @@ $work = [IO.Path]::GetFullPath($WorkDirectory).TrimEnd('\')
 if (!$output.StartsWith($artifactRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Output must be inside project artifacts.' }
 if ($output.Contains('"') -or $work.Contains('"')) { throw 'Quoted build paths are unsupported.' }
 if (Test-Path -LiteralPath $output) { throw 'Choose a fresh output directory; existing artifacts are preserved.' }
-foreach ($inputPath in @($TextModelPath, $TextRuntimeZip, $VcRuntimeDirectory, $SpeechModelsRoot)) {
+$inputPaths = @($SpeechModelsRoot)
+if ($IncludeTextEditor) {
+    if (!$TextModelPath -or !$TextRuntimeZip -or !$VcRuntimeDirectory) { throw 'Text editor requires model, runtime and VC runtime paths.' }
+    $inputPaths += @($TextModelPath, $TextRuntimeZip, $VcRuntimeDirectory)
+}
+foreach ($inputPath in $inputPaths) {
     $item = Get-Item -LiteralPath $inputPath
     if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Reparse input refused.' }
 }
@@ -31,7 +37,7 @@ foreach ($toolPath in @($compiler, $bootstrapCompiler)) {
     if (!(Test-Path -LiteralPath $toolPath -PathType Leaf)) { throw 'Pinned installer compiler is missing.' }
 }
 if (!$Build) {
-    [ordered]@{ planOnly=$true; version=$version; output=$output; work=$work; scope='Offline Russian GigaAM + Qwen; package only, no installation or downloads' } | ConvertTo-Json
+    [ordered]@{ planOnly=$true; version=$version; output=$output; work=$work; includeTextEditor=[bool]$IncludeTextEditor; scope='Offline Russian GigaAM; optional Qwen; package only, no installation or downloads' } | ConvertTo-Json
     return
 }
 function Assert-FileHash([string]$Path, [string]$Sha256, [long]$Bytes = -1) {
@@ -41,6 +47,7 @@ function Assert-FileHash([string]$Path, [string]$Sha256, [long]$Bytes = -1) {
         throw ('Input integrity failure: ' + $item.Name)
     }
 }
+if ($IncludeTextEditor) {
 Assert-FileHash $TextModelPath '7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5' 2497280256
 Assert-FileHash $TextRuntimeZip 'a63bd0ceab781483a7fde174f1676d86c9724d7376d721fab026fa2df1393997'
 $vcHashes = [ordered]@{
@@ -49,11 +56,13 @@ $vcHashes = [ordered]@{
     'vcruntime140_1.dll' = '1f2d41c4aa5db0bc33ebf7b66d72943a817d7ce6cbe880502a9403823633093f'
 }
 foreach ($entry in $vcHashes.GetEnumerator()) { Assert-FileHash (Join-Path $VcRuntimeDirectory $entry.Key) $entry.Value }
+}
 New-Item -ItemType Directory -Path $output, $work -Force | Out-Null
 $stage = Join-Path $output 'portable'
 & dotnet publish (Join-Path $project 'Egoist.Voice.csproj') -c Release -r win-x64 --self-contained true '-p:VoiceFlavor=Compact' '-p:RuntimeFrameworkVersion=8.0.30' --no-restore -o $stage --nologo --verbosity minimal
 if ($LASTEXITCODE -ne 0) { throw 'Self-contained publish failed. Restore the win-x64 Compact target first.' }
 & (Join-Path $PSScriptRoot 'Build-CompactPortable.ps1') -OutputDirectory $stage -InstalledModelsRoot $SpeechModelsRoot -UseExistingPublish -WorkDirectory (Join-Path $work 'catalog-check') | Out-Null
+if ($IncludeTextEditor) {
 $textModels = Join-Path $stage 'TextModels'
 $textRuntime = Join-Path $stage 'TextRuntime'
 New-Item -ItemType Directory -Path $textModels, $textRuntime -Force | Out-Null
@@ -73,24 +82,27 @@ try {
     }
 } finally { $zip.Dispose() }
 foreach ($entry in $vcHashes.GetEnumerator()) { Copy-Item -LiteralPath (Join-Path $VcRuntimeDirectory $entry.Key) -Destination $textRuntime }
+}
 Copy-Item -LiteralPath (Join-Path $project 'licenses') -Destination (Join-Path $stage 'licenses') -Recurse
 $utf8 = [Text.UTF8Encoding]::new($false)
-$defaults = '{"formatWithQwen":true,"startLocalQwen":true,"textModelEndpoint":"http://127.0.0.1:47823/v1","textModelId":"egoist-qwen3-4b","formatBudgetSeconds":2,"applyDictionary":true,"saveRecentRecordings":false}'
+$defaults = '{"preserveSpokenWords":true,"formatWithQwen":false,"startLocalQwen":false,"textModelEndpoint":"http://127.0.0.1:47823/v1","textModelId":"egoist-qwen3-4b","formatBudgetSeconds":2,"applyDictionary":true,"saveRecentRecordings":false}'
 $defaultsPath = Join-Path $work 'dictation-defaults.json'
 [IO.File]::WriteAllText($defaultsPath, $defaults, $utf8)
 [IO.File]::WriteAllText((Join-Path $stage 'START-HERE.txt'), @'
-Egoist Voice — русская диктовка и оформление, офлайн
+Egoist Voice — русская диктовка, офлайн
 
 Закройте прежний Voice через трей. Запустите Egoist.Voice.exe.
-GigaAM, Qwen3-4B и .NET включены. Настройки находятся в Data рядом с приложением.
-Установщик включает Qwen и автооформление только для новой установки. При обновлении
-сохраняются существующие настройки. История аудио в новой установке выключена.
-При запуске напрямую из переносимой папки включите Qwen в меню «Модели» и выберите
-оформление в «Распознавание». Изменения сохранятся в Data.
-После пяти минут простоя Qwen выгружается; следующий запуск требует прогрева.
-Диктовка продолжает работать без готовой Qwen. Исправления слов проверяйте в редакторе.
-Whisper и движок перевода не входят. Для Qwen предпочтителен GPU с Vulkan;
-при неподходящем оборудовании доступность и скорость редактора могут отличаться.
+GigaAM и .NET включены. Настройки находятся в Data рядом с приложением.
+Обычная сборка не включает Qwen; её можно добавить отдельным параметром сборки.
+По умолчанию выбран режим «Дословно»: без замены слов словарём, голосовых команд
+и автооформления. Ошибки самого распознавателя возможны.
+При обновлении сохраняются существующие настройки. Если раньше выбора режима
+«Дословно» не было, он включится. История аудио в новой установке выключена.
+В переносимой папке настройте историю во вкладке «Общие» перед записью.
+Распознаватель остаётся в памяти. Пятиминутного таймера выгрузки нет.
+Длительность аудиофайла не ограничена таймером; обработка идёт фрагментами.
+Доступная память и место на диске остаются физическими ограничениями.
+Whisper и движок перевода не входят.
 Это неподписанная локальная сборка. Установка на чистой Windows требует отдельной проверки.
 '@, $utf8)
 $files = @(Get-ChildItem -LiteralPath $stage -File -Recurse | Sort-Object FullName | ForEach-Object {
@@ -112,7 +124,9 @@ $lines = @($files | ForEach-Object {
 [IO.File]::WriteAllLines($include, [string[]]$lines, [Text.UTF8Encoding]::new($true))
 $inner = Join-Path $work 'inner'
 New-Item -ItemType Directory -Path $inner | Out-Null
-& $compiler '/Qp' ('/DPayloadInclude=' + $include) ('/DOutputDir=' + $inner) ('/DAppVersion=' + $version) ('/DAppFileVersion=' + $fileVersion) '/DBundleTextEditor=1' (Join-Path $project 'installer\EgoistVoiceCompact.iss') *> (Join-Path $work 'inno-build.log')
+$editionArguments = @('/DRussianEdition=1')
+if ($IncludeTextEditor) { $editionArguments += '/DBundleTextEditor=1' }
+& $compiler '/Qp' ('/DPayloadInclude=' + $include) ('/DOutputDir=' + $inner) ('/DAppVersion=' + $version) ('/DAppFileVersion=' + $fileVersion) @editionArguments (Join-Path $project 'installer\EgoistVoiceCompact.iss') *> (Join-Path $work 'inno-build.log')
 if ($LASTEXITCODE -ne 0) { throw 'Inno compilation failed; inspect the scoped inno-build.log.' }
 $innerExe = Join-Path $inner ('EgoistVoice-Setup-Russian-' + $version + '-win-x64-inner.exe')
 $innerFiles = @((Get-Item -LiteralPath $innerExe)) + @(Get-ChildItem -LiteralPath $inner -Filter '*.bin' -File | Sort-Object Name)

@@ -7,7 +7,7 @@ namespace Egoist.Voice.Services;
 /// <summary>Owns only the Qwen child it starts. Never controls the shared translation process.</summary>
 public sealed class LocalQwenHost : IDisposable
 {
-    private static readonly TimeSpan DefaultIdleUnloadDelay = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan DefaultIdleUnloadDelay = Timeout.InfiniteTimeSpan;
     public const string ModelId = "egoist-qwen3-4b";
     // A separate loopback port isolates native diagnostics from a running user session.
     private static readonly int Port = int.TryParse(Environment.GetEnvironmentVariable("EGOIST_VOICE_QWEN_TEST_PORT"), out var port)
@@ -68,7 +68,8 @@ public sealed class LocalQwenHost : IDisposable
 
     internal LocalQwenHost(TimeSpan idleUnloadDelay, Func<Task<bool>>? startOverride)
     {
-        if (idleUnloadDelay <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(idleUnloadDelay));
+        if (idleUnloadDelay != Timeout.InfiniteTimeSpan && idleUnloadDelay <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(idleUnloadDelay));
         _idleUnloadDelay = idleUnloadDelay;
         _startCore = startOverride ?? StartCoreAsync;
         _idleStopTimer = new System.Threading.Timer(OnIdleStop);
@@ -254,6 +255,7 @@ public sealed class LocalQwenHost : IDisposable
 
     private void ScheduleIdleStopIfUnusedLocked()
     {
+        if (_idleUnloadDelay == Timeout.InfiniteTimeSpan) return;
         if (_disposed || _activeLeases != 0 || _start is not { IsCompletedSuccessfully: true, Result: true } ||
             _process is null || _process.HasExited) return;
         var delayMilliseconds = Math.Max(1L, (long)Math.Ceiling(_idleUnloadDelay.TotalMilliseconds));

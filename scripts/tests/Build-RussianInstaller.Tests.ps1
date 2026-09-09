@@ -15,6 +15,7 @@ Describe 'Russian installer build boundaries' {
             TextModelPath = $model
             TextRuntimeZip = $runtime
             VcRuntimeDirectory = $inputDirectory
+            IncludeTextEditor = $true
         }
     }
 
@@ -34,6 +35,16 @@ Describe 'Russian installer build boundaries' {
         $arguments.OutputDirectory = $outside
         { & $builder @arguments -Build } | Should -Throw '*inside project artifacts*'
         [IO.File]::ReadAllText($sentinel) | Should -Be 'preserve'
+    }
+
+    It 'plans the default speech package without text model or runtime inputs' {
+        $arguments = $buildArguments.Clone()
+        foreach ($key in @('TextModelPath', 'TextRuntimeZip', 'VcRuntimeDirectory', 'IncludeTextEditor')) {
+            $arguments.Remove($key)
+        }
+        $result = (& $builder @arguments) | ConvertFrom-Json
+        $result.includeTextEditor | Should -BeFalse
+        Test-Path -LiteralPath $arguments.OutputDirectory | Should -BeFalse
     }
 
     It 'rejects corrupt model input before creating a staging directory' {

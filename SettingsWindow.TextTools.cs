@@ -22,7 +22,7 @@ public partial class SettingsWindow
             AutoQwenCheck.IsEnabled = StartLocalQwenButton.IsEnabled = _mainWindow.CanStartLocalQwen;
             LocalQwenStatusText.Text = _mainWindow.CanStartLocalQwen ? _mainWindow.LocalQwenStatus
                 : "Для встроенного запуска нужна отдельно установленная Qwen3-4B GGUF. Можно использовать сервер ниже.";
-            FormattingModeCombo.SelectedIndex = settings.FormatWithQwen ? 1 : 0;
+            FormattingModeCombo.SelectedIndex = settings.PreserveSpokenWords ? 0 : settings.FormatWithQwen ? 2 : 1;
             TextEndpointBox.Text = settings.TextModelEndpoint;
             if (!string.IsNullOrWhiteSpace(settings.TextModelId))
             {
@@ -41,8 +41,12 @@ public partial class SettingsWindow
     {
         if (_loading || _loadingTextSettings || !IsLoaded) return;
         var current = _settingsService.Load();
-        _settingsService.Save(current with { FormatWithQwen = FormattingModeCombo.SelectedIndex == 1, FormatBudgetSeconds = 2 });
+        _settingsService.Save(current with {
+            PreserveSpokenWords = FormattingModeCombo.SelectedIndex == 0,
+            FormatWithQwen = FormattingModeCombo.SelectedIndex == 2,
+            FormatBudgetSeconds = 2 });
         _mainWindow.ApplyDictationSettings();
+        LoadGeneralSettings();
     }
 
     private void AutoQwen_OnChanged(object sender, RoutedEventArgs e)

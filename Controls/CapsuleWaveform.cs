@@ -61,7 +61,7 @@ public sealed class CapsuleWaveform : FrameworkElement
         var brush = _highContrast ? System.Windows.SystemColors.WindowTextBrush : ScarletBrush;
         for (var index = 0; index < _levels.Length; index++)
         {
-            var barWidth = Math.Min(5, cell * 0.52) * (0.4 + 0.6 * CapsuleWaveformProfile.EdgeEnvelope(index, _levels.Length));
+            var barWidth = Math.Min(5, cell * 0.58) * (0.4 + 0.6 * CapsuleWaveformProfile.EdgeEnvelope(index, _levels.Length));
             var height = Math.Clamp(_levels[index] * ActualHeight, barWidth, ActualHeight);
             drawingContext.DrawRoundedRectangle(brush, null,
                 new Rect(cell * (index + 0.5) - barWidth / 2, (ActualHeight - height) / 2, barWidth, height),

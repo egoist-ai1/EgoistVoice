@@ -8,7 +8,7 @@
 
 - WPF app owns tray/settings, recording capsule, global input hooks and safe text delivery.
 - Shared-mode WASAPI remains warm with a bounded 200 ms idle pre-roll. Release
-  keeps a 350 ms tail, then downmixes/resamples once to 16 kHz mono in memory;
+  keeps a 350 ms tail. Capture downmixes/resamples incrementally to 16 kHz mono in memory;
   ordinary dictation never writes WAV. Only explicit private-corpus recording
   may persist a completed take.
 - Audio pipeline runs local GigaAM with conditional Whisper fallback,
@@ -16,22 +16,29 @@
 - GigaAM keeps batches of up to six comparable chunks, but decodes the final tail
   separately when it is shorter than half the longest member. A one-item batch uses
   single-stream decode. Temporary file-reader buffers are cleared in `finally`.
-- Recording transfers the completed raw buffer into conversion instead of cloning it;
-  conversion clears the owned bytes in `finally`. Quiet pre-roll/tail and chunk pauses
+- Recording retains 16 kHz float blocks instead of the complete raw device stream.
+  The existing WDL settings and end flush preserve bit-for-bit input parity in the
+  tested formats. Stop allocates one contiguous float array for the existing ASR API;
+  memory grows with duration and briefly includes both copies. Cancellation clears
+  owned blocks. Quiet pre-roll/tail and chunk pauses
   use recording-relative levels. The stop sound plays after capture stops.
 - The scarlet capsule uses eight FFT bands (70–8000 Hz) mapped onto fifteen tapered
-  bars, with a 12 ms attack and 95 ms release. Its frame loop runs only while recording;
+  bars in a 256 × 48 DIP capsule, with an 8 ms attack and 80 ms release. Its frame loop runs only while recording;
   FFT buffers are reused and display analysis never modifies recognition samples.
-- Automatic Qwen formatting preserves words, order, numbers, paths and negation.
+- Literal mode is the default, including older settings without the new field. It
+  preserves the decoder text, disables dictionary/commands/translation/Qwen and
+  suppresses optional Whisper refinement. It cannot repair acoustic recognition errors.
+- Optional automatic Qwen formatting preserves words, order, numbers, paths and negation.
   Manual spelling correction remains a reviewed proposal with conservative validation.
-  An owned-host lease spans startup and generation; a monotonic five-minute idle
-  deadline unloads only the Qwen child Voice created. The automatic two-second budget
+  An owned-host lease spans startup and generation. Production has no idle unload
+  timer; explicit shutdown/settings changes own its lifetime. The automatic two-second budget
   includes startup waiting. Batch/microbatch limits are 512/256; context remains 2048.
 - Manual Qwen correction can use a second word-preserving punctuation pass when the
   accepted correction needs sentence formatting. Both passes share one budget; a
   failed second pass retains the accepted correction. Critical pronouns are protected.
-- Russian RC bundles GigaAM in `Models`, Qwen in `TextModels` and llama.cpp in
-  `TextRuntime` beside the app. Explicit environment overrides take precedence, then
+- Russian RC2 bundles GigaAM in `Models`; Qwen in `TextModels` and llama.cpp in
+  `TextRuntime` are optional builder inputs, omitted from the default package.
+  Explicit environment overrides take precedence, then
   bundled assets, then existing installed locations. This Compact-based package owns
   no shared translation engine. Its Inno defaults are seeded only for new settings.
 - Entity catalogue v2 is whole-token bounded. Safe names are global; ambiguous

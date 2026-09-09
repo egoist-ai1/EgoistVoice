@@ -56,19 +56,22 @@ Full Preview 2 публикует проверенные байты EV-2224: app
 
 ## Russian 2.2.1 RC
 
-`scripts/Build-RussianInstaller.ps1` создаёт автономный русский комплект: Compact/GigaAM,
-Qwen3-4B Q4_K_M, llama.cpp b10219 CPU/Vulkan и self-contained .NET 8.0.30. Whisper,
+`scripts/Build-RussianInstaller.ps1` создаёт автономный русский комплект: Compact/GigaAM
+и self-contained .NET 8.0.30. Qwen и её runtime по умолчанию не включены. Whisper,
 Hy-MT и общий движок перевода не входят. Сначала восстановите Compact `win-x64`
 с `-p:RuntimeFrameworkVersion=8.0.30`. Передайте явные локальные пути параметрам
-`SpeechModelsRoot`, `TextModelPath`, `TextRuntimeZip`, `VcRuntimeDirectory` и собственный
+`SpeechModelsRoot` и собственный
 временный `WorkDirectory`. `OutputDirectory` должен быть новым каталогом в `artifacts`.
 Без `-Build` скрипт показывает план; с ним проверяет входные SHA-256, публикует приложение,
 создаёт Inno payload и один внешний EXE с проверяемыми вложениями. Модели не скачиваются.
+Для необязательного текстового редактора передайте `-IncludeTextEditor` вместе с
+`TextModelPath`, `TextRuntimeZip`, `VcRuntimeDirectory`. Даже такой пакет запускается
+в режиме «Дословно»; автоматический запуск Qwen требует явного выбора другого режима.
 
 `russian-payload.manifest.json` содержит полный состав, SHA-256 и ревизию исходников;
 `russian-installer.json` — размер, подпись и результат проверки встроенного пакета.
-Свежая установка включает Qwen/автооформление и выключает историю аудио. Существующий
+Свежая установка выбирает «Дословно» и выключает историю аудио. Существующий
 `Data/dictation.json` не заменяется и не удаляется деинсталлятором. Блокировку файлов
 обрабатывает Windows Restart Manager; глобального `taskkill /IM` в этом установщике нет.
 Сборка и проверка целостности не означают, что пройдены установка/обновление/удаление
-в чистой Windows. Статус локального кандидата: [2.2.1-rc.1](releases/2.2.1-rc.1.md).
+в чистой Windows. Статус локального кандидата: [2.2.1-rc.2](releases/2.2.1-rc.2.md).

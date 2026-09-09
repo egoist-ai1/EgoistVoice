@@ -335,7 +335,7 @@ public partial class MainWindow
 
         if (state.Kind is CapsuleVisualStateKind.Ready or CapsuleVisualStateKind.Downloading)
             SetRecordingTimerVisible(false);
-        AnimateCapsuleWidth(320);
+        AnimateCapsuleWidth(256);
 
         ApplyThemeToCapsule();
 
@@ -394,7 +394,7 @@ public partial class MainWindow
         ProcessingDot3Scale.ScaleX = ProcessingDot3Scale.ScaleY = 1;
 
         CapsuleBody.BeginAnimation(FrameworkElement.WidthProperty, null);
-        CapsuleBody.Width = 320;
+        CapsuleBody.Width = 256;
 
         if (_hideRequested)
         {
