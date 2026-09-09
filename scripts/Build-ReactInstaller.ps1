@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory)][string]$WorkDirectory,
     [Parameter(Mandatory)][string]$SpeechModelsRoot,
     [Parameter(Mandatory)][string]$WebModulesDirectory,
-    [Parameter(Mandatory)][string]$PackagingModulesDirectory
+    [Parameter(Mandatory)][string]$PackagingModulesDirectory,
+    [Parameter(Mandatory)][string]$ElectronDistributionPath
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -46,7 +47,7 @@ $entries = @($files | ForEach-Object {
 [IO.File]::WriteAllText((Join-Path $payload 'payload.json'), ([ordered]@{launch=$launch[0].Name;files=$entries} | ConvertTo-Json -Depth 4), $utf8)
 $configuration = [ordered]@{
     appId='Egoist.Voice.Setup'; productName='Egoist Voice Setup'; electronVersion=$electronPackage.version
-    electronDist=(Join-Path $PackagingModulesDirectory 'electron\dist')
+    electronDist=[IO.Path]::GetFullPath($ElectronDistributionPath)
     directories=@{app=$stage;output=$output}; asar=$true; npmRebuild=$false; compression='normal'
     files=@('main.cjs','preload.cjs','icon.ico','package.json','react-LICENSE.txt','dist/**/*')
     extraResources=@(@{from=$payload;to='payload';filter=@('**/*')})
