@@ -612,7 +612,7 @@
                             <Border Grid.Row="0" Grid.ColumnSpan="2" Style="{StaticResource Card}">
                                 <StackPanel>
                                     <TextBlock Text="Из речи — в готовый текст" Style="{StaticResource SectionTitle}" />
-                                    <TextBlock Text="Откройте аудиофайл или вставьте текст. Записи до 30 минут обрабатываются локально. Текст остаётся только в этом окне."
+                                    <TextBlock Text="Откройте аудиофайл или вставьте текст. Длинные записи обрабатываются локально фрагментами, без лимита 30 минут. Текст остаётся только в этом окне."
                                                Style="{StaticResource Hint}" Margin="0,0,0,12" />
                                     <WrapPanel>
                                         <Button x:Name="OpenAudioButton" Content="Открыть аудио" Click="OpenAudio_OnClick" Margin="0,0,8,8" />
