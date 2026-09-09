@@ -43,7 +43,10 @@ public sealed class TranscriptPostProcessor
             return string.Empty;
         }
 
-        if (Options.PreserveSpokenWords) return text.Trim();
+        if (Options.PreserveSpokenWords)
+        {
+            return TrustedSpellingCorrections.Apply(text.Trim());
+        }
 
         // Order matters. The dictionary runs first so its replacements are visible to the command
         // pass; numbers run before the commands so that "пять процентов, точка" resolves cleanly;
