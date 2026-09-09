@@ -13,6 +13,9 @@
   may persist a completed take.
 - Audio pipeline runs local GigaAM with conditional Whisper fallback,
   profile-aware deterministic entity repair, normalization and commands.
+- GigaAM keeps batches of up to six comparable chunks, but decodes the final tail
+  separately when it is shorter than half the longest member. A one-item batch uses
+  single-stream decode. Temporary file-reader buffers are cleared in `finally`.
 - Recording transfers the completed raw buffer into conversion instead of cloning it;
   conversion clears the owned bytes in `finally`. Quiet pre-roll/tail and chunk pauses
   use recording-relative levels. The stop sound plays after capture stops.
@@ -24,6 +27,13 @@
   An owned-host lease spans startup and generation; a monotonic five-minute idle
   deadline unloads only the Qwen child Voice created. The automatic two-second budget
   includes startup waiting. Batch/microbatch limits are 512/256; context remains 2048.
+- Manual Qwen correction can use a second word-preserving punctuation pass when the
+  accepted correction needs sentence formatting. Both passes share one budget; a
+  failed second pass retains the accepted correction. Critical pronouns are protected.
+- Russian RC bundles GigaAM in `Models`, Qwen in `TextModels` and llama.cpp in
+  `TextRuntime` beside the app. Explicit environment overrides take precedence, then
+  bundled assets, then existing installed locations. This Compact-based package owns
+  no shared translation engine. Its Inno defaults are seeded only for new settings.
 - Entity catalogue v2 is whole-token bounded. Safe names are global; ambiguous
   names require a local target/utterance domain and carry term-specific negative
   contexts. Exact split/join repairs replace no arbitrary edit-distance span.

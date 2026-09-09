@@ -1,36 +1,38 @@
 # Egoist Voice — current status
 
 - Updated: 2026-09-09 UTC.
-- Active work: **2.2.1-dev**, local scarlet capsule / Russian quality candidate.
-- Base: `b91343f` (v2.2.0 source); branch `codex/scarlet-voice-quality`.
-- This task did not create a release, tag, installer or publication. Earlier publication
-  evidence remains in `docs/releases/` and the immutable change history.
+- Candidate: **2.2.1-rc.1**, offline Russian installer and portable app.
+- Branch: `codex/scarlet-voice-quality`; payload source: `92af68a`.
+- Local packaging authorized and completed. No tag, push, publication or host installation.
 
 ## Current deliverable
 
-`build/Compact-2.2.1-dev/Egoist.Voice.exe`, with four hash-verified local GigaAM models.
-Framework-dependent .NET 8 Windows build; separate portable Data. Installed Qwen/runtime
-can be reused. The user's previous app and source checkout remain untouched.
+`artifacts/Russian-2.2.1-rc.1-final/EgoistVoice-Setup-Russian-2.2.1-rc.1-win-x64.exe`
+is one 2,673,881,982-byte package. Includes Compact/GigaAM, Qwen3-4B, llama.cpp
+CPU/Vulkan and .NET 8.0.30. An adjacent `portable` folder is also usable.
+The previous installed app and original source checkout remain untouched.
 
-Implemented: flat scarlet capsule and new icon; eight measured FFT bands with tapered
-edges; quiet boundary preservation; conservative Russian postprocessing and contextual
-correction; raw-buffer transfer; no forced process memory trim; safe five-minute Qwen
-idle unload; bounded Qwen batches. See [implementation report](IMPLEMENTATION.md).
+Clean logo, scarlet FFT capsule, quiet-boundary handling, conservative Russian text
+repair and bounded Qwen lifetime are included. New changes avoid padded short ASR
+tails, protect pronouns and finish accepted corrections within a shared formatting
+budget. New-install Qwen defaults preserve existing settings on upgrade.
 
 ## Verification and limits
 
-- Full: 818 passed, no skips. Compact: 811 passed, seven Full-only download/pruning
-  contracts explicitly skipped; those seven pass in Full.
-- Native Compact build: zero warnings/errors. WPF state/settings previews inspected.
-- Normal and −18 dB synthetic speech: zero word errors in four runs each; copied
-  models exercised offline from the delivered build directory.
-- Native Qwen: 12/13 synthetic fixtures pass. One spelling response is rejected and
-  the original retained. General acoustic/semantic accuracy is not established.
-- No installer lifecycle, real microphone corpus or hardware/endurance claim is made.
+- Full: 847 passed, 0 skips. Compact: 840 passed, 7 Full-only skips.
+- Builder: 3 Pester tests; PSScriptAnalyzer clean; self-contained publish successful.
+- Paired synthetic ASR: long-clip latency −26.6%, CPU time −20.1%; all 48 pairs
+  produced identical text. One CPU and synthetic voice, no general accuracy claim.
+- Final bundled models: normal/−18 dB fixture, four runs each, zero word errors;
+  native Qwen 13/13 controls passed. Expanded correction remains 17/19 by words.
+- All 534 staged file hashes and all three embedded installer segments verified.
+- Unsigned RC. Clean Windows install/upgrade/uninstall unverified: Sandbox/VM absent.
+  Real microphone, whispered/mumbled speech and GPU matrix remain unverified.
 
 ## Next action
 
-Exercise this local candidate on real microphone speech. Review remaining Qwen
-correction failure and complete corpus/hardware/installer gates before any release.
+Run the installer lifecycle in an isolated clean Windows guest and evaluate real
+microphone speech before a stable release. See [implementation](IMPLEMENTATION.md)
+and [RC notes](docs/releases/2.2.1-rc.1.md) for exact evidence and limitations.
 
 [Build](docs/BUILD.md) · [User guide](docs/USER-GUIDE.md) · [Changes](docs/changes/INDEX.md)
