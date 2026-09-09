@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.IO;
 using System.Runtime.InteropServices;
+using NAudio.Dsp;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
@@ -9,11 +10,12 @@ namespace Egoist.Voice.Services;
 
 /// <summary>
 /// A continuously warm shared-mode WASAPI capture. Only a bounded pre-roll lives while idle;
-/// accepted dictation stays in memory and is resampled exactly once after the release tail.
+/// accepted dictation is downmixed/resampled once into memory as it arrives.
 /// </summary>
 public sealed class AudioCaptureService : IAudioCaptureService
 {
     internal const int OutputSampleRate = 16_000;
+    internal const int ConversionBlockSamples = 16_384;
     // Preserve a quiet short word that starts just before the push-to-talk trigger. The extra
     // 120 ms costs only about 46 KiB even for 48 kHz stereo float capture and adds no
     // release-to-text latency because the WASAPI stream remains continuously warm.
@@ -382,7 +384,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
                 (int)Math.Ceiling(format.AverageBytesPerSecond * PreRollDuration.TotalSeconds),
                 format.BlockAlign);
             _captureFormat = format;
-            _buffer = new CaptureSessionBuffer(preRollBytes, format.BlockAlign);
+            _buffer = new CaptureSessionBuffer(preRollBytes, format.BlockAlign, format);
             capture.DataAvailable += OnDataAvailable;
             capture.RecordingStopped += OnRecordingStopped;
             _capture = capture;
@@ -679,7 +681,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
         {
             // Ownership covers cancellation before Task.Run starts as well as conversion failure.
             return await Task.Run(
-                () => ConvertToMono16Khz(completed.Bytes, format), cancellationToken).ConfigureAwait(false);
+                () => completed.Convert(format), cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -710,11 +712,11 @@ public sealed class AudioCaptureService : IAudioCaptureService
         var expected = Math.Max(1024, (int)Math.Ceiling(
             raw.Length / (double)Math.Max(1, format.AverageBytesPerSecond) * OutputSampleRate) + 512);
         var output = new ArrayBufferWriter<float>(expected);
-        var buffer = ArrayPool<float>.Shared.Rent(OutputSampleRate);
+        var buffer = ArrayPool<float>.Shared.Rent(ConversionBlockSamples);
         try
         {
             int read;
-            while ((read = provider.Read(buffer, 0, buffer.Length)) > 0)
+            while ((read = provider.Read(buffer, 0, ConversionBlockSamples)) > 0)
             {
                 buffer.AsSpan(0, read).CopyTo(output.GetSpan(read));
                 output.Advance(read);
@@ -853,13 +855,22 @@ public sealed class AudioCaptureService : IAudioCaptureService
 internal sealed class CapturedPcm(byte[] buffer, int length, int preRollBytes) : IDisposable
 {
     private byte[]? _buffer = buffer;
+    private StreamingCaptureConverter? _converter;
+
+    internal CapturedPcm(StreamingCaptureConverter converter, int preRollBytes)
+        : this([], 0, preRollBytes) => _converter = converter;
 
     internal ReadOnlyMemory<byte> Bytes =>
         (_buffer ?? throw new ObjectDisposedException(nameof(CapturedPcm))).AsMemory(0, length);
     internal int PreRollBytes { get; } = preRollBytes;
 
+    internal float[] Convert(WaveFormat format) => _converter is { } converter
+        ? converter.Complete()
+        : AudioCaptureService.ConvertToMono16Khz(Bytes, format);
+
     public void Dispose()
     {
+        Interlocked.Exchange(ref _converter, null)?.Dispose();
         var owned = Interlocked.Exchange(ref _buffer, null);
         if (owned is not null)
         {
@@ -871,34 +882,63 @@ internal sealed class CapturedPcm(byte[] buffer, int length, int preRollBytes) :
 internal sealed class CaptureSessionBuffer
 {
     private readonly PcmByteRingBuffer _preRoll;
+    private readonly WaveFormat? _format;
+    private StreamingCaptureConverter? _converter;
     private MemoryStream? _session;
     private int _sessionPreRollBytes;
 
-    internal CaptureSessionBuffer(int preRollCapacity, int blockAlign) =>
+    internal CaptureSessionBuffer(int preRollCapacity, int blockAlign, WaveFormat? format = null)
+    {
         _preRoll = new PcmByteRingBuffer(preRollCapacity, blockAlign);
+        _format = format;
+    }
 
-    internal bool IsSessionActive => _session is not null;
+    internal bool IsSessionActive => _session is not null || _converter is not null;
+    internal long RetainedSampleBytes => _converter?.RetainedSampleBytes ?? _session?.Length ?? 0;
 
     internal void Begin(int initialCapacity)
     {
-        if (_session is not null)
+        if (IsSessionActive)
         {
             throw new InvalidOperationException("Session already active.");
         }
         var prefix = _preRoll.Snapshot();
-        _session = new MemoryStream(Math.Max(initialCapacity, prefix.Length + 4096));
-        _session.Write(prefix);
-        _sessionPreRollBytes = prefix.Length;
+        try
+        {
+            if (_format is not null)
+            {
+                _converter = new StreamingCaptureConverter(_format);
+                _converter.Append(prefix);
+            }
+            else
+            {
+                _session = new MemoryStream(Math.Max(initialCapacity, prefix.Length + 4096));
+                _session.Write(prefix);
+            }
+            _sessionPreRollBytes = prefix.Length;
+        }
+        finally
+        {
+            Array.Clear(prefix);
+        }
     }
 
     internal void Append(ReadOnlySpan<byte> bytes)
     {
         _session?.Write(bytes);
+        _converter?.Append(bytes);
         _preRoll.Write(bytes);
     }
 
     internal CapturedPcm Complete()
     {
+        if (_converter is { } converter)
+        {
+            var completed = new CapturedPcm(converter, _sessionPreRollBytes);
+            _converter = null;
+            _sessionPreRollBytes = 0;
+            return completed;
+        }
         var session = _session ?? throw new InvalidOperationException("Session is not active.");
         var result = new CapturedPcm(session.GetBuffer(), checked((int)session.Length), _sessionPreRollBytes);
         // The completed take now owns this buffer; clearing it here would erase the ASR input.
@@ -916,17 +956,19 @@ internal sealed class CaptureSessionBuffer
 
     internal void DiscardAudioPreservingSession()
     {
-        var wasActive = _session is not null;
+        var wasActive = IsSessionActive;
         DisposeSession(clear: true);
         _preRoll.Clear();
         if (wasActive)
         {
-            _session = new MemoryStream(4096);
+            Begin(4096);
         }
     }
 
     private void DisposeSession(bool clear)
     {
+        _converter?.Dispose();
+        _converter = null;
         if (_session is not null)
         {
             if (clear && _session.TryGetBuffer(out var buffer))
@@ -937,6 +979,157 @@ internal sealed class CaptureSessionBuffer
         }
         _session = null;
         _sessionPreRollBytes = 0;
+    }
+}
+
+/// <summary>
+/// Runs the same NAudio decoder, downmix and WDL settings as completed-take conversion.
+/// WDL receives a full requested input block before processing; only Complete may flush a
+/// short block. Callback boundaries therefore cannot add silence or restart the filter.
+/// </summary>
+internal sealed class StreamingCaptureConverter : IDisposable
+{
+    private const int DecodeFrames = 4096;
+    private readonly CaptureChunkProvider _source;
+    private readonly ISampleProvider _decoder;
+    private readonly float[] _decoded = new float[DecodeFrames];
+    private readonly float[] _output = new float[AudioCaptureService.ConversionBlockSamples];
+    private readonly List<float[]> _blocks = [];
+    private readonly WdlResampler? _resampler;
+    private float[] _input = [];
+    private int _inputOffset;
+    private int _inputNeeded;
+    private int _inputWritten;
+    private int _sampleCount;
+    private bool _finished;
+
+    internal StreamingCaptureConverter(WaveFormat format)
+    {
+        _source = new CaptureChunkProvider(format.AsStandardWaveFormat(), DecodeFrames);
+        _decoder = _source.ToSampleProvider();
+        if (_decoder.WaveFormat.Channels > 1)
+            _decoder = new DownmixToMonoSampleProvider(_decoder);
+        if (format.SampleRate != AudioCaptureService.OutputSampleRate)
+        {
+            _resampler = new WdlResampler();
+            _resampler.SetMode(true, 2, false);
+            _resampler.SetFilterParms();
+            _resampler.SetFeedMode(false);
+            _resampler.SetRates(format.SampleRate, AudioCaptureService.OutputSampleRate);
+            Prepare();
+        }
+    }
+
+    internal long RetainedSampleBytes => (long)_sampleCount * sizeof(float);
+
+    internal void Append(ReadOnlySpan<byte> bytes)
+    {
+        ObjectDisposedException.ThrowIf(_finished, this);
+        while (!bytes.IsEmpty)
+        {
+            var consumed = _source.Load(bytes);
+            bytes = bytes[consumed..];
+            int read;
+            while ((read = _decoder.Read(_decoded, 0, _decoded.Length)) > 0)
+            {
+                var samples = _decoded.AsSpan(0, read);
+                if (_resampler is null)
+                {
+                    Store(samples);
+                    continue;
+                }
+                while (!samples.IsEmpty)
+                {
+                    var count = Math.Min(samples.Length, _inputNeeded - _inputWritten);
+                    samples[..count].CopyTo(_input.AsSpan(_inputOffset + _inputWritten));
+                    _inputWritten += count;
+                    samples = samples[count..];
+                    if (_inputWritten == _inputNeeded)
+                    {
+                        Store(_output.AsSpan(0, _resampler.ResampleOut(
+                            _output, 0, _inputWritten, _output.Length, 1)));
+                        Prepare();
+                    }
+                }
+            }
+        }
+    }
+
+    internal float[] Complete()
+    {
+        ObjectDisposedException.ThrowIf(_finished, this);
+        if (_resampler is not null)
+        {
+            int read;
+            while ((read = _resampler.ResampleOut(_output, 0, _inputWritten, _output.Length, 1)) > 0)
+            {
+                Store(_output.AsSpan(0, read));
+                Prepare();
+            }
+        }
+        // The existing ASR contract requires a contiguous float[]. Until it consumes blocks,
+        // completion briefly owns both this result and the accumulated mono blocks.
+        var result = new float[_sampleCount];
+        var offset = 0;
+        foreach (var block in _blocks)
+        {
+            block.CopyTo(result, offset);
+            offset += block.Length;
+        }
+        Dispose();
+        return result;
+    }
+
+    private void Prepare()
+    {
+        _inputNeeded = _resampler!.ResamplePrepare(_output.Length, 1, out _input, out _inputOffset);
+        _inputWritten = 0;
+    }
+
+    private void Store(ReadOnlySpan<float> samples)
+    {
+        if (samples.IsEmpty) return;
+        _sampleCount = checked(_sampleCount + samples.Length);
+        _blocks.Add(samples.ToArray());
+    }
+
+    public void Dispose()
+    {
+        _finished = true;
+        foreach (var block in _blocks) Array.Clear(block);
+        _blocks.Clear();
+        _sampleCount = 0;
+        Array.Clear(_input);
+        Array.Clear(_decoded);
+        Array.Clear(_output);
+        _source.Clear();
+        _resampler?.Reset();
+    }
+
+    private sealed class CaptureChunkProvider(WaveFormat format, int capacityFrames) : IWaveProvider
+    {
+        private readonly byte[] _bytes = new byte[checked(capacityFrames * format.BlockAlign)];
+        private int _count;
+        private int _position;
+        public WaveFormat WaveFormat { get; } = format;
+
+        internal int Load(ReadOnlySpan<byte> bytes)
+        {
+            _count = Math.Min(bytes.Length, _bytes.Length);
+            bytes[.._count].CopyTo(_bytes);
+            _position = 0;
+            return _count;
+        }
+
+        public int Read(byte[] buffer, int offset, int count)
+        {
+            var read = Math.Min(count, _count - _position);
+            _bytes.AsSpan(_position, read).CopyTo(buffer.AsSpan(offset));
+            _position += read;
+            return read;
+        }
+
+        internal void Clear() => Array.Clear(_bytes);
     }
 }
 

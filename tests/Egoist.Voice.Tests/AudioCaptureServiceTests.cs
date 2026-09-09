@@ -5,6 +5,149 @@ namespace Egoist.Voice.Tests;
 
 public sealed class AudioCaptureServiceTests(ITestOutputHelper output)
 {
+    [Theory]
+    [InlineData(48_000, 2, 32, true)]
+    [InlineData(44_100, 2, 16, false)]
+    [InlineData(16_000, 1, 16, false)]
+    [InlineData(16_000, 2, 32, true)]
+    [InlineData(8_000, 1, 16, false)]
+    [InlineData(96_000, 3, 24, false)]
+    [InlineData(48_000, 2, 32, false)]
+    public async Task Streaming_capture_matches_completed_conversion_across_callback_boundaries(
+        int sampleRate, int channels, int bits, bool floatingPoint)
+    {
+        var format = floatingPoint
+            ? NAudio.Wave.WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, channels)
+            : new NAudio.Wave.WaveFormat(sampleRate, bits, channels);
+        var raw = CreateDeviceAudio(format, sampleRate * 3 + 173);
+        var expected = AudioCaptureService.ConvertToMono16Khz(raw, format);
+        var preRollBytes = sampleRate * 32 / 100 * format.BlockAlign;
+        var buffer = new CaptureSessionBuffer(preRollBytes, format.BlockAlign, format);
+        buffer.Append(raw.AsSpan(0, preRollBytes));
+        buffer.Begin(4096);
+        int[] callbackFrames = [1, 31, 480, 441, 8192, 7, 4096];
+        var callback = 0;
+        for (var offset = preRollBytes; offset < raw.Length;)
+        {
+            var count = Math.Min(raw.Length - offset,
+                callbackFrames[callback++ % callbackFrames.Length] * format.BlockAlign);
+            buffer.Append(raw.AsSpan(offset, count));
+            offset += count;
+        }
+        using var completed = buffer.Complete();
+
+        var actual = await AudioCaptureService.ConvertCompletedTakeAsync(completed, format, CancellationToken.None);
+
+        Assert.Equal(preRollBytes, completed.PreRollBytes);
+        Assert.Equal(expected, actual);
+        Assert.False(buffer.IsSessionActive);
+        Assert.Equal(0, buffer.RetainedSampleBytes);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(4)]
+    [InlineData(49_155)]
+    [InlineData(49_156)]
+    [InlineData(49_157)]
+    [InlineData(98_309)]
+    public void Streaming_capture_flushes_empty_short_and_exact_WDL_boundary_takes(int frames)
+    {
+        var format = NAudio.Wave.WaveFormat.CreateIeeeFloatWaveFormat(48_000, 2);
+        var raw = CreateDeviceAudio(format, frames);
+        var expected = AudioCaptureService.ConvertToMono16Khz(raw, format);
+        using var converter = new StreamingCaptureConverter(format);
+        converter.Append(raw);
+
+        Assert.Equal(expected, converter.Complete());
+    }
+
+    [Fact]
+    public async Task Streaming_capture_ownership_survives_cancellation_clear_and_restart()
+    {
+        var format = NAudio.Wave.WaveFormat.CreateIeeeFloatWaveFormat(48_000, 2);
+        var first = CreateDeviceAudio(format, 60_000);
+        var next = CreateDeviceAudio(format, 317);
+        var buffer = new CaptureSessionBuffer(1024, format.BlockAlign, format);
+        buffer.Begin(4096);
+        buffer.Append(first);
+        using var completed = buffer.Complete();
+        buffer.Begin(4096);
+        buffer.Append(first);
+        buffer.CancelSession();
+        buffer.Clear();
+        buffer.Begin(4096);
+        buffer.Append(next);
+        using var restarted = buffer.Complete();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            AudioCaptureService.ConvertCompletedTakeAsync(completed, format, new CancellationToken(true)));
+        var actual = await AudioCaptureService.ConvertCompletedTakeAsync(restarted, format, CancellationToken.None);
+
+        Assert.Equal(AudioCaptureService.ConvertToMono16Khz(next, format), actual);
+        Assert.Equal(0, buffer.RetainedSampleBytes);
+    }
+
+    [Fact]
+    public void Streaming_capture_keeps_only_mono_ASR_audio_as_duration_grows()
+    {
+        var format = NAudio.Wave.WaveFormat.CreateIeeeFloatWaveFormat(48_000, 2);
+        var chunk = CreateDeviceAudio(format, 480);
+        var buffer = new CaptureSessionBuffer(122_880, format.BlockAlign, format);
+        buffer.Begin(4096);
+        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        for (var callback = 0; callback < 6000; callback++) buffer.Append(chunk);
+        clock.Stop();
+        const long rawBytes = 60L * 48_000 * 2 * sizeof(float);
+
+        output.WriteLine($"rawBytes={rawBytes}; retainedMonoBytes={buffer.RetainedSampleBytes}; " +
+            $"syntheticMinuteAppendMs={clock.Elapsed.TotalMilliseconds:F1}; " +
+            $"appendAllocatedBytes={GC.GetAllocatedBytesForCurrentThread() - allocatedBefore}");
+        Assert.InRange(buffer.RetainedSampleBytes, 59L * 16_000 * sizeof(float),
+            60L * 16_000 * sizeof(float));
+        Assert.True(buffer.RetainedSampleBytes < rawBytes / 5);
+        buffer.Clear();
+        Assert.Equal(0, buffer.RetainedSampleBytes);
+        Assert.False(buffer.IsSessionActive);
+    }
+
+    [Fact]
+    public async Task Streaming_capture_discards_pending_filter_audio_and_pre_roll_before_restart()
+    {
+        var format = NAudio.Wave.WaveFormat.CreateIeeeFloatWaveFormat(44_100, 2);
+        var discarded = CreateDeviceAudio(format, 15_000);
+        var accepted = CreateDeviceAudio(format, 30_000);
+        var buffer = new CaptureSessionBuffer(10_000 * format.BlockAlign, format.BlockAlign, format);
+        buffer.Append(discarded);
+        buffer.Begin(4096);
+        buffer.Append(discarded);
+        buffer.DiscardAudioPreservingSession();
+        Assert.True(buffer.IsSessionActive);
+        Assert.Equal(0, buffer.RetainedSampleBytes);
+        buffer.Append(accepted);
+        using var completed = buffer.Complete();
+
+        var actual = await AudioCaptureService.ConvertCompletedTakeAsync(completed, format, CancellationToken.None);
+
+        Assert.Equal(0, completed.PreRollBytes);
+        Assert.Equal(AudioCaptureService.ConvertToMono16Khz(accepted, format), actual);
+    }
+
+    private static byte[] CreateDeviceAudio(NAudio.Wave.WaveFormat format, int frames)
+    {
+        var raw = new byte[frames * format.BlockAlign];
+        var random = new Random(17);
+        random.NextBytes(raw);
+        if (format.Encoding == NAudio.Wave.WaveFormatEncoding.IeeeFloat)
+        {
+            for (var index = 0; index < raw.Length; index += sizeof(float))
+                BitConverter.TryWriteBytes(raw.AsSpan(index, sizeof(float)), (float)(random.NextDouble() * 2 - 1));
+        }
+        return raw;
+    }
+
     [Fact]
     public void Completing_thirty_second_device_take_does_not_allocate_another_audio_buffer()
     {
