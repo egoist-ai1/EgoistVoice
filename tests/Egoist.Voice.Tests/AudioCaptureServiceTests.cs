@@ -1,9 +1,90 @@
 using Egoist.Voice.Services;
+using Xunit.Abstractions;
 
 namespace Egoist.Voice.Tests;
 
-public sealed class AudioCaptureServiceTests
+public sealed class AudioCaptureServiceTests(ITestOutputHelper output)
 {
+    [Fact]
+    public void Completing_thirty_second_device_take_does_not_allocate_another_audio_buffer()
+    {
+        const int takeBytes = 30 * 48_000 * 2 * sizeof(float);
+        var buffer = new CaptureSessionBuffer(preRollCapacity: 8, blockAlign: 8);
+        buffer.Begin(initialCapacity: takeBytes);
+        buffer.Append(new byte[takeBytes]);
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        using var completed = buffer.Complete();
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        output.WriteLine($"takeBytes={takeBytes}; completeAllocatedBytes={allocated}");
+        Assert.Equal(takeBytes, completed.Bytes.Length);
+        Assert.InRange(allocated, 0, 4_096);
+    }
+
+    [Theory]
+    [InlineData(16_000, 1)]
+    [InlineData(48_000, 2)]
+    public async Task Transferred_take_converts_exact_valid_bytes_and_clears_source(int sampleRate, int channels)
+    {
+        var format = new NAudio.Wave.WaveFormat(sampleRate, 16, channels);
+        var raw = new byte[sampleRate / 10 * format.BlockAlign];
+        for (var index = 0; index < raw.Length; index++)
+            raw[index] = (byte)(index % 251);
+        var expected = AudioCaptureService.ConvertToMono16Khz(raw, format);
+        var buffer = new CaptureSessionBuffer(preRollCapacity: format.BlockAlign, blockAlign: format.BlockAlign);
+        buffer.Begin(initialCapacity: raw.Length * 3);
+        buffer.Append(raw);
+        using var completed = buffer.Complete();
+        var transferred = completed.Bytes;
+        Assert.Equal(raw, transferred.ToArray());
+
+        var actual = await AudioCaptureService.ConvertCompletedTakeAsync(completed, format, CancellationToken.None);
+
+        Assert.Equal(expected, actual);
+        Assert.All(transferred.ToArray(), value => Assert.Equal(0, value));
+        Assert.Throws<ObjectDisposedException>(() => completed.Bytes);
+    }
+
+    [Fact]
+    public async Task Cancelled_conversion_clears_transferred_take_without_touching_next_session()
+    {
+        var buffer = new CaptureSessionBuffer(preRollCapacity: 2, blockAlign: 2);
+        buffer.Begin(initialCapacity: 8);
+        buffer.Append(new byte[] { 1, 2, 3, 4 });
+        using var completed = buffer.Complete();
+        var transferred = completed.Bytes;
+        buffer.Clear();
+        buffer.Begin(initialCapacity: 8);
+        buffer.Append(new byte[] { 8, 9 });
+        using var next = buffer.Complete();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            AudioCaptureService.ConvertCompletedTakeAsync(completed, new NAudio.Wave.WaveFormat(16_000, 16, 1), cancellation.Token));
+
+        Assert.All(transferred.ToArray(), value => Assert.Equal(0, value));
+        Assert.Equal(new byte[] { 8, 9 }, next.Bytes.ToArray());
+    }
+
+    [Fact]
+    public async Task Failed_conversion_still_clears_transferred_take()
+    {
+        var buffer = new CaptureSessionBuffer(preRollCapacity: 1, blockAlign: 1);
+        buffer.Begin(initialCapacity: 8);
+        buffer.Append(new byte[] { 1, 2, 3, 4 });
+        using var completed = buffer.Complete();
+        var transferred = completed.Bytes;
+        var unsupported = NAudio.Wave.WaveFormat.CreateCustomFormat(
+            NAudio.Wave.WaveFormatEncoding.MpegLayer3, 16_000, 1, 16_000, 1, 8);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            AudioCaptureService.ConvertCompletedTakeAsync(completed, unsupported, CancellationToken.None));
+
+        Assert.All(transferred.ToArray(), value => Assert.Equal(0, value));
+    }
+
     [Fact]
     public void Quiet_speech_starting_in_pre_roll_is_not_mistaken_for_room_noise()
     {
@@ -81,16 +162,18 @@ public sealed class AudioCaptureServiceTests
         buffer.Append(new byte[] { 1, 2, 3, 4 });
         buffer.Begin(initialCapacity: 8);
         buffer.Append(new byte[] { 5, 6 });
-        Assert.Equal(new byte[] { 1, 2, 3, 4, 5, 6 }, buffer.Complete().Bytes);
+        using var first = buffer.Complete();
+        Assert.Equal(new byte[] { 1, 2, 3, 4, 5, 6 }, first.Bytes.ToArray());
 
         buffer.Begin(initialCapacity: 8);
         buffer.Append(new byte[] { 7 });
         buffer.CancelSession();
         buffer.Begin(initialCapacity: 8);
         buffer.Append(new byte[] { 8 });
-        var next = buffer.Complete();
+        using var next = buffer.Complete();
 
-        Assert.Equal(new byte[] { 4, 5, 6, 7, 8 }, next.Bytes);
+        Assert.Equal(new byte[] { 4, 5, 6, 7, 8 }, next.Bytes.ToArray());
+        Assert.Equal(new byte[] { 1, 2, 3, 4, 5, 6 }, first.Bytes.ToArray());
         Assert.Equal(4, next.PreRollBytes);
     }
 
@@ -105,9 +188,9 @@ public sealed class AudioCaptureServiceTests
         buffer.Clear();
         buffer.Begin(initialCapacity: 8);
         buffer.Append(new byte[] { 9 });
-        var nextEndpoint = buffer.Complete();
+        using var nextEndpoint = buffer.Complete();
 
-        Assert.Equal(new byte[] { 9 }, nextEndpoint.Bytes);
+        Assert.Equal(new byte[] { 9 }, nextEndpoint.Bytes.ToArray());
         Assert.Equal(0, nextEndpoint.PreRollBytes);
     }
 
@@ -121,9 +204,9 @@ public sealed class AudioCaptureServiceTests
 
         buffer.DiscardAudioPreservingSession();
         buffer.Append(new byte[] { 8, 9 });
-        var accepted = buffer.Complete();
+        using var accepted = buffer.Complete();
 
-        Assert.Equal(new byte[] { 8, 9 }, accepted.Bytes);
+        Assert.Equal(new byte[] { 8, 9 }, accepted.Bytes.ToArray());
         Assert.Equal(0, accepted.PreRollBytes);
     }
 
@@ -163,9 +246,9 @@ public sealed class AudioCaptureServiceTests
         {
             buffer.Begin(initialCapacity: 16);
             buffer.Append(new byte[] { (byte)cycle });
-            var completed = buffer.Complete();
+            using var completed = buffer.Complete();
             Assert.InRange(completed.Bytes.Length, 1, 9);
-            Assert.Equal((byte)cycle, completed.Bytes[^1]);
+            Assert.Equal((byte)cycle, completed.Bytes.Span[^1]);
         }
     }
 

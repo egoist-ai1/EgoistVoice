@@ -293,8 +293,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
             // trigger does not reopen the device or pay the first-buffer latency.
             await Task.Delay(ReleaseTailDuration, cancellationToken).ConfigureAwait(false);
 
-            byte[] raw;
-            int preRollBytes;
+            CapturedPcm completed;
             WaveFormat format;
             lock (_sync)
             {
@@ -302,16 +301,13 @@ public sealed class AudioCaptureService : IAudioCaptureService
                 {
                     throw new InvalidOperationException("Микрофон отключился во время записи.", _monitoringFailure);
                 }
-                var completed = (_buffer ?? throw new OperationCanceledException(cancellationToken)).Complete();
-                raw = completed.Bytes;
-                preRollBytes = completed.PreRollBytes;
                 format = _captureFormat ?? throw new InvalidOperationException("Формат микрофона потерян.");
+                completed = (_buffer ?? throw new OperationCanceledException(cancellationToken)).Complete();
                 _stopRequested = false;
             }
 
-            var samples = await Task.Run(
-                () => ConvertToMono16Khz(raw, format), cancellationToken).ConfigureAwait(false);
-            Array.Clear(raw);
+            var preRollBytes = completed.PreRollBytes;
+            var samples = await ConvertCompletedTakeAsync(completed, format, cancellationToken).ConfigureAwait(false);
 
             var preRollSamples = (int)Math.Min(
                 samples.Length,
@@ -670,7 +666,18 @@ public sealed class AudioCaptureService : IAudioCaptureService
         return detector.Snapshot();
     }
 
-    internal static float[] ConvertToMono16Khz(byte[] raw, WaveFormat format)
+    internal static async Task<float[]> ConvertCompletedTakeAsync(
+        CapturedPcm completed, WaveFormat format, CancellationToken cancellationToken)
+    {
+        using (completed)
+        {
+            // Ownership covers cancellation before Task.Run starts as well as conversion failure.
+            return await Task.Run(
+                () => ConvertToMono16Khz(completed.Bytes, format), cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    internal static float[] ConvertToMono16Khz(ReadOnlyMemory<byte> raw, WaveFormat format)
     {
         if (raw.Length == 0)
         {
@@ -678,7 +685,11 @@ public sealed class AudioCaptureService : IAudioCaptureService
         }
 
         var readableFormat = format.AsStandardWaveFormat();
-        using var memory = new MemoryStream(raw, writable: false);
+        if (!MemoryMarshal.TryGetArray(raw, out var segment))
+        {
+            segment = new ArraySegment<byte>(raw.ToArray());
+        }
+        using var memory = new MemoryStream(segment.Array!, segment.Offset, segment.Count, writable: false);
         using var source = new RawSourceWaveStream(memory, readableFormat);
         ISampleProvider provider = source.ToSampleProvider();
         if (provider.WaveFormat.Channels > 1)
@@ -832,7 +843,23 @@ public sealed class AudioCaptureService : IAudioCaptureService
     }
 }
 
-internal sealed record CapturedPcm(byte[] Bytes, int PreRollBytes);
+internal sealed class CapturedPcm(byte[] buffer, int length, int preRollBytes) : IDisposable
+{
+    private byte[]? _buffer = buffer;
+
+    internal ReadOnlyMemory<byte> Bytes =>
+        (_buffer ?? throw new ObjectDisposedException(nameof(CapturedPcm))).AsMemory(0, length);
+    internal int PreRollBytes { get; } = preRollBytes;
+
+    public void Dispose()
+    {
+        var owned = Interlocked.Exchange(ref _buffer, null);
+        if (owned is not null)
+        {
+            Array.Clear(owned, 0, length);
+        }
+    }
+}
 
 internal sealed class CaptureSessionBuffer
 {
@@ -866,8 +893,9 @@ internal sealed class CaptureSessionBuffer
     internal CapturedPcm Complete()
     {
         var session = _session ?? throw new InvalidOperationException("Session is not active.");
-        var result = new CapturedPcm(session.ToArray(), _sessionPreRollBytes);
-        DisposeSession(clear: true);
+        var result = new CapturedPcm(session.GetBuffer(), checked((int)session.Length), _sessionPreRollBytes);
+        // The completed take now owns this buffer; clearing it here would erase the ASR input.
+        DisposeSession(clear: false);
         return result;
     }
 

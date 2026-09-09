@@ -5,6 +5,61 @@ namespace Egoist.Voice.Tests;
 
 public sealed class HybridTranscriptionTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Fast_russian_dictation_does_not_warm_unused_whisper(bool memoryAudio)
+    {
+        var whisper = new FakeEngine("Whisper", Result("unused"));
+        using var service = CreateService(new FakeEngine("GigaAM", Result("готово")), whisper);
+        service.FastModeNoWhisperRefinement = true;
+        await service.WarmUpAsync(null, CancellationToken.None);
+
+        var result = memoryAudio
+            ? await service.TranscribeSamplesAsync([0.01f, -0.01f], 16_000, CancellationToken.None)
+            : await service.TranscribeAsync("synthetic.wav", null, CancellationToken.None);
+        await Task.Delay(20); // Give any accidentally scheduled background warmup a chance to run.
+
+        Assert.Equal("готово", result.Text);
+        Assert.Equal(0, whisper.WarmUpCalls);
+        Assert.Equal(0, whisper.TranscribeCalls);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Fast_mode_still_loads_fallback_on_primary_failure(bool memoryAudio)
+    {
+        var whisper = new FakeEngine("Whisper", Result("восстановлено"));
+        using var service = CreateService(new FakeEngine("GigaAM", error: new InvalidOperationException("synthetic")), whisper);
+        service.FastModeNoWhisperRefinement = true;
+        var samples = new float[] { 0.01f, -0.01f };
+
+        var result = memoryAudio
+            ? await service.TranscribeSamplesAsync(samples, 16_000, CancellationToken.None)
+            : await service.TranscribeAsync("synthetic.wav", null, CancellationToken.None);
+
+        Assert.Equal("восстановлено", result.Text);
+        Assert.Equal(1, whisper.WarmUpCalls);
+        Assert.Equal(1, whisper.TranscribeCalls);
+        if (memoryAudio) Assert.Same(samples, whisper.LastSamples);
+    }
+
+    [Fact]
+    public async Task Explicit_mixed_mode_keeps_whisper_warmup_even_if_fast_flag_is_set()
+    {
+        var whisper = new FakeEngine("Whisper", Result("готово"));
+        using var service = CreateService(new FakeEngine("GigaAM", Result("готово")), whisper);
+        service.FastModeNoWhisperRefinement = true;
+        await service.WarmUpAsync(null, CancellationToken.None);
+        service.MixedLanguageMode = true;
+
+        await service.WarmUpAsync(null, CancellationToken.None);
+        await whisper.WarmUpStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.Equal(1, whisper.WarmUpCalls);
+    }
+
     [Fact]
     public async Task Returns_gigaam_when_whisper_transcription_fails()
     {
@@ -114,11 +169,25 @@ public sealed class HybridTranscriptionTests
     private sealed class FakeEngine(
         string name,
         TranscriptionResult? result = null,
-        Exception? error = null) : ITranscriptionEngine
+        Exception? error = null) : ITranscriptionEngine, ISampleTranscriptionService
     {
         public string EngineName => name;
-        public Task WarmUpAsync(IProgress<ModelProgress>? progress, CancellationToken cancellationToken) =>
-            Task.CompletedTask;
+        internal int WarmUpCalls;
+        internal int TranscribeCalls;
+        internal float[]? LastSamples;
+        internal TaskCompletionSource<bool> WarmUpStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task WarmUpAsync(IProgress<ModelProgress>? progress, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref WarmUpCalls);
+            WarmUpStarted.TrySetResult(true);
+            return Task.CompletedTask;
+        }
+
+        public Task<TranscriptionResult> TranscribeSamplesAsync(float[] samples, int sampleRate, CancellationToken cancellationToken)
+        {
+            LastSamples = samples;
+            return TranscribeAsync("synthetic.wav", null, cancellationToken);
+        }
 
         public Task<TranscriptionResult> TranscribeAsync(
             string audioPath,
@@ -126,6 +195,7 @@ public sealed class HybridTranscriptionTests
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            Interlocked.Increment(ref TranscribeCalls);
             return error is null
                 ? Task.FromResult(result!)
                 : Task.FromException<TranscriptionResult>(error);

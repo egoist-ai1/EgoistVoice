@@ -146,9 +146,12 @@ public sealed class HybridTranscriptionService :
     {
         await _gigaAm.WarmUpAsync(progress, cancellationToken).ConfigureAwait(false);
 
-        // Whisper warms up in the background on purpose: dictation must not wait for the
-        // mixed-language fallback to finish loading.
-        _ = EnsureWhisperWarmUpStarted(force: false);
+        // Fast Russian dictation does not use a successful primary result's fallback. Avoid
+        // loading/priming it until a primary failure or an explicit mixed-language request.
+        if (!FastModeNoWhisperRefinement || MixedLanguageMode)
+        {
+            _ = EnsureWhisperWarmUpStarted(force: false);
+        }
     }
 
     /// <summary>
