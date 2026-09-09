@@ -176,7 +176,7 @@ public sealed class LocalQwenHost : IDisposable
                         TimeSpan.FromSeconds(20), false, _lifetime.Token).ConfigureAwait(false);
                     if (prime.Status is TextFormattingStatus.Timeout or TextFormattingStatus.Unavailable)
                     { Status = "Qwen не ответила при прогреве. Повторите запуск."; StopChild(); return false; }
-                    Status = "Qwen готова · локально · GPU";
+                    Status = "Qwen готова · локально";
                     AppLog.Write("Local Qwen ready; loopback-only; text logging disabled");
                     return true;
                 }

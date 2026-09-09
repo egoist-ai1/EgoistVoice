@@ -120,6 +120,136 @@ public sealed class LocalTextFormatterTests
         Assert.Equal(TextFormattingStatus.Applied, result.Status);
     }
 
+    [Fact]
+    public async Task Safe_manual_correction_gets_a_bounded_punctuation_pass_when_needed()
+    {
+        var responses = new Queue<string>(["у него сегодня выходной", "У него сегодня выходной."]);
+        var handler = new StubHandler((_, _) => Task.FromResult(Reply(responses.Dequeue())));
+        using var service = new LocalTextFormatter(handler);
+        var result = await Correct(service, "у него севодня выходной");
+        Assert.Equal(TextFormattingStatus.Applied, result.Status);
+        Assert.Equal("У него сегодня выходной.", result.Text);
+        Assert.Equal(2, handler.Calls);
+    }
+
+    [Fact]
+    public async Task Complete_manual_correction_does_not_need_another_request()
+    {
+        var handler = new StubHandler((_, _) => Task.FromResult(Reply("У него сегодня выходной.")));
+        using var service = new LocalTextFormatter(handler);
+        var result = await Correct(service, "у него севодня выходной");
+        Assert.Equal("У него сегодня выходной.", result.Text);
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Theory]
+    [InlineData("сегодня выходной", "сегодня выходной.", "Сегодня выходной.")]
+    [InlineData("«спасибо»", "«спасибо.»", "«Спасибо.»")]
+    [InlineData("iPhone работает", "iPhone работает.", "iPhone работает.")]
+    [InlineData(@"папка\файл открыт", "⟦EV0⟧ открыт.", @"папка\файл открыт.")]
+    public async Task Automatic_sentence_opening_capitalizes_Russian_prose_but_preserves_technical_case(
+        string source, string candidate, string expected)
+    {
+        using var service = new LocalTextFormatter(new StubHandler((_, _) => Task.FromResult(Reply(candidate))));
+        var result = await Format(service, source);
+        Assert.Equal(TextFormattingStatus.Applied, result.Status);
+        Assert.Equal(expected, result.Text);
+        Assert.True(LocalTextFormatter.PreservesWords(source, result.Text));
+    }
+
+    [Theory]
+    [InlineData("У неё сегодня выходной.")]
+    [InlineData("У него сегодня выходной выходной.")]
+    public async Task Invalid_second_pass_keeps_the_accepted_correction_without_retry(string invalid)
+    {
+        var responses = new Queue<string>(["у него сегодня выходной", invalid]);
+        var handler = new StubHandler((_, _) => Task.FromResult(Reply(responses.Dequeue())));
+        using var service = new LocalTextFormatter(handler);
+        var result = await Correct(service, "у него севодня выходной");
+        Assert.Equal(TextFormattingStatus.Applied, result.Status);
+        Assert.Equal("у него сегодня выходной", result.Text);
+        Assert.Equal(2, handler.Calls);
+    }
+
+    [Fact]
+    public async Task Second_pass_protects_numeric_and_technical_values_in_the_accepted_correction()
+    {
+        var calls = 0;
+        var handler = new StubHandler(async (request, token) =>
+        {
+            if (++calls == 1) return Reply("проверь сумму -15.50 в user_id");
+            using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(token));
+            Assert.Equal("проверь сумму ⟦EV0⟧ в ⟦EV1⟧",
+                body.RootElement.GetProperty("messages")[1].GetProperty("content").GetString());
+            return Reply("Проверь сумму ⟦EV0⟧ в ⟦EV1⟧");
+        });
+        using var service = new LocalTextFormatter(handler);
+        var result = await Correct(service, "проверь суму -15.50 в user_id");
+        Assert.Equal("Проверь сумму -15.50 в user_id", result.Text);
+        Assert.Equal(2, handler.Calls);
+    }
+
+    [Fact]
+    public async Task Manual_correction_keeps_existing_outer_quotes_during_second_pass()
+    {
+        var responses = new Queue<string>(["«спасибо»", "«Спасибо.»"]);
+        var handler = new StubHandler((_, _) => Task.FromResult(Reply(responses.Dequeue())));
+        using var service = new LocalTextFormatter(handler);
+        var result = await Correct(service, "«спосибо»");
+        Assert.Equal("«Спасибо.»", result.Text);
+        Assert.Equal(2, handler.Calls);
+    }
+
+    [Fact]
+    public async Task Cancellation_during_second_pass_never_returns_text()
+    {
+        using var stop = new CancellationTokenSource();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
+        var handler = new StubHandler(async (_, token) =>
+        {
+            if (++calls == 1) return Reply("у него сегодня выходной");
+            entered.SetResult();
+            await Task.Delay(10_000, token);
+            return Reply("У него сегодня выходной.");
+        });
+        using var service = new LocalTextFormatter(handler);
+        var operation = Correct(service, "у него севодня выходной", stop.Token);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        stop.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => operation);
+        Assert.Equal(2, handler.Calls);
+    }
+
+    [Fact]
+    public async Task Both_manual_stages_share_one_time_budget()
+    {
+        var calls = 0;
+        var clock = Stopwatch.StartNew();
+        var secondStart = TimeSpan.Zero;
+        var secondEnd = TimeSpan.Zero;
+        var handler = new StubHandler(async (_, token) =>
+        {
+            if (++calls == 1)
+            {
+                await Task.Delay(350, token);
+                return Reply("у него сегодня выходной");
+            }
+            secondStart = clock.Elapsed;
+            try { await Task.Delay(10_000, token); }
+            finally { secondEnd = clock.Elapsed; }
+            return Reply("У него сегодня выходной.");
+        });
+        using var service = new LocalTextFormatter(handler);
+        var result = await service.FormatAsync("у него севодня выходной", "http://localhost:11434/v1", "qwen3:4b",
+            TimeSpan.FromMilliseconds(600), true, CancellationToken.None);
+        Assert.Equal(2, handler.Calls);
+        Assert.Equal("у него сегодня выходной", result.Text);
+        Assert.Equal(TextFormattingStatus.Applied, result.Status);
+        Assert.True(secondEnd - secondStart < TimeSpan.FromMilliseconds(500));
+        Assert.True(result.Elapsed >= secondEnd - secondStart);
+    }
+
     [Theory]
     [InlineData("я не согласен", "Я согласен.")]
     [InlineData("встреча в 15:30 завтра", "Встреча в 16:30 завтра.")]

@@ -23,7 +23,7 @@ public sealed record TextFormattingResult(string Text, TextFormattingStatus Stat
     };
 }
 
-/// <summary>Optional local text stage. Never downloads, follows redirects, logs text, or retries a dictation.</summary>
+/// <summary>Optional local text stage. Never downloads, follows redirects, logs text, or retries a failed stage.</summary>
 public sealed class LocalTextFormatter : IDisposable
 {
     public const int MaximumCharacters = 8_000;
@@ -123,6 +123,50 @@ public sealed class LocalTextFormatter : IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
         var clock = Stopwatch.StartNew();
+        var totalBudget = TimeSpan.FromMilliseconds(Math.Clamp(budget.TotalMilliseconds, 100, 30_000));
+        var result = await FormatOnceAsync(text, address, model, totalBudget, allowWordCorrection,
+            cancellationToken).ConfigureAwait(false);
+        var remaining = totalBudget - clock.Elapsed;
+        if (allowWordCorrection && (result.Status is TextFormattingStatus.Applied or TextFormattingStatus.Unchanged) &&
+            remaining >= TimeSpan.FromMilliseconds(100) && StripFormattingDirectives(text) == text &&
+            NeedsSentenceFormatting(result.Text))
+        {
+            // A distinct punctuation pass may only change casing and punctuation in the already
+            // accepted correction. Failure retains that correction; the shared budget allows no retry.
+            var formatted = await FormatOnceAsync(result.Text, address, model, remaining, false,
+                cancellationToken).ConfigureAwait(false);
+            if (formatted.Status is TextFormattingStatus.Applied or TextFormattingStatus.Unchanged)
+                result = formatted with { Status = formatted.Text == text ? TextFormattingStatus.Unchanged : TextFormattingStatus.Applied };
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        return result with { Elapsed = clock.Elapsed };
+    }
+
+    private static bool NeedsSentenceFormatting(string text)
+    {
+        var firstLetter = text.FirstOrDefault(char.IsLetter);
+        var ending = text.TrimEnd().TrimEnd('"', '»', '’', ')', ']', '*');
+        return char.IsLower(firstLetter) || ending.Length > 0 && ending[^1] is not ('.' or '!' or '?' or '…');
+    }
+
+    private static bool IsWrappedInQuotes(string text) => text.Length >= 2 &&
+        ((text.StartsWith('"') && text.EndsWith('"')) || (text.StartsWith('«') && text.EndsWith('»')));
+
+    private static string CapitalizeRussianOpening(string text)
+    {
+        var index = 0;
+        while (index < text.Length && text[index] is '"' or '«' or '“' or '(') index++;
+        if (index == text.Length || text[index] is not (>= 'а' and <= 'я' or 'ё')) return text;
+        var technical = TechnicalTokens.Match(text);
+        if (technical.Success && technical.Index <= index && index < technical.Index + technical.Length) return text;
+        return text[..index] + char.ToUpperInvariant(text[index]) + text[(index + 1)..];
+    }
+
+    private async Task<TextFormattingResult> FormatOnceAsync(string text, string address, string model,
+        TimeSpan budget, bool allowWordCorrection, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var clock = Stopwatch.StartNew();
         TextFormattingResult Keep(TextFormattingStatus status) => new(text, status, clock.Elapsed);
         if (string.IsNullOrWhiteSpace(text)) return Keep(TextFormattingStatus.Unchanged);
         if (text.Length > MaximumCharacters) return Keep(TextFormattingStatus.TooLong);
@@ -193,8 +237,7 @@ public sealed class LocalTextFormatter : IDisposable
                         return Keep(TextFormattingStatus.Rejected);
                     candidate = candidate.Replace(pair.Key, pair.Value, StringComparison.Ordinal);
                 }
-                if (!allowWordCorrection && ((candidate.StartsWith('"') && candidate.EndsWith('"')) ||
-                    (candidate.StartsWith('«') && candidate.EndsWith('»'))))
+                if (!allowWordCorrection && !IsWrappedInQuotes(text.Trim()) && IsWrappedInQuotes(candidate))
                 {
                     candidate = candidate[1..^1].Trim();
                 }
@@ -213,9 +256,10 @@ public sealed class LocalTextFormatter : IDisposable
                     candidate = withoutPreamble;
                 }
             }
-            else if (!PreservesWords(text, candidate))
+            else
             {
-                return Keep(TextFormattingStatus.Rejected);
+                candidate = CapitalizeRussianOpening(candidate);
+                if (!PreservesWords(text, candidate)) return Keep(TextFormattingStatus.Rejected);
             }
             cancellationToken.ThrowIfCancellationRequested();
             return new(candidate, candidate == text ? TextFormattingStatus.Unchanged : TextFormattingStatus.Applied, clock.Elapsed);
