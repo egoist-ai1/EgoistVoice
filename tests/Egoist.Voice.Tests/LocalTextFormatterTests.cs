@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Egoist.Voice.Core;
@@ -268,6 +270,57 @@ public sealed class LocalTextFormatterTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => host.AcquireAsync(stop.Token));
     }
 
+    [Fact]
+    public async Task Active_Qwen_lease_blocks_an_expired_idle_callback()
+    {
+        using var harness = new OwnedQwenHostHarness();
+        using var lease = await harness.Host.AcquireAsync(CancellationToken.None);
+        var process = harness.LastProcess;
+        harness.ExpireIdleDeadline();
+        harness.InvokeIdleCallback();
+        Assert.False(process.HasExited);
+    }
+
+    [Fact]
+    public async Task Stale_idle_callback_does_not_stop_a_recently_used_Qwen_child()
+    {
+        using var harness = new OwnedQwenHostHarness();
+        var lease = await harness.Host.AcquireAsync(CancellationToken.None);
+        var process = harness.LastProcess;
+        lease!.Dispose();
+        harness.InvokeIdleCallback();
+        Assert.False(process.HasExited);
+    }
+
+    [Fact]
+    public async Task Due_idle_callback_stops_only_owned_child_and_next_acquire_restarts_it()
+    {
+        using var harness = new OwnedQwenHostHarness();
+        var firstLease = await harness.Host.AcquireAsync(CancellationToken.None);
+        var firstProcess = harness.LastProcess;
+        firstLease!.Dispose();
+        harness.ExpireIdleDeadline();
+        harness.InvokeIdleCallback();
+        await firstProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        using var secondLease = await harness.Host.AcquireAsync(CancellationToken.None);
+        var secondProcess = harness.LastProcess;
+        Assert.NotEqual(firstProcess.Id, secondProcess.Id);
+        Assert.False(secondProcess.HasExited);
+    }
+
+    [Fact]
+    public async Task Explicit_start_of_ready_Qwen_refreshes_idle_deadline()
+    {
+        using var harness = new OwnedQwenHostHarness();
+        Assert.True(await harness.Host.StartAsync());
+        var process = harness.LastProcess;
+        harness.ExpireIdleDeadline();
+        Assert.True(await harness.Host.StartAsync());
+        harness.InvokeIdleCallback();
+        Assert.False(process.HasExited);
+    }
+
     [Theory]
     [InlineData(HttpStatusCode.Redirect)]
     [InlineData(HttpStatusCode.InternalServerError)]
@@ -337,5 +390,67 @@ public sealed class LocalTextFormatterTests
         public int Calls { get; private set; }
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         { Calls++; return response(request, cancellationToken); }
+    }
+
+    private sealed class OwnedQwenHostHarness : IDisposable
+    {
+        private static readonly FieldInfo ProcessField = typeof(LocalQwenHost).GetField("_process",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        private static readonly FieldInfo DeadlineField = typeof(LocalQwenHost).GetField("_idleDeadlineTicks",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        private static readonly MethodInfo IdleCallback = typeof(LocalQwenHost).GetMethod("OnIdleStop",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        private readonly object _gate = new();
+        private readonly List<Process> _processes = [];
+
+        public OwnedQwenHostHarness()
+        {
+            LocalQwenHost? host = null;
+            host = new LocalQwenHost(TimeSpan.FromMinutes(1), () =>
+            {
+                var process = StartOwnedHelper();
+                lock (_gate) _processes.Add(process);
+                ProcessField.SetValue(host, process);
+                return Task.FromResult(true);
+            });
+            Host = host;
+        }
+
+        public LocalQwenHost Host { get; }
+        public Process LastProcess { get { lock (_gate) return _processes[^1]; } }
+
+        public void ExpireIdleDeadline() => DeadlineField.SetValue(Host, Environment.TickCount64 - 1);
+        public void InvokeIdleCallback() => IdleCallback.Invoke(Host, [null]);
+
+        public void Dispose()
+        {
+            Host.Dispose();
+            lock (_gate)
+            {
+                foreach (var process in _processes)
+                {
+                    try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
+                    catch (InvalidOperationException) { }
+                    catch (System.ComponentModel.Win32Exception) { }
+                    catch (System.Runtime.InteropServices.COMException) { }
+                    process.Dispose();
+                }
+            }
+        }
+
+        private static Process StartOwnedHelper()
+        {
+            var start = new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "ping.exe"))
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            foreach (var argument in new[] { "127.0.0.1", "-n", "30", "-w", "1000" })
+                start.ArgumentList.Add(argument);
+            return Process.Start(start) ?? throw new InvalidOperationException("Test helper process did not start.");
+        }
     }
 }

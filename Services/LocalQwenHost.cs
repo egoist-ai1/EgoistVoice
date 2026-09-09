@@ -7,7 +7,7 @@ namespace Egoist.Voice.Services;
 /// <summary>Owns only the Qwen child it starts. Never controls the shared translation process.</summary>
 public sealed class LocalQwenHost : IDisposable
 {
-    private static readonly TimeSpan IdleUnloadDelay = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan DefaultIdleUnloadDelay = TimeSpan.FromMinutes(5);
     public const string ModelId = "egoist-qwen3-4b";
     // A separate loopback port isolates native diagnostics from a running user session.
     private static readonly int Port = int.TryParse(Environment.GetEnvironmentVariable("EGOIST_VOICE_QWEN_TEST_PORT"), out var port)
@@ -19,10 +19,13 @@ public sealed class LocalQwenHost : IDisposable
     private readonly object _gate = new();
     private readonly CancellationTokenSource _lifetime = new();
     private readonly System.Threading.Timer _idleStopTimer;
+    private readonly TimeSpan _idleUnloadDelay;
+    private readonly Func<Task<bool>> _startCore;
     private Task<bool>? _start;
     private Process? _process;
     private OwnedProcessJob? _job;
     private int _activeLeases;
+    private long _idleDeadlineTicks = long.MaxValue;
     private bool _disposed;
     internal static string AuthenticationToken { get; } = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     private string _status = "Локальная Qwen выключена.";
@@ -49,7 +52,15 @@ public sealed class LocalQwenHost : IDisposable
         "Egoist", "TranslationEngine", "v1", "runtime", "llama-b10219-vulkan-win-x64-vc143", "llama-server.exe");
     public static bool IsInstalled => File.Exists(RuntimePath) && File.Exists(ModelPath);
 
-    public LocalQwenHost() => _idleStopTimer = new System.Threading.Timer(OnIdleStop);
+    public LocalQwenHost() : this(DefaultIdleUnloadDelay, null) { }
+
+    internal LocalQwenHost(TimeSpan idleUnloadDelay, Func<Task<bool>>? startOverride)
+    {
+        if (idleUnloadDelay <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(idleUnloadDelay));
+        _idleUnloadDelay = idleUnloadDelay;
+        _startCore = startOverride ?? StartCoreAsync;
+        _idleStopTimer = new System.Threading.Timer(OnIdleStop);
+    }
 
     /// <summary>
     /// Keeps this host's child loaded for one text operation. A cancelled caller stops waiting for
@@ -63,7 +74,7 @@ public sealed class LocalQwenHost : IDisposable
         {
             if (_disposed) return null;
             _activeLeases++;
-            _idleStopTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            CancelIdleStopLocked();
             lease = new ActivityLease(this);
         }
 
@@ -90,12 +101,22 @@ public sealed class LocalQwenHost : IDisposable
         {
             if (_disposed) return Task.FromResult(false);
             // A crashed child may be restarted by an explicit user action, never a retry loop.
-            if (_start is { IsCompleted: true } && (_process is null || _process.HasExited)) _start = null;
+            if (_start is { IsCompleted: true } && (_process is null || _process.HasExited))
+            {
+                CancelIdleStopLocked();
+                _start = null;
+            }
             if (_start is null)
             {
-                _start = Task.Run(StartCoreAsync);
-                _ = _start.ContinueWith(_ => ScheduleIdleStopIfUnused(), CancellationToken.None,
+                CancelIdleStopLocked();
+                var start = Task.Run(_startCore);
+                _start = start;
+                _ = start.ContinueWith(_ => ScheduleIdleStopIfUnused(start), CancellationToken.None,
                     TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
+            else if (_start is { IsCompletedSuccessfully: true, Result: true })
+            {
+                ScheduleIdleStopIfUnusedLocked();
             }
             return _start;
         }
@@ -178,6 +199,7 @@ public sealed class LocalQwenHost : IDisposable
     {
         lock (_gate)
         {
+            CancelIdleStopLocked();
             try { if (_process is { HasExited: false }) _process.Kill(entireProcessTree: true); }
             catch (InvalidOperationException) { }
             catch (System.ComponentModel.Win32Exception) { }
@@ -193,7 +215,7 @@ public sealed class LocalQwenHost : IDisposable
             if (_disposed) return;
             _disposed = true;
             _lifetime.Cancel();
-            _idleStopTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            CancelIdleStopLocked();
         }
         StopChild();
         _idleStopTimer.Dispose();
@@ -210,16 +232,27 @@ public sealed class LocalQwenHost : IDisposable
         }
     }
 
-    private void ScheduleIdleStopIfUnused()
+    private void ScheduleIdleStopIfUnused(Task<bool> completedStart)
     {
-        lock (_gate) ScheduleIdleStopIfUnusedLocked();
+        lock (_gate)
+        {
+            if (ReferenceEquals(_start, completedStart)) ScheduleIdleStopIfUnusedLocked();
+        }
     }
 
     private void ScheduleIdleStopIfUnusedLocked()
     {
         if (_disposed || _activeLeases != 0 || _start is not { IsCompletedSuccessfully: true, Result: true } ||
             _process is null || _process.HasExited) return;
-        _idleStopTimer.Change(IdleUnloadDelay, Timeout.InfiniteTimeSpan);
+        var delayMilliseconds = Math.Max(1L, (long)Math.Ceiling(_idleUnloadDelay.TotalMilliseconds));
+        _idleDeadlineTicks = Environment.TickCount64 + delayMilliseconds;
+        _idleStopTimer.Change(TimeSpan.FromMilliseconds(delayMilliseconds), Timeout.InfiniteTimeSpan);
+    }
+
+    private void CancelIdleStopLocked()
+    {
+        _idleDeadlineTicks = long.MaxValue;
+        _idleStopTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
     }
 
     private void OnIdleStop(object? state)
@@ -228,6 +261,14 @@ public sealed class LocalQwenHost : IDisposable
         {
             if (_disposed || _activeLeases != 0 || _start is not { IsCompletedSuccessfully: true, Result: true } ||
                 _process is null || _process.HasExited) return;
+            if (_idleDeadlineTicks == long.MaxValue) return;
+            var remainingMilliseconds = _idleDeadlineTicks - Environment.TickCount64;
+            if (remainingMilliseconds > 0)
+            {
+                _idleStopTimer.Change(TimeSpan.FromMilliseconds(remainingMilliseconds), Timeout.InfiniteTimeSpan);
+                return;
+            }
+            _idleDeadlineTicks = long.MaxValue;
             StopChild();
             _start = null;
             Status = "Qwen выгружена после простоя. Запустится при следующем обращении.";
