@@ -74,4 +74,19 @@ Hy-MT и общий движок перевода не входят. Снача�
 `Data/dictation.json` не заменяется и не удаляется деинсталлятором. Блокировку файлов
 обрабатывает Windows Restart Manager; глобального `taskkill /IM` в этом установщике нет.
 Сборка и проверка целостности не означают, что пройдены установка/обновление/удаление
-в чистой Windows. Статус локального кандидата: [2.2.1-rc.2](releases/2.2.1-rc.2.md).
+в чистой Windows. Статус локального кандидата: [2.2.1-rc.3](releases/2.2.1-rc.3.md).
+
+## React-установщик RC3
+
+`scripts/Build-ReactInstaller.ps1` оборачивает тот же Inno payload интерфейсом
+React 19.2.8 / Electron 44.2.0. Electron существует только в установщике и не входит
+в установленный Voice. Все компоненты поставляются офлайн; WebView2 не требуется.
+Параметры: `OutputDirectory`, собственный `WorkDirectory`, `SpeechModelsRoot`,
+`WebModulesDirectory` (React/React DOM/Vite), `PackagingModulesDirectory`
+(electron-builder/electron) и `ElectronDistributionPath` (готовый ZIP или каталог
+Electron нужной версии). Версии закреплены в `installer/react/package.json`.
+Скрипт не устанавливает npm-зависимости и не скачивает модели; подготовьте инструменты
+заранее. Используйте отдельные TEMP/TMP и ELECTRON_BUILDER_CACHE для сборки.
+Новый EXE запускает Inno без его мастера, получает действительный прогресс через
+файл состояния и показывает результат по коду завершения. Контекст React изолирован
+от Node; путь, опции и запуск обрабатываются узким preload-мостом.

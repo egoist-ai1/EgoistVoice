@@ -26,7 +26,9 @@
   bars in a 256 × 48 DIP capsule, with an 8 ms attack and 80 ms release. Its frame loop runs only while recording;
   FFT buffers are reused and display analysis never modifies recognition samples.
 - Literal mode is the default, including older settings without the new field. It
-  preserves the decoder text, disables dictionary/commands/translation/Qwen and
+  preserves decoder text except an explicit trusted spelling pass for reported
+  Egoist product-name aliases and the missing letter in `репозиторй`; it disables
+  the general dictionary/commands/translation/Qwen and
   suppresses optional Whisper refinement. It cannot repair acoustic recognition errors.
 - Optional automatic Qwen formatting preserves words, order, numbers, paths and negation.
   Manual spelling correction remains a reviewed proposal with conservative validation.
@@ -51,6 +53,13 @@
   current-user named pipe. Voice may start the installed Host, but never owns,
   kills or logs its source/result payload.
 - Installer packages self-contained .NET/native runtimes while large speech models live under user-local storage and survive upgrade.
+- Russian RC3 uses an offline React/Electron shell around the same silent Inno
+  engine. The shell owns its temporary profile, bounded IPC actions, payload hashes,
+  folder selection and progress display. It blocks closing during installation;
+  successful install and launch depend on native exit and process-start results.
+  Electron is not installed into Voice. Native Inno remains the owner of uninstall,
+  shortcuts, autostart and Restart Manager; explicit unchecked options remove the
+  previous autostart value/owned desktop shortcut during an upgrade.
 
 ## Целевые рамки и разделяемый движок (решения 2026-08-02)
 
