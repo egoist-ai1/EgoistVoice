@@ -247,15 +247,30 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
     {
         var decoded = new List<DecodedAudioChunk>(chunks.Count);
 
-        for (var offset = 0; offset < chunks.Count; offset += MaxBatchSize)
+        for (var offset = 0; offset < chunks.Count;)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var size = Math.Min(MaxBatchSize, chunks.Count - offset);
+            var size = GetBatchSize(chunks, offset);
             progress?.Report(new ModelProgress("Распознаю", offset * 100d / chunks.Count));
             DecodeBatch(chunks, offset, size, decoded, cancellationToken);
+            offset += size;
         }
 
         return TranscriptChunkJoiner.Join(decoded);
+    }
+
+    internal static int GetBatchSize(IReadOnlyList<GigaAmAudioChunk> chunks, int offset)
+    {
+        var size = Math.Min(MaxBatchSize, chunks.Count - offset);
+        var longest = 0;
+        for (var index = offset; index < offset + size; index++)
+            longest = Math.Max(longest, chunks[index].Samples.Length);
+
+        // Sherpa pads every batch member to the longest waveform. A short final tail
+        // would pay for almost another full chunk; let the next bounded batch decode it.
+        if (size > 1 && chunks[offset + size - 1].Samples.Length * 2 < longest)
+            size--;
+        return size;
     }
 
     private void DecodeBatch(
@@ -275,7 +290,10 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
                 streams[index].AcceptWaveform(SampleRate, GetEngineSamples(chunks[offset + index].Samples));
             }
 
-            _recognizer!.Decode(streams);
+            if (size == 1)
+                _recognizer!.Decode(streams[0]);
+            else
+                _recognizer!.Decode(streams);
 
             for (var index = 0; index < size; index++)
             {
@@ -491,7 +509,8 @@ internal static class AudioSampleReader
         }
         finally
         {
-            ArrayPool<float>.Shared.Return(buffer);
+            writer.Clear();
+            ArrayPool<float>.Shared.Return(buffer, clearArray: true);
         }
     }
 }
