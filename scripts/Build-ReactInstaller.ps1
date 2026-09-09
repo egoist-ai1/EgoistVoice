@@ -56,7 +56,7 @@ $configuration = [ordered]@{
 }
 $configPath = Join-Path $work 'electron-builder.json'
 [IO.File]::WriteAllText($configPath, ($configuration | ConvertTo-Json -Depth 8), $utf8)
-& $node (Join-Path $PackagingModulesDirectory 'electron-builder\cli.js') --config $configPath --win portable --x64 --publish never
+& $node (Join-Path $PackagingModulesDirectory 'electron-builder\cli.js') --projectDir $stage --config $configPath --win portable --x64 --publish never
 if ($LASTEXITCODE -ne 0) { throw 'React installer packaging failed.' }
 $installer = Join-Path $output ('EgoistVoice-Setup-Russian-' + $version + '-win-x64.exe')
 $receipt = [ordered]@{ version=$version; sourceRevision=(& git -C $project rev-parse HEAD).Trim(); installer=$installer; bytes=(Get-Item -LiteralPath $installer).Length; sha256=(Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant(); react='19.2.8';electron=$electronPackage.version;installerExecutedOnHost=$false;cleanWindowsVerified=$false }
