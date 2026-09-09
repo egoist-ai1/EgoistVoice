@@ -4,19 +4,10 @@ namespace Egoist.Voice.Services;
 /// Decides whether a session contained speech at all.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The thresholds are absolute, and an attempt to make them adapt to the room was reverted. The
-/// reason is worth recording: within a single push-to-talk session there is no reliable way to tell
-/// "quiet speech throughout" from "noise throughout" — both look like a steady level a little above
-/// the floor. Every adaptive variant that rejected a noisy room also rejected genuine quiet speech,
-/// which is the far worse failure: a dictation silently discarded is a dictation lost.
-/// </para>
-/// <para>
-/// The honest fix for the original complaint is not a cleverer gate but a visible one. The snapshot
-/// now carries enough context for the UI to say why a session was dropped instead of hiding it, and
-/// a real adaptive floor becomes possible once the pre-roll buffer gives us audio recorded before
-/// the user started speaking.
-/// </para>
+/// Capture supplies a background estimate from the quieter pre-roll or release boundary.
+/// Adaptation stays bounded because energy alone cannot distinguish continuous quiet speech
+/// from continuous noise. This is a whole-session acceptance gate, never a sample trimmer;
+/// rejected sessions carry a reason for the UI.
 /// </remarks>
 internal sealed class SpeechActivityDetector
 {

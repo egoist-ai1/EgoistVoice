@@ -366,10 +366,8 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
             {
                 FeatConfig = new FeatureConfig { SampleRate = SampleRate, FeatureDim = 64 },
                 ModelConfig = modelConfig,
-                // Beam search rather than greedy. For a transducer this is the cheapest accuracy available:
-                // a few percent relative WER for roughly five to ten percent of the decode time — and the
-                // decode already runs at around fifty times real time, so that time is not felt. Four paths
-                // is the point where the curve flattens; more costs time without buying anything.
+                // Keep the shipped decoder settings. Changes require paired corpus evidence;
+                // beam width alone does not establish an accuracy or latency improvement.
                 DecodingMethod = "modified_beam_search",
                 MaxActivePaths = 4,
                 HotwordsFile = contextual?.HotwordsPath ?? string.Empty,
@@ -509,8 +507,8 @@ internal static class GigaAmAudioChunker
     private const int ParagraphSilenceMilliseconds = 1050;
     private const int OverlapMilliseconds = 240;
 
-    /// <summary>Absolute noise floor (~-40.9 dBFS). The adaptive threshold never drops below it.</summary>
-    internal const double MinimumSilenceRms = 0.009;
+    /// <summary>Default pause threshold, further limited by the recording's active level.</summary>
+    internal const double DefaultSilenceRms = 0.009;
 
     /// <summary>
     /// Upper bound (~-30.5 dBFS) for the adaptive threshold. Without it a loud recording would
@@ -566,14 +564,15 @@ internal static class GigaAmAudioChunker
 
     /// <summary>
     /// Derives the silence threshold from the recording itself instead of a fixed constant.
-    /// A quiet room keeps the absolute floor; a noisy one raises it so pauses are still found.
+    /// A pause must also be quieter than the recording's active level. With no energy contrast,
+    /// prefer the bounded overlapping hard cut over inventing a pause in continuous quiet speech.
     /// </summary>
     internal static double EstimateSilenceThreshold(float[] samples, int window)
     {
         var windowCount = samples.Length / window;
         if (windowCount < 8)
         {
-            return MinimumSilenceRms;
+            return 0;
         }
 
         var energies = new double[windowCount];
@@ -584,7 +583,9 @@ internal static class GigaAmAudioChunker
 
         Array.Sort(energies);
         var floor = energies[(int)(windowCount * NoiseFloorPercentile)];
-        return Math.Clamp(floor * NoiseFloorHeadroom, MinimumSilenceRms, MaximumSilenceRms);
+        var activeLevel = energies[(int)(windowCount * (1 - NoiseFloorPercentile))];
+        var noiseThreshold = Math.Clamp(floor * NoiseFloorHeadroom, DefaultSilenceRms, MaximumSilenceRms);
+        return Math.Min(noiseThreshold, activeLevel / NoiseFloorHeadroom);
     }
 
     private static double WindowRms(float[] samples, int offset, int window)

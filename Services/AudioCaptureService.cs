@@ -643,6 +643,15 @@ public sealed class AudioCaptureService : IAudioCaptureService
     {
         var detector = new SpeechActivityDetector();
         var noiseFloor = AudioSignalAnalyzer.EstimateNoiseFloorDb(samples, preRollSamples, OutputSampleRate);
+        // Pre-roll can contain the very first word we intentionally preserved. Use the quieter
+        // boundary as background evidence so that word cannot raise its own acceptance threshold.
+        // This only calibrates session acceptance; every original sample still reaches ASR.
+        var tailSamples = Math.Min(samples.Length, (int)(ReleaseTailDuration.TotalSeconds * OutputSampleRate));
+        var tailFloor = AudioSignalAnalyzer.EstimateNoiseFloorDb(samples.AsSpan(samples.Length - tailSamples), OutputSampleRate);
+        if (tailFloor is { } tail && (noiseFloor is null || tail < noiseFloor.Value))
+        {
+            noiseFloor = tail;
+        }
         detector.Reset(noiseFloor);
         const int frameSamples = OutputSampleRate / 50; // 20 ms
         for (var offset = 0; offset < samples.Length; offset += frameSamples)
@@ -962,14 +971,19 @@ internal static class AudioSignalAnalyzer
     internal static double? EstimateNoiseFloorDb(float[] samples, int preRollSamples, int sampleRate)
     {
         preRollSamples = Math.Clamp(preRollSamples, 0, samples.Length);
-        var frameSize = Math.Max(1, sampleRate / 100); // 10 ms gives enough observations in 200 ms.
-        if (preRollSamples < frameSize * 4)
+        return EstimateNoiseFloorDb(samples.AsSpan(0, preRollSamples), sampleRate);
+    }
+
+    internal static double? EstimateNoiseFloorDb(ReadOnlySpan<float> samples, int sampleRate)
+    {
+        var frameSize = Math.Max(1, sampleRate / 100);
+        if (samples.Length < frameSize * 4)
         {
             return null;
         }
 
-        var levels = new List<double>(preRollSamples / frameSize);
-        for (var offset = 0; offset + frameSize <= preRollSamples; offset += frameSize)
+        var levels = new List<double>(samples.Length / frameSize);
+        for (var offset = 0; offset + frameSize <= samples.Length; offset += frameSize)
         {
             double sum = 0;
             for (var index = 0; index < frameSize; index++)

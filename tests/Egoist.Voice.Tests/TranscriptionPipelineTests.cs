@@ -13,6 +13,51 @@ public sealed class TranscriptionPipelineTests
     private const int MaxChunkSeconds = 22;
     private const int MaxChunkSamples = MaxChunkSeconds * SampleRate;
 
+    [Theory]
+    [InlineData(0.002f)]
+    [InlineData(0.004f)]
+    [InlineData(0.01f)]
+    public void Continuous_quiet_signal_is_not_a_pause(float amplitude)
+    {
+        var samples = Constant(5_000, amplitude);
+
+        var chunks = GigaAmAudioChunker.Split(samples, SampleRate, MaxChunkSeconds);
+
+        Assert.Equal(MaxChunkSamples, chunks[0].Samples.Length);
+        Assert.All(chunks, chunk => Assert.False(chunk.ParagraphBreakBefore));
+        AssertContinuousCoverage(samples, chunks);
+    }
+
+    [Theory]
+    [InlineData(0.004f)]
+    [InlineData(0.04f)]
+    public void Quiet_pause_boundary_is_invariant_to_recording_gain(float amplitude)
+    {
+        var samples = Constant(5_000, amplitude);
+        for (var index = 1_850; index < 2_000; index++)
+            samples[index] *= 0.1f;
+
+        var chunks = GigaAmAudioChunker.Split(samples, SampleRate, MaxChunkSeconds);
+
+        Assert.Equal(1_925, chunks[0].Samples.Length);
+        Assert.True(chunks[1].ParagraphBreakBefore);
+        AssertContinuousCoverage(samples, chunks);
+    }
+
+    private static void AssertContinuousCoverage(float[] original, IReadOnlyList<GigaAmAudioChunk> chunks)
+    {
+        var coveredEnd = 0;
+        foreach (var chunk in chunks)
+        {
+            var segment = SegmentOf(chunk);
+            Assert.Same(original, segment.Array);
+            Assert.InRange(segment.Offset, 0, coveredEnd);
+            Assert.True(segment.Offset + segment.Count > coveredEnd);
+            coveredEnd = segment.Offset + segment.Count;
+        }
+        Assert.Equal(original.Length, coveredEnd);
+    }
+
     [Fact]
     public void Chunker_defaults_to_35_second_continuous_window()
     {
@@ -56,12 +101,12 @@ public sealed class TranscriptionPipelineTests
     }
 
     [Fact]
-    public void Silence_threshold_keeps_the_absolute_floor_in_a_quiet_recording()
+    public void Digital_silence_is_still_a_pause()
     {
         var samples = new float[1_000];
 
         Assert.Equal(
-            GigaAmAudioChunker.MinimumSilenceRms,
+            0,
             GigaAmAudioChunker.EstimateSilenceThreshold(samples, 2),
             precision: 6);
     }
@@ -69,13 +114,14 @@ public sealed class TranscriptionPipelineTests
     [Fact]
     public void Silence_threshold_rises_with_the_noise_floor_but_never_swallows_speech()
     {
-        var quiet = Constant(1_000, 0.01f);
+        var quiet = Constant(1_000, 0.1f);
+        Array.Fill(quiet, 0.01f, 0, 200);
         var noisy = Constant(1_000, 0.2f);
 
         var adapted = GigaAmAudioChunker.EstimateSilenceThreshold(quiet, 2);
         var capped = GigaAmAudioChunker.EstimateSilenceThreshold(noisy, 2);
 
-        Assert.True(adapted > GigaAmAudioChunker.MinimumSilenceRms, "Порог должен подниматься над абсолютным полом.");
+        Assert.True(adapted > GigaAmAudioChunker.DefaultSilenceRms, "Порог должен подниматься при измеримом контрасте с шумом.");
         Assert.True(adapted < GigaAmAudioChunker.MaximumSilenceRms, "Тихая запись не должна упираться в потолок.");
         Assert.Equal(GigaAmAudioChunker.MaximumSilenceRms, capped, precision: 6);
     }

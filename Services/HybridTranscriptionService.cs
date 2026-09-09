@@ -210,31 +210,7 @@ public sealed class HybridTranscriptionService :
             _whisperReady = false;
             _whisperUnloaded = true;
             _whisperWarmUp = null;
-            TrimWorkingSet();
         }
-    }
-
-    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
-    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
-    private static extern bool SetProcessWorkingSetSize(IntPtr hProcess, IntPtr dwMinimumWorkingSetSize, IntPtr dwMaximumWorkingSetSize);
-
-    public static void TrimWorkingSet()
-    {
-        try
-        {
-            GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
-            GC.WaitForPendingFinalizers();
-            GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
-            using var process = Process.GetCurrentProcess();
-            SetProcessWorkingSetSize(process.Handle, (IntPtr)(-1), (IntPtr)(-1));
-        }
-        catch { }
-
-        try
-        {
-            LocalQwenHost.NotifyActivity();
-        }
-        catch { }
     }
 
     public async Task<TranscriptionResult> TranscribeAsync(

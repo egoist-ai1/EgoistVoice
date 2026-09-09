@@ -5,6 +5,52 @@ namespace Egoist.Voice.Tests;
 public sealed class AudioCaptureServiceTests
 {
     [Fact]
+    public void Quiet_speech_starting_in_pre_roll_is_not_mistaken_for_room_noise()
+    {
+        const int sampleRate = AudioCaptureService.OutputSampleRate;
+        var samples = new float[sampleRate];
+        // A quiet, peaky waveform starts before the trigger and stops before the release tail.
+        // It meets the existing quiet-speech threshold when the background is estimated correctly.
+        for (var index = 0; index < sampleRate * 65 / 100; index++)
+            samples[index] = (index % 4) switch { 0 => 0.012f, 2 => -0.012f, _ => 0 };
+        var original = samples.ToArray();
+
+        var preRollOnly = new SpeechActivityDetector();
+        preRollOnly.Reset(AudioSignalAnalyzer.EstimateNoiseFloorDb(samples, sampleRate * 32 / 100, sampleRate));
+        preRollOnly.Process(0.012 / Math.Sqrt(2), 0.012, 650);
+        Assert.False(preRollOnly.Snapshot().HasSpeech);
+
+        var result = AudioCaptureService.Analyze(samples, sampleRate * 32 / 100);
+
+        Assert.True(result.HasSpeech);
+        Assert.Equal(original, samples);
+        Assert.Equal(TimeSpan.FromSeconds(1), result.Duration);
+    }
+
+    [Fact]
+    public void Release_tail_noise_estimate_does_not_promote_stationary_room_noise()
+    {
+        const int sampleRate = AudioCaptureService.OutputSampleRate;
+        var samples = Enumerable.Range(0, sampleRate)
+            .Select(index => index % 2 == 0 ? 0.004f : -0.004f).ToArray();
+
+        var result = AudioCaptureService.Analyze(samples, sampleRate * 32 / 100);
+
+        Assert.False(result.HasSpeech);
+    }
+
+    [Fact]
+    public void Quiet_boundaries_do_not_turn_one_transient_into_a_dictation()
+    {
+        var samples = new float[AudioCaptureService.OutputSampleRate];
+        Array.Fill(samples, 0.2f, 5_120, 320);
+
+        var result = AudioCaptureService.Analyze(samples, 5_120);
+
+        Assert.False(result.HasSpeech);
+    }
+
+    [Fact]
     public void PreRollRingRetainsOnlyNewestAlignedFramesAcrossWraparound()
     {
         var ring = new PcmByteRingBuffer(capacity: 8, blockAlign: 2);
