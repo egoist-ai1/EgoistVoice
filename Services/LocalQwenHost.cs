@@ -190,7 +190,7 @@ public sealed class LocalQwenHost : IDisposable
         foreach (var arg in new[] { "--model", ModelPath, "--alias", ModelId, "--host", "127.0.0.1", "--port", Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
             "--ctx-size", "2048", "-fa", "on", "--no-mmap", "--parallel", "1", "--n-gpu-layers", "99", "--split-mode", "none", "--jinja",
             "--chat-template-kwargs", "{\"enable_thinking\":false}", "--api-key", AuthenticationToken,
-            "-b", "2048", "-ub", "2048", "-t", "8", "-tb", "8",
+            "-b", "512", "-ub", "256", "-t", "8", "-tb", "8",
             "--log-disable" }) start.ArgumentList.Add(arg);
         return start;
     }

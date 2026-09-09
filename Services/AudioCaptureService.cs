@@ -21,6 +21,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
     internal static readonly TimeSpan ReleaseTailDuration = TimeSpan.FromMilliseconds(350);
 
     private readonly object _sync = new();
+    private readonly VoiceSpectrumAnalyzer _spectrum = new();
     private readonly bool _persistCompletedTake;
     private readonly IMicrophoneDeviceCatalog _deviceCatalog;
     private readonly bool _ownsDeviceCatalog;
@@ -240,6 +241,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
             }
 
             var format = _captureFormat ?? throw new InvalidOperationException("Формат микрофона не определён.");
+            _spectrum.Reset();
             (_buffer ?? throw new InvalidOperationException("Буфер микрофона не создан."))
                 .Begin(Math.Max(format.AverageBytesPerSecond * 2, 4096));
             _stopRequested = false;
@@ -412,6 +414,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
     private void OnDataAvailable(object? sender, WaveInEventArgs args)
     {
         WaveFormat? format;
+        bool measureSpectrum;
         lock (_sync)
         {
             // Unsubscribing cannot retract a callback that was already queued by the old WASAPI
@@ -426,6 +429,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
                 return;
             }
             format = _captureFormat;
+            measureSpectrum = _buffer?.IsSessionActive == true;
             _buffer?.Append(args.Buffer.AsSpan(0, args.BytesRecorded));
         }
 
@@ -438,6 +442,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
         }
 
         var rmsLevel = DbToLevel(rms, -62, -14);
+        var spectrum = measureSpectrum ? _spectrum.Measure(args.Buffer, args.BytesRecorded, format) : default;
         var peakLevel = DbToLevel(peak, -56, -7);
         var level = (float)Math.Clamp((rmsLevel * 0.76) + (peakLevel * 0.24), 0, 1);
 
@@ -470,7 +475,8 @@ public sealed class AudioCaptureService : IAudioCaptureService
         try
         {
             LevelChanged?.Invoke(this, smoothedLevel);
-            TimbreChanged?.Invoke(this, new VoiceTimbreLevel(smoothedLevel, smoothedBass, smoothedMid, smoothedTreble));
+            TimbreChanged?.Invoke(this, new VoiceTimbreLevel(smoothedLevel, smoothedBass, smoothedMid, smoothedTreble)
+                { Spectrum = spectrum });
         }
         catch (Exception exception)
         {
@@ -778,6 +784,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
     private void DiscardSessionLocked(bool clearPreRoll = false)
     {
         _buffer?.CancelSession();
+        _spectrum.Reset();
         if (clearPreRoll)
         {
             _buffer?.Clear();

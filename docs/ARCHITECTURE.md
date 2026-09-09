@@ -13,6 +13,17 @@
   may persist a completed take.
 - Audio pipeline runs local GigaAM with conditional Whisper fallback,
   profile-aware deterministic entity repair, normalization and commands.
+- Recording transfers the completed raw buffer into conversion instead of cloning it;
+  conversion clears the owned bytes in `finally`. Quiet pre-roll/tail and chunk pauses
+  use recording-relative levels. The stop sound plays after capture stops.
+- The scarlet capsule uses eight FFT bands (70–8000 Hz) mapped onto fifteen tapered
+  bars, with a 12 ms attack and 95 ms release. Its frame loop runs only while recording;
+  FFT buffers are reused and display analysis never modifies recognition samples.
+- Automatic Qwen formatting preserves words, order, numbers, paths and negation.
+  Manual spelling correction remains a reviewed proposal with conservative validation.
+  An owned-host lease spans startup and generation; a monotonic five-minute idle
+  deadline unloads only the Qwen child Voice created. The automatic two-second budget
+  includes startup waiting. Batch/microbatch limits are 512/256; context remains 2048.
 - Entity catalogue v2 is whole-token bounded. Safe names are global; ambiguous
   names require a local target/utterance domain and carry term-specific negative
   contexts. Exact split/join repairs replace no arbitrary edit-distance span.

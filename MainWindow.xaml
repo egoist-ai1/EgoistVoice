@@ -24,7 +24,7 @@
         <KeySpline x:Key="AccelerateSpline">0.7,0.0 1.0,0.5</KeySpline>
         <KeySpline x:Key="MorphSpline">0.16,1.0 0.3,1.0</KeySpline>
 
-        <!-- 21st.dev / Dynamic Island active loop: spinner rotation + wave breathing processing dots -->
+        <!-- One staggered processing rhythm; the orbit is reserved for model transfer. -->
         <Storyboard x:Key="SpinStoryboard" RepeatBehavior="Forever">
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="SpinnerOrbitRotate"
                                            Storyboard.TargetProperty="Angle">
@@ -32,8 +32,8 @@
                 <SplineDoubleKeyFrame KeyTime="0:0:0.55" Value="200" KeySpline="0.4,0.0 0.2,1.0" />
                 <SplineDoubleKeyFrame KeyTime="0:0:1.1" Value="360" KeySpline="0.4,0.0 0.2,1.0" />
             </DoubleAnimationUsingKeyFrames>
-
-            <!-- Cascading micro-dot waves for active thinking/recognition -->
+        </Storyboard>
+        <Storyboard x:Key="ProcessingStoryboard" RepeatBehavior="Forever">
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ProcessingDot1" Storyboard.TargetProperty="Opacity">
                 <SplineDoubleKeyFrame KeyTime="0:0:0" Value="0.25" />
                 <SplineDoubleKeyFrame KeyTime="0:0:0.22" Value="1.0" />
@@ -290,17 +290,10 @@
 
     <Grid>
         <!-- The HWND is a fixed 344×88; CapsuleBody carries width morphing smoothly -->
-        <Grid x:Name="CapsuleBody" Width="218" Height="48"
+        <Grid x:Name="CapsuleBody" Width="320" Height="48"
               HorizontalAlignment="Center" VerticalAlignment="Center">
 
-            <!-- Deep ambient occlusion shadow (21st.dev / Dynamic Island elevation) -->
-            <Border x:Name="ShadowSurface" CornerRadius="24" Background="{DynamicResource AppSurfaceBrush}"
-                    IsHitTestVisible="False" Opacity="1" CacheMode="BitmapCache">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="26" ShadowDepth="4" Direction="270"
-                                      Color="#000000" Opacity="0.48" />
-                </Border.Effect>
-            </Border>
+            <Border x:Name="ShadowSurface" Visibility="Collapsed" IsHitTestVisible="False" />
 
             <Grid x:Name="CapsuleShell" Opacity="1" RenderTransformOrigin="0.5,0.5"
                   AutomationProperties.Name="Egoist Voice"
@@ -316,7 +309,7 @@
                     CornerRadius="24"
                     Background="{DynamicResource AppSurfaceBrush}"
                     BorderBrush="{DynamicResource AppBorderBrush}"
-                    PhysicalStroke="1.6" RasterScale="4"
+                    PhysicalStroke="0" RasterScale="4"
                     Cursor="SizeAll"
                     MouseLeftButtonDown="RootBorder_OnMouseLeftButtonDown"
                     ToolTip="Перетащить (Двойной клик — настройки, правый клик — меню)">
@@ -334,7 +327,7 @@
                         </MenuItem>
                         <Separator />
                         <MenuItem x:Name="MenuDirectFastMode" Header="Быстрый режим (Direct ASR)" IsCheckable="True" Click="MenuDirectFastMode_OnClick" />
-                        <MenuItem x:Name="MenuFormatWithQwen" Header="Qwen-форматирование" IsCheckable="True" Click="MenuFormatWithQwen_OnClick" />
+                        <MenuItem x:Name="MenuFormatWithQwen" Header="Пунктуация и абзацы · Qwen" IsCheckable="True" Click="MenuFormatWithQwen_OnClick" />
                         <MenuItem x:Name="MenuSoundFeedback" Header="Звуковые сигналы" IsCheckable="True" Click="MenuSoundFeedback_OnClick" />
                         <Separator />
                         <MenuItem Header="Скрыть капсулу" Click="MenuHide_OnClick">
@@ -368,61 +361,27 @@
                     </EventTrigger>
                 </controls:PixelPerfectCapsuleBorder.Triggers>
 
-                <Grid Margin="1">
-                    <!-- Obsidian Glass Surface Gradient -->
-                    <Border x:Name="SurfaceGradient" CornerRadius="23" IsHitTestVisible="False">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#1A1A24" Offset="0" />
-                                <GradientStop Color="#0F0F16" Offset="0.48" />
-                                <GradientStop Color="#08080C" Offset="1" />
-                            </LinearGradientBrush>
-                        </Border.Background>
-                    </Border>
-
-                    <!-- Top Specular Rim Chamfer (21st.dev / Apple Dynamic Island specular glass refraction) -->
-                    <Border x:Name="InnerSpecularBorder" CornerRadius="23" BorderThickness="1" IsHitTestVisible="False">
-                        <Border.BorderBrush>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#34FFFFFF" Offset="0.0" />
-                                <GradientStop Color="#12FFFFFF" Offset="0.25" />
-                                <GradientStop Color="#00FFFFFF" Offset="0.70" />
-                                <GradientStop Color="#08FFFFFF" Offset="1.0" />
-                            </LinearGradientBrush>
-                        </Border.BorderBrush>
-                    </Border>
-
-                    <Border x:Name="HoverSurface" CornerRadius="23" Background="{DynamicResource AppControlHoverBrush}"
-                            Opacity="0" IsHitTestVisible="False" />
-                    <!-- Emerald Mint Success Glow -->
-                    <Border x:Name="SuccessFlash" CornerRadius="23" Background="{DynamicResource AppSuccessBrush}"
-                            Opacity="0" IsHitTestVisible="False" />
+                <Grid Margin="8,0">
+                    <Border x:Name="SurfaceGradient" Visibility="Collapsed" IsHitTestVisible="False" />
+                    <Border x:Name="InnerSpecularBorder" Visibility="Collapsed" IsHitTestVisible="False" />
+                    <Border x:Name="HoverSurface" Visibility="Collapsed" IsHitTestVisible="False" />
+                    <Border x:Name="SuccessFlash" Visibility="Collapsed" IsHitTestVisible="False" />
 
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="34" />
-                            <ColumnDefinition Width="6" />
+                            <ColumnDefinition Width="32" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition x:Name="TimerColumn" Width="0" />
-                            <ColumnDefinition x:Name="ActionDividerColumn" Width="6" />
-                            <ColumnDefinition x:Name="ActionColumn" Width="30" />
+                            <ColumnDefinition x:Name="TimerColumn" Width="33" />
+                            <ColumnDefinition x:Name="ActionDividerColumn" Width="3" />
+                            <ColumnDefinition x:Name="ActionColumn" Width="24" />
                         </Grid.ColumnDefinitions>
 
-                        <Grid Grid.Column="0" Width="28" Height="28">
-                            <!-- Soft organic radial halo breathing with voice amplitude -->
-                            <Ellipse x:Name="StateHalo" Opacity="0" RenderTransformOrigin="0.5,0.5">
-                                <Ellipse.Fill>
-                                    <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
-                                        <GradientStop Color="#80FF2634" Offset="0.0" />
-                                        <GradientStop Color="#30FF2634" Offset="0.55" />
-                                        <GradientStop Color="#00FF2634" Offset="1.0" />
-                                    </RadialGradientBrush>
-                                </Ellipse.Fill>
-                                <Ellipse.RenderTransform>
-                                    <ScaleTransform x:Name="StateHaloScale" ScaleX="1" ScaleY="1" />
-                                </Ellipse.RenderTransform>
+                        <Grid Grid.Column="0" Width="32" Height="32">
+                            <Ellipse x:Name="StateHalo" Visibility="Collapsed" IsHitTestVisible="False">
+                                <Ellipse.RenderTransform><ScaleTransform x:Name="StateHaloScale" /></Ellipse.RenderTransform>
                             </Ellipse>
-                            <Border x:Name="StateDisc" Margin="2" CornerRadius="12" Background="Transparent"
+                            <Border x:Name="StateDisc" Margin="0" CornerRadius="16" Background="Transparent"
                                     RenderTransformOrigin="0.5,0.5">
                                 <Border.RenderTransform>
                                     <TransformGroup>
@@ -478,14 +437,14 @@
                             </Border>
                         </Grid>
 
-                        <Grid x:Name="CenterContent" Grid.Column="2" Margin="9,0"
-                              VerticalAlignment="Center" Height="24" Opacity="1">
+                        <Grid x:Name="CenterContent" Grid.Column="2" Margin="0,0,8,0"
+                              VerticalAlignment="Center" Height="28" Opacity="1">
                             <Grid.RenderTransform>
                                 <TranslateTransform x:Name="StateContentTranslate" />
                             </Grid.RenderTransform>
                             <controls:CapsuleWaveform x:Name="Waveform"
                                                       VerticalAlignment="Center" HorizontalAlignment="Stretch"
-                                                      Margin="2,0,12,0"
+                                                      Margin="0"
                                                       AutomationProperties.Name="Индикатор уровня звука" />
 
                             <!-- Active Thinking / Recognition with cascading micro-dots -->
@@ -519,8 +478,8 @@
                         </Grid>
 
                         <TextBlock x:Name="RecordingTimer" Grid.Column="3" Visibility="Collapsed"
-                                   VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0"
-                                   Foreground="{DynamicResource AppTextPrimaryBrush}" FontSize="11.5" FontWeight="SemiBold" Opacity="0.82"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0"
+                                   Foreground="{DynamicResource AppTextPrimaryBrush}" FontSize="11.5" FontWeight="Medium" Opacity="0.9"
                                    Typography.NumeralAlignment="Tabular"
                                    AutomationProperties.Name="Длительность записи" />
 

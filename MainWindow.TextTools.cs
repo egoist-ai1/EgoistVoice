@@ -85,5 +85,39 @@ public partial class MainWindow
 
     public Task<TextFormattingResult> EditTextAsync(string text, string endpoint, string model,
         bool correctWords, CancellationToken cancellationToken) =>
-        _textFormatter.FormatAsync(text, endpoint, model, TimeSpan.FromSeconds(30), correctWords, cancellationToken);
+        FormatTextWithHostAsync(text, endpoint, model, TimeSpan.FromSeconds(30), correctWords, cancellationToken);
+
+    private async Task<TextFormattingResult> FormatTextWithHostAsync(string text, string endpoint, string model,
+        TimeSpan budget, bool allowWordCorrection, CancellationToken cancellationToken)
+    {
+        var clock = Stopwatch.StartNew();
+        using var operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        operation.CancelAfter(budget);
+        IDisposable? lease = null;
+        try
+        {
+            if (model == LocalQwenHost.ModelId &&
+                LocalTextFormatter.TryGetEndpoint(endpoint, out var target) &&
+                target.AbsoluteUri.TrimEnd('/') == LocalQwenHost.Endpoint)
+            {
+                lease = await (_localQwen ??= new LocalQwenHost()).AcquireAsync(operation.Token);
+                if (lease is null)
+                    return new(text, TextFormattingStatus.Unavailable, clock.Elapsed);
+            }
+            var remaining = budget - clock.Elapsed;
+            if (remaining < TimeSpan.FromMilliseconds(100))
+                return new(text, TextFormattingStatus.Timeout, clock.Elapsed);
+            var result = await _textFormatter.FormatAsync(text, endpoint, model, remaining,
+                allowWordCorrection, operation.Token);
+            return result with { Elapsed = clock.Elapsed };
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return new(text, TextFormattingStatus.Timeout, clock.Elapsed);
+        }
+        finally
+        {
+            lease?.Dispose();
+        }
+    }
 }

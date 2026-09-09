@@ -16,36 +16,17 @@ namespace Egoist.Voice;
 
 public partial class MainWindow : Window, IDisposable
 {
-    // Всё, что раньше было залитыми дисками под иконками, теперь прозрачно. Залитый круг —
-    // единственная плотная фигура на капсуле, где всё остальное нарисовано линией: он спорил и с
-    // волосяной кривой волны, и с тонким контуром пилюли. Состояние теперь читается по свечению
-    // и по цвету контура, а не по плашке под иконкой.
-    private static readonly SolidColorBrush ActiveDiscBrush = FrozenBrush("#00000000");
+    private static readonly SolidColorBrush ActiveDiscBrush = FrozenBrush("#FF2448");
     private static readonly SolidColorBrush SuccessDiscBrush = FrozenBrush("#00000000");
-    private SolidColorBrush IdleBorderBrush => ThemeBrush("AppBorderBrush");
-
-    /// <summary>
-    /// Контур записи. Красный больше не идёт ровной яркой линией по всему периметру — он вспыхивает
-    /// в середине и растворяется к обоим концам. Ровный контур на такой толщине выглядел резко и
-    /// при этом сливался в одну полосу с краем пилюли.
-    /// </summary>
-    private System.Windows.Media.Brush ActiveBorderBrush =>
-        CreateDissolvingAccent(ThemeBrush("AppAccentBrush").Color.ToString(), 0.86);
-
-    private SolidColorBrush SurfaceBrush => ThemeBrush("AppSurfaceBrush");
-    private SolidColorBrush PrimaryTextBrush => ThemeBrush("AppTextPrimaryBrush");
-    private SolidColorBrush AccentBrush => ThemeBrush("AppAccentBrush");
-    // Amber, not red. The brand accent #FF2634 marks normal operation — recording, progress,
-    // hover — while #FF4450 marked failure, and the two were indistinguishable at a glance. Error
-    // now has a colour of its own, and the brand keeps its meaning.
-    private SolidColorBrush ErrorBrush => ThemeBrush("AppWarningBrush");
-
-    /// <summary>
-    /// Растворяется так же, как контур записи, но с более высоким пиком: отказ должен быть заметнее
-    /// нормальной работы, при этом оставаясь в той же визуальной грамматике.
-    /// </summary>
-    private System.Windows.Media.Brush ErrorBorderBrush =>
-        CreateDissolvingAccent(ThemeBrush("AppWarningBrush").Color.ToString(), 0.92);
+    private static readonly SolidColorBrush CapsuleInkBrush = FrozenBrush("#000000");
+    private static readonly SolidColorBrush CapsuleTextBrush = FrozenBrush("#FAFAFA");
+    private SolidColorBrush IdleBorderBrush => CapsuleInkBrush;
+    private System.Windows.Media.Brush ActiveBorderBrush => CapsuleInkBrush;
+    private SolidColorBrush SurfaceBrush => CapsuleInkBrush;
+    private SolidColorBrush PrimaryTextBrush => CapsuleTextBrush;
+    private SolidColorBrush AccentBrush => ActiveDiscBrush;
+    private SolidColorBrush ErrorBrush => ActiveDiscBrush;
+    private System.Windows.Media.Brush ErrorBorderBrush => CapsuleInkBrush;
     private SolidColorBrush ProgressTrackBrush => ThemeBrush("AppMeterTrackBrush");
 
     private readonly IAudioCaptureService _audioCapture;
@@ -553,6 +534,7 @@ public partial class MainWindow : Window, IDisposable
         _audioLevelTarget = 0.72f;
         _timbreBassTarget = 0.55f;
         _timbreTrebleTarget = 0.45f;
+        lock (_spectrumFrameGate) _spectrumFrame = new VoiceSpectrum(0.9f, 0.56f, 0.93f, 0.36f, 0.72f, 0.42f, 0.5f, 0.2f);
         for (var frame = 0; frame < 18; frame++)
         {
             AnimateWaveformFrame();
@@ -684,7 +666,6 @@ public partial class MainWindow : Window, IDisposable
     private async Task StopAndTranscribeAsync()
     {
         AppLog.Write($"StopAndTranscribe requested, held={(DateTime.UtcNow - _recordingStartedUtc).TotalSeconds:0.00}s");
-        PlayFeedback(FeedbackSound.RecordingStopped);
         _isRecording = false;
         _isProcessing = true;
         SetProcessingState("Распознаю", null);
@@ -701,6 +682,7 @@ public partial class MainWindow : Window, IDisposable
             var capture = await _audioCapture.StopAsync(cancellationToken);
             completedCapture = capture;
             trace.Mark(DictationStage.CaptureStopped);
+            PlayFeedback(FeedbackSound.RecordingStopped);
             audioPath = capture.Path;
             AppLog.Write(
                 $"Audio capture stopped: samples={capture.Samples.Length}, " +
@@ -790,8 +772,8 @@ public partial class MainWindow : Window, IDisposable
                 SetProcessingState("Оформляю", null);
                 var budget = double.IsFinite(textSettings.FormatBudgetSeconds)
                     ? Math.Clamp(textSettings.FormatBudgetSeconds, 0.5, 5) : 2;
-                var formatted = await _textFormatter.FormatAsync(text, textSettings.TextModelEndpoint,
-                    textSettings.TextModelId, TimeSpan.FromSeconds(budget), true, cancellationToken);
+                var formatted = await FormatTextWithHostAsync(text, textSettings.TextModelEndpoint,
+                    textSettings.TextModelId, TimeSpan.FromSeconds(budget), allowWordCorrection: false, cancellationToken);
                 text = formatted.Text;
                 formattingMessage = formatted.Message;
                 AppLog.Write($"Text formatting status={formatted.Status}; elapsedMs={formatted.Elapsed.TotalMilliseconds:0}; characters={text.Length}");
@@ -868,7 +850,6 @@ public partial class MainWindow : Window, IDisposable
                 TryDelete(audioPath);
             }
 
-            _ = Task.Delay(3000).ContinueWith(_ => HybridTranscriptionService.TrimWorkingSet(), TaskScheduler.Default);
         }
     }
 
@@ -954,6 +935,7 @@ public partial class MainWindow : Window, IDisposable
     {
         var settings = _settingsService.Load();
         MenuDirectFastMode.IsChecked = settings.DirectGigaamFastMode;
+        MenuDirectFastMode.Visibility = VoiceRuntimeProfile.IsPortable ? Visibility.Collapsed : Visibility.Visible;
         MenuFormatWithQwen.IsChecked = settings.FormatWithQwen;
         MenuSoundFeedback.IsChecked = _sounds.Enabled;
     }
@@ -1202,6 +1184,7 @@ public partial class MainWindow : Window, IDisposable
     private void StopStateAnimations()
     {
         ((Storyboard)Resources["SpinStoryboard"]).Stop(this);
+        ((Storyboard)Resources["ProcessingStoryboard"]).Stop(this);
         ((Storyboard)Resources["ListenPulseStoryboard"]).Stop(this);
         ((Storyboard)Resources["SuccessStoryboard"]).Stop(this);
         ((Storyboard)Resources["ErrorStoryboard"]).Stop(this);
@@ -1273,35 +1256,6 @@ public partial class MainWindow : Window, IDisposable
     }
 
     private SolidColorBrush ThemeBrush(string key) => (SolidColorBrush)FindResource(key);
-
-    /// <summary>
-    /// Строит горизонтальный градиент, у которого акцент разгорается к середине и уходит в ноль на
-    /// концах. Применяется как кисть пера контура: перо с градиентом даёт линию переменной
-    /// прозрачности, чего не получить сплошным цветом.
-    /// </summary>
-    private static System.Windows.Media.Brush CreateDissolvingAccent(string color, double peakOpacity)
-    {
-        var accent = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color);
-        System.Windows.Media.Color At(double opacity) => System.Windows.Media.Color.FromArgb(
-            (byte)Math.Round(Math.Clamp(opacity, 0, 1) * 255),
-            accent.R,
-            accent.G,
-            accent.B);
-
-        var brush = new System.Windows.Media.LinearGradientBrush(
-            new System.Windows.Media.GradientStopCollection
-            {
-                new(At(0), 0),
-                new(At(peakOpacity * 0.28), 0.16),
-                new(At(peakOpacity), 0.5),
-                new(At(peakOpacity * 0.28), 0.84),
-                new(At(0), 1)
-            },
-            new System.Windows.Point(0, 0.5),
-            new System.Windows.Point(1, 0.5));
-        brush.Freeze();
-        return brush;
-    }
 
     private static void TryDelete(string? path)
     {

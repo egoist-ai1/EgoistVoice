@@ -32,7 +32,7 @@ public sealed class ModelManagerTests
         finally { Directory.Delete(root, recursive: true); }
     }
 
-    [Fact]
+    [FullModelManagementFact]
     public async Task Downloads_verifies_and_reports_model()
     {
         var content = Enumerable.Range(0, 64 * 1024).Select(index => (byte)(index % 251)).ToArray();
@@ -59,7 +59,7 @@ public sealed class ModelManagerTests
         }
     }
 
-    [Fact]
+    [FullModelManagementFact]
     public async Task Resumes_partial_download_with_http_range()
     {
         var content = Enumerable.Range(0, 80 * 1024).Select(index => (byte)(index % 239)).ToArray();
@@ -84,7 +84,7 @@ public sealed class ModelManagerTests
         }
     }
 
-    [Fact]
+    [FullModelManagementFact]
     public async Task Restarts_download_when_server_returns_mismatched_content_range()
     {
         var content = Enumerable.Range(0, 48 * 1024).Select(index => (byte)(index % 233)).ToArray();
@@ -109,7 +109,7 @@ public sealed class ModelManagerTests
         }
     }
 
-    [Fact]
+    [FullModelManagementFact]
     public async Task Retries_transient_download_failures_and_keeps_partial_file()
     {
         var content = Enumerable.Range(0, 72 * 1024).Select(index => (byte)(index % 227)).ToArray();
@@ -132,7 +132,7 @@ public sealed class ModelManagerTests
         }
     }
 
-    [Fact]
+    [FullModelManagementFact]
     public async Task Rejects_bad_checksum_and_removes_corrupt_partial()
     {
         var expected = Enumerable.Repeat((byte)7, 32 * 1024).ToArray();
@@ -153,7 +153,7 @@ public sealed class ModelManagerTests
         }
     }
 
-    [Fact]
+    [FullModelManagementFact]
     public async Task Preserves_all_components_of_current_model_set_and_removes_superseded_versions()
     {
         var firstContent = new byte[] { 1, 2, 3, 4 };
@@ -196,7 +196,7 @@ public sealed class ModelManagerTests
         content.Length,
         Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant());
 
-    [Fact]
+    [FullModelManagementFact]
     public void Removes_unsupported_legacy_model_directories()
     {
         var content = new byte[] { 1, 2, 3 };
@@ -324,5 +324,14 @@ public sealed class ModelManagerTests
                 Content = new ByteArrayContent(content)
             });
         }
+    }
+}
+
+public sealed class FullModelManagementFactAttribute : FactAttribute
+{
+    public FullModelManagementFactAttribute()
+    {
+        if (Egoist.Voice.Core.VoiceRuntimeProfile.IsPortable)
+            Skip = "Compact forbids model downloads and pruning; this contract runs in the Full suite.";
     }
 }

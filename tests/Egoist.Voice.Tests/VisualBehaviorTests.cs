@@ -32,25 +32,29 @@ public sealed class VisualBehaviorTests
     }
 
     [Fact]
-    public void Centre_bars_are_visibly_brighter_than_the_edges()
+    public void Flat_waveform_uses_the_same_scarlet_at_the_edges_and_centre()
     {
-        // The previous ramp went 224→255 in red only, a difference nobody can see. The meter has
-        // to read as a shape, not a flat comb.
         var centre = CapsuleWaveformProfile.CreateBarBrush(
             CapsuleWaveformProfile.BarCount / 2, CapsuleWaveformProfile.BarCount).Color;
         var edge = CapsuleWaveformProfile.CreateBarBrush(0, CapsuleWaveformProfile.BarCount).Color;
 
-        Assert.True(centre.R - edge.R > 60, $"Разброс яркости слишком мал: {edge.R} → {centre.R}.");
+        Assert.Equal(centre, edge);
+        Assert.Equal(System.Windows.Media.Color.FromRgb(255, 36, 72), centre);
     }
 
     [Fact]
-    public void Reduced_motion_flattens_the_idle_shape()
+    public void Silence_stays_still_and_reduced_motion_tracks_level_without_travelling_waves()
     {
         var animated = CapsuleWaveformProfile.TargetScale(3, 24, level: 0, phase: 2.1, reducedMotion: false);
         var still = CapsuleWaveformProfile.TargetScale(3, 24, level: 0, phase: 2.1, reducedMotion: true);
 
         Assert.Equal(CapsuleWaveformProfile.MinimumScale, still, precision: 6);
-        Assert.True(animated > still);
+        Assert.Equal(still, animated);
+        var firstPhase = CapsuleWaveformProfile.TargetScale(3, 15, level: 0.35, phase: 0, reducedMotion: true);
+        var laterPhase = CapsuleWaveformProfile.TargetScale(3, 15, level: 0.35, phase: 8, reducedMotion: true);
+        var louder = CapsuleWaveformProfile.TargetScale(3, 15, level: 0.8, phase: 8, reducedMotion: true);
+        Assert.Equal(firstPhase, laterPhase);
+        Assert.True(louder > laterPhase);
     }
 
     [Fact]

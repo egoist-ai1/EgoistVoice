@@ -4,7 +4,22 @@ public readonly record struct VoiceTimbreLevel(
     float Overall,
     float Bass,
     float Mid,
-    float Treble);
+    float Treble)
+{
+    public VoiceSpectrum Spectrum { get; init; }
+}
+
+/// <summary>Eight measured frequency-band levels, normalized for the capsule display.</summary>
+public readonly record struct VoiceSpectrum(float Band0, float Band1, float Band2, float Band3,
+    float Band4, float Band5, float Band6, float Band7, bool IsMeasured = true)
+{
+    public float this[int index] => index switch
+    {
+        0 => Band0, 1 => Band1, 2 => Band2, 3 => Band3,
+        4 => Band4, 5 => Band5, 6 => Band6, 7 => Band7,
+        _ => throw new ArgumentOutOfRangeException(nameof(index))
+    };
+}
 
 public interface IAudioCaptureService : IDisposable
 {

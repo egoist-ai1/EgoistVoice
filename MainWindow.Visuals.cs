@@ -10,10 +10,11 @@ namespace Egoist.Voice;
 
 public partial class MainWindow
 {
+    private readonly object _spectrumFrameGate = new();
+    private VoiceSpectrum _spectrumFrame;
     private void BuildWaveform()
     {
         Waveform.HighContrast = EffectiveTheme == EffectiveAppTheme.HighContrast;
-        Waveform.LightTheme = EffectiveTheme == EffectiveAppTheme.Light;
     }
 
     private void OnAudioLevelChanged(object? sender, float level)
@@ -23,6 +24,7 @@ public partial class MainWindow
 
     private void OnAudioTimbreChanged(object? sender, VoiceTimbreLevel timbre)
     {
+        lock (_spectrumFrameGate) _spectrumFrame = timbre.Spectrum;
         _audioLevelTarget = Math.Clamp(timbre.Overall, 0, 1);
         _timbreBassTarget = Math.Clamp(timbre.Bass, 0, 1);
         _timbreTrebleTarget = Math.Clamp(timbre.Treble, 0, 1);
@@ -40,12 +42,10 @@ public partial class MainWindow
         _timbreTrebleCurrent = CapsuleWaveformProfile.SmoothLevel(_timbreTrebleCurrent, _timbreTrebleTarget, deltaSeconds);
         var frameFactor = Math.Clamp(deltaSeconds * 60, 0.25, 3);
         _wavePhase += (0.09 + (_audioLevelCurrent * 0.14) + (_timbreTrebleCurrent * 0.05)) * frameFactor;
-        Waveform.Advance(_audioLevelCurrent, _wavePhase, deltaSeconds, IsReducedMotion, _timbreBassCurrent, 0, _timbreTrebleCurrent);
-        // Make the microphone halo follow the actual voice, on the existing bounded frame loop.
-        // Reduced motion keeps its size fixed; radial gradient delivers soft luminescent feathering.
-        StateHalo.Opacity = IsReducedMotion ? 0.3 : 0.14 + (_audioLevelCurrent * 0.62) + (_timbreBassCurrent * 0.16);
-        var haloScale = IsReducedMotion ? 1 : 0.94 + (_audioLevelCurrent * 0.26) + (_timbreBassCurrent * 0.08);
-        StateHaloScale.ScaleX = StateHaloScale.ScaleY = haloScale;
+        VoiceSpectrum spectrum;
+        lock (_spectrumFrameGate) spectrum = _spectrumFrame;
+        Waveform.Advance(_audioLevelCurrent, _wavePhase, deltaSeconds, IsReducedMotion,
+            _timbreBassCurrent, 0, _timbreTrebleCurrent, spectrum);
         UpdateRecordingTimer();
     }
 
@@ -74,6 +74,7 @@ public partial class MainWindow
         _timbreBassTarget = 0;
         _timbreTrebleCurrent = 0;
         _timbreTrebleTarget = 0;
+        lock (_spectrumFrameGate) _spectrumFrame = default;
         StartWaveformAnimation();
     }
 
@@ -84,11 +85,11 @@ public partial class MainWindow
         // Changing the stage label must not restart the orbit, reanimate the shell or allocate brushes.
         if (alreadyProcessing) return;
         StopWaveformAnimation();
-        SetStateDisc(System.Windows.Media.Brushes.Transparent);
+        SetStateDisc(ActiveDiscBrush);
         SetStateBorder(ActiveBorderBrush);
         StateHalo.Opacity = 0;
         StopStateAnimations();
-        BeginStateStoryboard("SpinStoryboard");
+        BeginStateStoryboard("ProcessingStoryboard");
         ShowCapsule();
     }
 
@@ -176,19 +177,11 @@ public partial class MainWindow
     {
         CloseButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         CloseButton.Opacity = visible ? 1 : 0;
-        ActionColumn.Width = visible ? new GridLength(30) : new GridLength(0);
-        ActionDividerColumn.Width = visible ? new GridLength(6) : new GridLength(0);
+        ActionColumn.Width = visible ? new GridLength(24) : new GridLength(0);
+        ActionDividerColumn.Width = visible ? new GridLength(3) : new GridLength(0);
     }
 
-    /// <summary>
-    /// Shows the elapsed time once a dictation stops being a quick phrase.
-    /// </summary>
-    /// <remarks>
-    /// Deliberately delayed rather than shown from the first second: on a two-second dictation a
-    /// timer is noise, and on a two-minute one it is the difference between "is this still
-    /// recording?" and knowing. It doubles as diagnostics — a timer that stopped advancing says
-    /// the capture died, which used to be invisible.
-    /// </remarks>
+    /// <summary>Updates a fixed-width clock without taking space away from the speech meter.</summary>
     private void UpdateRecordingTimer()
     {
         // The start time is only meaningful once a real capture has begun. Without this guard the
@@ -232,10 +225,10 @@ public partial class MainWindow
 
         _timerVisible = visible;
         RecordingTimer.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        TimerColumn.Width = visible ? GridLength.Auto : new GridLength(0);
+        TimerColumn.Width = new GridLength(33);
     }
 
-    private static readonly TimeSpan TimerAppearsAfter = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan TimerAppearsAfter = TimeSpan.Zero;
 
     /// <summary>
     /// Elapsed time the listening preview pretends to be at. Past <see cref="TimerAppearsAfter"/>
@@ -310,14 +303,13 @@ public partial class MainWindow
     {
         var stateChanged = _lastVisualStateKind != state.Kind;
         _lastVisualStateKind = state.Kind;
-        MicIcon.Visibility = state.Kind is CapsuleVisualStateKind.Ready or CapsuleVisualStateKind.Listening
+        MicIcon.Visibility = state.Kind is CapsuleVisualStateKind.Ready or CapsuleVisualStateKind.Listening or CapsuleVisualStateKind.Recognizing
             ? Visibility.Visible : Visibility.Collapsed;
         CheckIcon.Visibility = state.Kind == CapsuleVisualStateKind.Success
             ? Visibility.Visible : Visibility.Collapsed;
         ClipboardIcon.Visibility = state.Kind == CapsuleVisualStateKind.Clipboard
             ? Visibility.Visible : Visibility.Collapsed;
-        SpinnerIcon.Visibility = state.Kind == CapsuleVisualStateKind.Recognizing
-            ? Visibility.Visible : Visibility.Collapsed;
+        SpinnerIcon.Visibility = Visibility.Collapsed;
         DownloadIcon.Visibility = Visibility.Collapsed;
         ErrorIcon.Visibility = state.Kind == CapsuleVisualStateKind.Error
             ? Visibility.Visible : Visibility.Collapsed;
@@ -341,18 +333,9 @@ public partial class MainWindow
         SetCancelActionVisible(state.CanCancel);
         AnnounceState(state);
 
-        var bodyWidth = state.Kind switch
-        {
-            CapsuleVisualStateKind.Ready => 218d,
-            CapsuleVisualStateKind.Listening => 218d,
-            CapsuleVisualStateKind.Recognizing => 232d,
-            CapsuleVisualStateKind.Success => 224d,
-            CapsuleVisualStateKind.Clipboard => 224d,
-            CapsuleVisualStateKind.Downloading => 280d,
-            CapsuleVisualStateKind.Error => 232d,
-            _ => 232d
-        };
-        AnimateCapsuleWidth(bodyWidth);
+        if (state.Kind is CapsuleVisualStateKind.Ready or CapsuleVisualStateKind.Downloading)
+            SetRecordingTimerVisible(false);
+        AnimateCapsuleWidth(320);
 
         ApplyThemeToCapsule();
 
@@ -411,13 +394,7 @@ public partial class MainWindow
         ProcessingDot3Scale.ScaleX = ProcessingDot3Scale.ScaleY = 1;
 
         CapsuleBody.BeginAnimation(FrameworkElement.WidthProperty, null);
-        CapsuleBody.Width = _lastVisualStateKind switch
-        {
-            CapsuleVisualStateKind.Ready or CapsuleVisualStateKind.Listening => 218d,
-            CapsuleVisualStateKind.Success or CapsuleVisualStateKind.Clipboard => 224d,
-            CapsuleVisualStateKind.Downloading => 280d,
-            _ => 232d
-        };
+        CapsuleBody.Width = 320;
 
         if (_hideRequested)
         {
@@ -433,11 +410,15 @@ public partial class MainWindow
         BuildWaveform();
         if (EffectiveTheme == EffectiveAppTheme.HighContrast)
         {
+            RootBorder.PhysicalStroke = 1.6;
             RootBorder.Background = System.Windows.SystemColors.WindowBrush;
+            RecordingTimer.Foreground = System.Windows.SystemColors.WindowTextBrush;
+            CloseButton.Foreground = System.Windows.SystemColors.WindowTextBrush;
             RootBorder.BorderBrush = System.Windows.SystemColors.WindowTextBrush;
             DetailText.Foreground = System.Windows.SystemColors.WindowTextBrush;
             ProcessingLabel.Foreground = System.Windows.SystemColors.WindowTextBrush;
-            SetMicStroke(System.Windows.SystemColors.WindowTextBrush);
+            SetMicStroke(_lastVisualStateKind is CapsuleVisualStateKind.Listening or CapsuleVisualStateKind.Recognizing
+                ? System.Windows.SystemColors.HighlightTextBrush : System.Windows.SystemColors.WindowTextBrush);
             SetStroke(CheckIcon, System.Windows.SystemColors.WindowTextBrush);
             ClipboardIcon.Foreground = System.Windows.SystemColors.WindowTextBrush;
             SpinnerIcon.Opacity = 1;
@@ -463,22 +444,23 @@ public partial class MainWindow
             };
             DetailText.Foreground = PrimaryTextBrush;
             ProcessingLabel.Foreground = PrimaryTextBrush;
-            SetMicStroke(PrimaryTextBrush);
-            SetStroke(CheckIcon, ThemeBrush("AppSuccessBrush"));
+            SetMicStroke(_lastVisualStateKind is CapsuleVisualStateKind.Listening or CapsuleVisualStateKind.Recognizing
+                ? CapsuleInkBrush : AccentBrush);
+            RecordingTimer.Foreground = PrimaryTextBrush;
+            CloseButton.Foreground = PrimaryTextBrush;
+            SetStroke(CheckIcon, AccentBrush);
             ClipboardIcon.Foreground = PrimaryTextBrush;
             DownloadIcon.Foreground = AccentBrush;
             SetStroke(ErrorIcon, ErrorBrush);
             DownloadProgress.Foreground = AccentBrush;
             DownloadProgress.Background = ProgressTrackBrush;
-            SurfaceGradient.Visibility = EffectiveTheme == EffectiveAppTheme.Dark
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-            InnerSpecularBorder.Visibility = EffectiveTheme == EffectiveAppTheme.Dark
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-            HoverSurface.Visibility = Visibility.Visible;
-            SuccessFlash.Visibility = Visibility.Visible;
-            ShadowSurface.Visibility = Visibility.Visible;
+            RootBorder.PhysicalStroke = 0;
+            SurfaceGradient.Visibility = Visibility.Collapsed;
+            InnerSpecularBorder.Visibility = Visibility.Collapsed;
+            HoverSurface.Visibility = Visibility.Collapsed;
+            SuccessFlash.Visibility = Visibility.Collapsed;
+            ShadowSurface.Visibility = Visibility.Collapsed;
+
         }
     }
 
@@ -497,10 +479,10 @@ public partial class MainWindow
     }
 
     private void SetStateBorder(System.Windows.Media.Brush brush) =>
-        RootBorder.BorderBrush = SystemParameters.HighContrast ? System.Windows.SystemColors.WindowTextBrush : brush;
+        RootBorder.BorderBrush = EffectiveTheme == EffectiveAppTheme.HighContrast ? System.Windows.SystemColors.WindowTextBrush : brush;
 
     private void SetStateDisc(System.Windows.Media.Brush brush) =>
-        StateDisc.Background = SystemParameters.HighContrast && !ReferenceEquals(brush, System.Windows.Media.Brushes.Transparent)
+        StateDisc.Background = EffectiveTheme == EffectiveAppTheme.HighContrast && brush is SolidColorBrush { Color.A: > 0 }
             ? System.Windows.SystemColors.HighlightBrush
             : brush;
 
@@ -561,7 +543,7 @@ public partial class MainWindow
         var elapsed = _lastWaveFrame == TimeSpan.Zero
             ? TimeSpan.FromSeconds(1d / 60d)
             : rendering.RenderingTime - _lastWaveFrame;
-        if (_lastWaveFrame != TimeSpan.Zero && elapsed < TimeSpan.FromMilliseconds(IsReducedMotion ? 50 : 2))
+        if (_lastWaveFrame != TimeSpan.Zero && elapsed < TimeSpan.FromMilliseconds(IsReducedMotion ? 100 : 8))
         {
             return;
         }

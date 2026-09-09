@@ -148,7 +148,10 @@ public partial class App
                 (Source: @"открой C:\work\app и проверь настройки", Reference: @"Открой C:\work\app и проверь настройки.", Correction: false),
                 (Source: "я позваню тебе завтра", Reference: "Я позвоню тебе завтра.", Correction: true),
                 (Source: "мы договарились встретиться завтра", Reference: "Мы договорились встретиться завтра.", Correction: true),
-                (Source: "пожалуста сохрани этот дакумент", Reference: "Пожалуйста, сохрани этот документ.", Correction: true)
+                (Source: "пожалуста сохрани этот дакумент", Reference: "Пожалуйста, сохрани этот документ.", Correction: true),
+                (Source: "завтра начинаеться новая неделя", Reference: "Завтра начинается новая неделя.", Correction: true),
+                (Source: "мне очень нравиться этот фильм", Reference: "Мне очень нравится этот фильм.", Correction: true),
+                (Source: "я не буду удалять этот файл", Reference: "Я не буду удалять этот файл.", Correction: true)
             };
             var rows = new List<object>();
             var passed = true;

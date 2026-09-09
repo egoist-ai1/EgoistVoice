@@ -302,8 +302,13 @@ public partial class SettingsWindow : Window
             var settings = _settingsService.Load();
             LoadTextSettings(settings);
             DirectFastModeCheck.IsChecked = settings.DirectGigaamFastMode;
+            DirectFastModeCheck.Visibility = VoiceRuntimeProfile.IsPortable ? Visibility.Collapsed : Visibility.Visible;
+            DirectFastModeHint.Text = VoiceRuntimeProfile.IsPortable
+                ? "Compact распознаёт русскую речь локально через GigaAM. Whisper в эту сборку не входит. Смешанная русско-английская речь доступна в полной версии."
+                : "GigaAM распознаёт русскую речь. Дополнительная сверка Whisper может помочь смешанной речи, но увеличивает ожидание.";
             MixedLanguageCheck.IsChecked = settings.MixedLanguageMode && !VoiceRuntimeProfile.IsPortable;
             MixedLanguageCheck.IsEnabled = !VoiceRuntimeProfile.IsPortable;
+            MixedLanguageCheck.Visibility = VoiceRuntimeProfile.IsPortable ? Visibility.Collapsed : Visibility.Visible;
             NumbersCheck.IsChecked = settings.ApplyNumberNormalization;
             VoiceCommandsCheck.IsChecked = settings.ApplyVoiceCommands;
             RestoreClipboardCheck.IsChecked = settings.RestoreClipboard;

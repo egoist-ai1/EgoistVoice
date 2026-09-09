@@ -104,11 +104,14 @@ public sealed class LocalTextFormatterTests
         Assert.Equal(TextFormattingStatus.Rejected, result.Status);
     }
 
-    [Fact]
-    public async Task Manual_correction_can_propose_different_words()
+    [Theory]
+    [InlineData("он позванит", "Он позвонит.")]
+    [InlineData("я позваню тебе завтра", "Я позвоню тебе завтра.")]
+    [InlineData("завтра начинаеться новая неделя", "Завтра начинается новая неделя.")]
+    public async Task Manual_correction_can_propose_different_words(string source, string candidate)
     {
-        using var service = new LocalTextFormatter(new StubHandler((_, _) => Task.FromResult(Reply("Он позвонит."))));
-        var result = await service.FormatAsync("он позванит", "http://127.0.0.1:11434/v1", "qwen3:4b",
+        using var service = new LocalTextFormatter(new StubHandler((_, _) => Task.FromResult(Reply(candidate))));
+        var result = await service.FormatAsync(source, "http://127.0.0.1:11434/v1", "qwen3:4b",
             TimeSpan.FromSeconds(1), true, CancellationToken.None);
         Assert.Equal(TextFormattingStatus.Applied, result.Status);
     }

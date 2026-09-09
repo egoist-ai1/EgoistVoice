@@ -519,7 +519,7 @@
                                 <StackPanel>
                                     <TextBlock Text="Распознавание и вставка" Style="{StaticResource SectionTitle}" />
                                     <CheckBox x:Name="DirectFastModeCheck" Content="Быстрый режим: прямое распознавание без задержек Whisper" Checked="GeneralSetting_OnChanged" Unchecked="GeneralSetting_OnChanged" />
-                                    <TextBlock Text="Мгновенная транскрибация русской речи через GigaAM v3 INT8. Отключает повторную сверку Whisper для ускорения вставки."
+                                    <TextBlock x:Name="DirectFastModeHint" Text="Распознавание русской речи через GigaAM v3 INT8. Отключает повторную сверку Whisper для ускорения вставки."
                                                Style="{StaticResource Hint}" Margin="26,2,0,8" />
                                     <CheckBox x:Name="MixedLanguageCheck" Content="Смешанная русско-английская речь" Checked="GeneralSetting_OnChanged" Unchecked="GeneralSetting_OnChanged" />
                                     <CheckBox x:Name="NumbersCheck" Content="Преобразовывать числа в цифры" Checked="GeneralSetting_OnChanged" Unchecked="GeneralSetting_OnChanged" />
@@ -583,7 +583,9 @@
                                     <Button x:Name="StartLocalQwenButton" Content="Запустить локальную Qwen" Click="StartLocalQwen_OnClick" HorizontalAlignment="Left" Margin="0,0,0,8" />
                                     <CheckBox x:Name="AutoQwenCheck" Content="Запускать Qwen вместе с Voice"
                                               Checked="AutoQwen_OnChanged" Unchecked="AutoQwen_OnChanged" />
-                                    <TextBlock x:Name="LocalQwenStatusText" Style="{StaticResource Hint}" Margin="0,0,0,12" />
+                                    <TextBlock x:Name="LocalQwenStatusText" Style="{StaticResource Hint}" Margin="0,0,0,6" />
+                                    <TextBlock Text="После 5 минут без работы Qwen освобождает память. При следующем оформлении загружается снова. Диктовка работает и во время загрузки."
+                                               Style="{StaticResource Hint}" Margin="0,0,0,12" />
                                     <TextBlock Text="Адрес локального сервера" Style="{StaticResource Hint}" Margin="0,0,0,5" />
                                     <DockPanel>
                                         <Button x:Name="FindTextModelsButton" DockPanel.Dock="Right" Content="Найти модели"
