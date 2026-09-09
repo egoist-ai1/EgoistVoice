@@ -79,6 +79,10 @@ Name: "{autodesktop}\{#AppTitle}"; Filename: "{app}\{#AppExe}"; WorkingDir: "{ap
 
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "EgoistVoice"; ValueData: """{app}\{#AppExe}"" --background"; Flags: uninsdeletevalue; Check: ShouldAutoStart
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "EgoistVoice"; Flags: deletevalue; Check: not ShouldAutoStart
+
+[InstallDelete]
+Type: files; Name: "{userdesktop}\{#AppTitle}.lnk"; Check: not ShouldCreateDesktopIcon
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Запустить {#AppTitle}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
@@ -106,6 +110,7 @@ var
   ProgressTrack, ProgressFill: TPanel;
   FailureMemo: TNewMemo;
   IsBusyPage: Boolean;
+  LastReportedPercent: Integer;
 
 function DwmSetWindowAttribute(Wnd: Integer; Attribute: Integer;
   var Value: Integer; Size: Integer): Integer;
@@ -147,21 +152,25 @@ end;
 
 function ShouldCreateDesktopIcon: Boolean;
 begin
-  Result := DesktopIconCheck.Checked;
+  Result := ExpandConstant('{param:EGOIST_DESKTOP|}') = '1';
+  if ExpandConstant('{param:EGOIST_DESKTOP|}') = '' then
+    Result := DesktopIconCheck.Checked;
 end;
 
 function ShouldAutoStart: Boolean;
 begin
-  Result := AutoStartCheck.Checked;
+  Result := ExpandConstant('{param:EGOIST_AUTOSTART|}') = '1';
+  if ExpandConstant('{param:EGOIST_AUTOSTART|}') = '' then
+    Result := AutoStartCheck.Checked;
 end;
 
 procedure RegisterPreviousData(PreviousDataKey: Integer);
 begin
-  if AutoStartCheck.Checked then
+  if ShouldAutoStart then
     SetPreviousData(PreviousDataKey, 'AutoStart', '1')
   else
     SetPreviousData(PreviousDataKey, 'AutoStart', '0');
-  if DesktopIconCheck.Checked then
+  if ShouldCreateDesktopIcon then
     SetPreviousData(PreviousDataKey, 'DesktopIcon', '1')
   else
     SetPreviousData(PreviousDataKey, 'DesktopIcon', '0');
@@ -184,6 +193,11 @@ begin
   if Percent > 100 then Percent := 100;
   ProgressFill.Width := (ProgressTrack.ClientWidth * Percent) div 100;
   PercentLabel.Caption := IntToStr(Percent) + '%';
+  if (Percent <> LastReportedPercent) and (ExpandConstant('{param:EGOIST_STATUS|}') <> '') then
+  begin
+    SaveStringToFile(ExpandConstant('{param:EGOIST_STATUS|}'), IntToStr(Percent), False);
+    LastReportedPercent := Percent;
+  end;
 end;
 
 procedure LayoutFooter;
@@ -326,6 +340,7 @@ end;
 
 procedure InitializeWizard;
 begin
+  LastReportedPercent := -1;
   IsBusyPage := False;
   CreateBrandShell;
 end;

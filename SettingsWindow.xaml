@@ -506,11 +506,11 @@
                                     <DockPanel Margin="0,0,0,10"><Button DockPanel.Dock="Right" Content="Настроить Qwen" Click="OpenModelsTab_OnClick" Style="{StaticResource CompactButton}" /><TextBlock x:Name="RuntimeProfileText" Style="{StaticResource Hint}" VerticalAlignment="Center" /></DockPanel>
                                     <ComboBox x:Name="FormattingModeCombo" SelectionChanged="FormattingMode_OnChanged"
                                               AutomationProperties.Name="Режим оформления диктовки">
-                                        <ComboBoxItem Content="Дословно · без замены слов" Tag="literal" />
+                                        <ComboBoxItem Content="Дословно · без перефразирования" Tag="literal" />
                                         <ComboBoxItem Content="Словарь и голосовые команды" Tag="fast" />
                                         <ComboBoxItem Content="Qwen · пунктуация и абзацы" Tag="qwen" />
                                     </ComboBox>
-                                    <TextBlock Text="«Дословно» сохраняет результат русского распознавания: без словаря, команд, перевода и Qwen. Ошибки самого распознавателя возможны. Другие режимы включают словарь и команды; Qwen добавляет оформление."
+                                    <TextBlock Text="«Дословно» сохраняет результат распознавания и исправляет написание известных названий Egoist. Команды, перевод и Qwen выключены. Ошибки самой модели возможны. Другие режимы включают общий словарь и команды."
                                                Style="{StaticResource Hint}" Margin="0,10,0,0" />
                                     <TextBlock x:Name="LastTimingText" Style="{StaticResource Hint}" Margin="0,10,0,0" />
                                 </StackPanel>
