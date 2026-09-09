@@ -33,9 +33,7 @@ public static partial class TranscriptNormalizer
         "кто это", "кто там", "кто такой", "кто такая", "кто такие"
     ];
 
-    public static string Normalize(string? input) => Normalize(input, preserveFinalTerminalPunctuation: false);
-
-    internal static string Normalize(string? input, bool preserveFinalTerminalPunctuation)
+    public static string Normalize(string? input)
     {
         if (string.IsNullOrWhiteSpace(input))
         {
@@ -44,16 +42,8 @@ public static partial class TranscriptNormalizer
 
         var paragraphs = ParagraphBreakRegex()
             .Split(input.Trim())
-            .Select(paragraph => paragraph.Trim())
-            .Where(paragraph => paragraph.Length > 0)
-            .ToArray();
-
-        for (var index = 0; index < paragraphs.Length; index++)
-        {
-            paragraphs[index] = NormalizeParagraph(
-                paragraphs[index],
-                preserveFinalTerminalPunctuation && index == paragraphs.Length - 1);
-        }
+            .Select(NormalizeParagraph)
+            .Where(paragraph => paragraph.Length > 0);
 
         return string.Join(Environment.NewLine + Environment.NewLine, paragraphs);
     }
@@ -62,11 +52,11 @@ public static partial class TranscriptNormalizer
     /// Single line breaks survive normalization. They used to be collapsed into spaces along with
     /// every other whitespace run, which silently undid the "new line" voice command.
     /// </summary>
-    private static string NormalizeParagraph(string input, bool preserveFinalTerminalPunctuation)
+    private static string NormalizeParagraph(string input)
     {
         var lines = LineBreakRegex()
             .Split(input.Trim())
-            .Select(line => line.Trim())
+            .Select(NormalizeLine)
             .Where(line => line.Length > 0)
             .ToArray();
 
@@ -75,18 +65,11 @@ public static partial class TranscriptNormalizer
             return string.Empty;
         }
 
-        for (var index = 0; index < lines.Length; index++)
-        {
-            lines[index] = NormalizeLine(
-                lines[index],
-                preserveFinalTerminalPunctuation && index == lines.Length - 1);
-        }
-
         lines[0] = Capitalize(lines[0]);
         return string.Join(Environment.NewLine, lines);
     }
 
-    private static string NormalizeLine(string input, bool preserveFinalTerminalPunctuation)
+    private static string NormalizeLine(string input)
     {
         var text = WhitespaceRegex().Replace(input.Trim(), " ");
         text = SpaceBeforePunctuationRegex().Replace(text, "$1");
@@ -96,7 +79,7 @@ public static partial class TranscriptNormalizer
         text = NormalizeCommonOrthography(text);
         text = NormalizeRussianHyphens(text);
         text = NormalizeRussianPunctuation(text);
-        text = NormalizeSentenceQuestions(text, preserveFinalTerminalPunctuation);
+        text = NormalizeSentenceQuestions(text);
 
         return CapitalizeSentenceStarts(text);
     }
@@ -159,19 +142,15 @@ public static partial class TranscriptNormalizer
             RegexOptions.IgnoreCase);
 
         // Формы на -ому/-ему бывают наречиями («сделай по-новому») и определениями
-        // («по новому адресу»). Не склеиваем их перед ограниченным набором частых существительных.
-        const string dativeNoun = @"(?:мнению|желанию|плану|совету|указанию|слову|адресу|месту|пути|правилу|проекту|договору|дому|номеру|телефону|сценарию|маршруту|вопросу|каналу|способу|методу|подходу|заданию|расписанию|формату)";
+        // («по новому закону»). Склеиваем только перед границей фразы или в нескольких
+        // синтаксически явных продолжениях; неизвестная именная группа остаётся нетронутой.
+        const string likelyAdverbContext = @"(?:(?=\s*(?:$|[,.;:!?]))|(?=\s+(?:я|ты|он|она|оно|мы|вы|они|это|так|жду|чуть)\b)|(?=\s+(?:сделать|поступить|работать|написать|сказать|объяснить|решить|оформить|настроить|проверить|попробовать)\b))";
         text = Regex.Replace(text,
-            $@"\b(по)\s+(прежнему|видимому|моему|нашему|твоему|быстрому|новому|старому|настоящему|хорошему|простому)\b(?!\s+{dativeNoun}\b)",
+            $@"\b(по)\s+(прежнему|видимому|моему|нашему|твоему|быстрому|новому|старому|настоящему|хорошему|простому|другому)\b{likelyAdverbContext}",
             match => PreserveCase(match.Value, $"{match.Groups[1].Value}-{match.Groups[2].Value}"),
             RegexOptions.IgnoreCase);
         text = Regex.Replace(text, @"\b(по)\s+(человечески)\b", match =>
             PreserveCase(match.Value, $"{match.Groups[1].Value}-{match.Groups[2].Value}"),
-            RegexOptions.IgnoreCase);
-
-        // по-другому (когда не следует слову пути, поводу, каналу, адресу, маршруту, сценарию, вопросу)
-        text = Regex.Replace(text, @"\b(по)\s+(другому)\b(?!\s+(?:пути|поводу|каналу|адресу|маршруту|сценарию|вопросу)\b)", match =>
-            PreserveCase(match.Value, "по-другому"),
             RegexOptions.IgnoreCase);
 
         // Парные и устойчивые наречия через дефис: чуть-чуть, давным-давно, мало-помалу, точь-в-точь, как-никак, де-факто, де-юре
@@ -249,7 +228,7 @@ public static partial class TranscriptNormalizer
         return text;
     }
 
-    private static string NormalizeSentenceQuestions(string text, bool preserveFinalTerminalPunctuation)
+    private static string NormalizeSentenceQuestions(string text)
     {
         if (text.Length < 3)
         {
@@ -259,21 +238,19 @@ public static partial class TranscriptNormalizer
         var parts = SentenceBoundaryRegex().Split(text);
         if (parts.Length == 1)
         {
-            return ProcessQuestionSegment(parts[0], preserveFinalTerminalPunctuation);
+            return ProcessQuestionSegment(parts[0]);
         }
 
         var results = new string[parts.Length];
         for (var i = 0; i < parts.Length; i++)
         {
-            results[i] = ProcessQuestionSegment(
-                parts[i],
-                preserveFinalTerminalPunctuation && i == parts.Length - 1);
+            results[i] = ProcessQuestionSegment(parts[i]);
         }
 
         return string.Join(" ", results);
     }
 
-    private static string ProcessQuestionSegment(string segment, bool preserveTerminalPunctuation)
+    private static string ProcessQuestionSegment(string segment)
     {
         var trimmed = segment.Trim();
         if (trimmed.Length == 0)
@@ -281,22 +258,11 @@ public static partial class TranscriptNormalizer
             return segment;
         }
 
-        if (preserveTerminalPunctuation)
-        {
-            return segment;
-        }
-
         if (IsQuestionSentence(trimmed))
         {
-            if (trimmed.EndsWith('!') || trimmed.EndsWith('?'))
+            if (trimmed[^1] is '.' or ',' or ';' or ':' or '!' or '?' or '…')
             {
                 return segment;
-            }
-
-            if (trimmed.EndsWith('.'))
-            {
-                var withoutDot = trimmed[..^1];
-                return segment.Replace(trimmed, withoutDot + "?");
             }
 
             return segment + "?";

@@ -41,6 +41,11 @@ public sealed class TranscriptNormalizerTests
     [InlineData("по нашему это лучший вариант", "По-нашему это лучший вариант")]
     [InlineData("по новому адресу", "По новому адресу")]
     [InlineData("по нашему плану", "По нашему плану")]
+    [InlineData("по новому закону", "По новому закону")]
+    [InlineData("по нашему общему плану", "По нашему общему плану")]
+    [InlineData("по хорошему асфальту", "По хорошему асфальту")]
+    [InlineData("по прежнему руководству", "По прежнему руководству")]
+    [InlineData("по другому закону", "По другому закону")]
     [InlineData("надо по другому сделать", "Надо по-другому сделать")]
     [InlineData("чуть чуть подожди", "Чуть-чуть подожди")]
     [InlineData("давным давно было", "Давным-давно было")]
@@ -75,6 +80,8 @@ public sealed class TranscriptNormalizerTests
     [InlineData("ты хочешь чай", "Ты хочешь чай?")]
     [InlineData("ты уверен что мы успеем", "Ты уверен, что мы успеем?")]
     [InlineData("Привет. Как дела", "Привет. Как дела?")]
+    [InlineData("ты можешь прийти.", "Ты можешь прийти.")]
+    [InlineData("ты можешь прийти:", "Ты можешь прийти:")]
     public void Normalize_detects_questions_and_appends_question_mark(string input, string expected)
     {
         Assert.Equal(expected, TranscriptNormalizer.Normalize(input));

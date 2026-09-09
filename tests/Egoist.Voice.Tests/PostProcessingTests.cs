@@ -201,6 +201,9 @@ public sealed class PostProcessingTests
 
         Assert.Equal("Ты можешь прийти завтра.", processor.Process("ты можешь прийти завтра точка"));
         Assert.Equal("Ты можешь прийти завтра.", processor.Process("ты можешь прийти завтра точка."));
+        Assert.Equal("Ты можешь прийти. Я жду", processor.Process("ты можешь прийти точка я жду"));
+        Assert.Equal("Ты можешь прийти.", processor.Process("ты можешь прийти."));
+        Assert.Equal("Ты можешь прийти:", processor.Process("ты можешь прийти двоеточие"));
         Assert.Equal("Ты можешь прийти завтра?", processor.Process("ты можешь прийти завтра"));
     }
 
