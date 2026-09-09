@@ -44,12 +44,24 @@ public sealed class LocalQwenHost : IDisposable
         private set { lock (_gate) _status = value; }
     }
 
-    public static string ModelPath => Environment.GetEnvironmentVariable("EGOIST_VOICE_QWEN_MODEL_PATH") is { Length: > 0 } diagnosticModel
-        ? Path.GetFullPath(diagnosticModel)
-        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "EgoistVoice", "TextModels", "Qwen3-4B-Q4_K_M.gguf");
-    public static string RuntimePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Egoist", "TranslationEngine", "v1", "runtime", "llama-b10219-vulkan-win-x64-vc143", "llama-server.exe");
+    public static string ModelPath => ResolveAssetPath(
+        Environment.GetEnvironmentVariable("EGOIST_VOICE_QWEN_MODEL_PATH"), AppContext.BaseDirectory,
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "EgoistVoice", "TextModels", "Qwen3-4B-Q4_K_M.gguf"),
+        Path.Combine("TextModels", "Qwen3-4B-Q4_K_M.gguf"));
+    public static string RuntimePath => ResolveAssetPath(
+        Environment.GetEnvironmentVariable("EGOIST_VOICE_QWEN_RUNTIME_PATH"), AppContext.BaseDirectory,
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Egoist", "TranslationEngine", "v1", "runtime", "llama-b10219-vulkan-win-x64-vc143", "llama-server.exe"),
+        Path.Combine("TextRuntime", "llama-server.exe"));
+
+    internal static string ResolveAssetPath(string? diagnosticPath, string applicationDirectory,
+        string installedPath, string bundledRelativePath)
+    {
+        if (!string.IsNullOrWhiteSpace(diagnosticPath)) return Path.GetFullPath(diagnosticPath);
+        var bundledPath = Path.Combine(applicationDirectory, bundledRelativePath);
+        return File.Exists(bundledPath) ? bundledPath : installedPath;
+    }
     public static bool IsInstalled => File.Exists(RuntimePath) && File.Exists(ModelPath);
 
     public LocalQwenHost() : this(DefaultIdleUnloadDelay, null) { }
