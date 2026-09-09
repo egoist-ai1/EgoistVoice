@@ -2,7 +2,8 @@
 param(
     [string]$OutputDirectory = '',
     [string]$InstalledModelsRoot = (Join-Path $env:LOCALAPPDATA 'EgoistVoice\Models'),
-    [switch]$UseExistingPublish
+    [switch]$UseExistingPublish,
+    [string]$WorkDirectory = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -31,12 +32,18 @@ if (Get-ChildItem -LiteralPath $destination -Recurse -File | Where-Object { $_.N
 }
 $manifestPath = Join-Path $destination 'compact-models.json'
 $priorDataRoot = $env:EGOIST_VOICE_DATA_ROOT
+$priorLogRoot = $env:EGOISTVOICE_LOG_DIRECTORY
 try {
-    $env:EGOIST_VOICE_DATA_ROOT = Join-Path (Split-Path -Parent $destination) 'build-diagnostics'
+    $diagnosticRoot = if ($WorkDirectory) { [IO.Path]::GetFullPath($WorkDirectory) } else { Join-Path (Split-Path -Parent $destination) 'build-diagnostics' }
+    $env:EGOIST_VOICE_DATA_ROOT = Join-Path $diagnosticRoot 'data'
+    $env:EGOISTVOICE_LOG_DIRECTORY = Join-Path $diagnosticRoot 'logs'
     $process = Start-Process -FilePath $executable -ArgumentList @('--export-compact-models', ('"' + $manifestPath + '"')) -WindowStyle Hidden -PassThru
     if (!$process.WaitForExit(30000)) { $process.Kill(); throw 'Model manifest export timed out.' }
     if ($process.ExitCode -ne 0) { throw 'Model manifest export failed.' }
-} finally { $env:EGOIST_VOICE_DATA_ROOT = $priorDataRoot }
+} finally {
+    $env:EGOIST_VOICE_DATA_ROOT = $priorDataRoot
+    $env:EGOISTVOICE_LOG_DIRECTORY = $priorLogRoot
+}
 $models = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 if (@($models).Count -ne 4 -or ($models | Measure-Object SizeBytes -Sum).Sum -ne 326322304) {
     throw 'Unexpected model catalog; review the compact size contract.'

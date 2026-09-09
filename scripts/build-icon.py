@@ -18,6 +18,7 @@ def main():
     if master.width != master.height or master.width < 256:
         raise ValueError("The logo master must be square and at least 256 pixels.")
     master.resize((256, 256), Image.Resampling.LANCZOS).save(ASSETS / "EgoistVoice.png")
+    master.resize((52, 52), Image.Resampling.LANCZOS).convert("RGB").save(ASSETS / "installer-microphone-52.bmp")
     master.save(ASSETS / "EgoistVoice.ico", format="ICO", sizes=[(size, size) for size in SIZES])
     with Image.open(ASSETS / "EgoistVoice.ico") as icon:
         if icon.ico.sizes() != {(size, size) for size in SIZES}:

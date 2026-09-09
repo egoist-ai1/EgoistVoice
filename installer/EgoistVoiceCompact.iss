@@ -4,8 +4,19 @@
 #ifndef OutputDir
   #error OutputDir is required
 #endif
-#define AppVersion "2.2.0"
-#define AppTitle "Egoist Voice Compact"
+#ifndef AppVersion
+  #define AppVersion "2.2.0"
+#endif
+#ifndef AppFileVersion
+  #define AppFileVersion "2.2.0.0"
+#endif
+#ifdef BundleTextEditor
+  #define AppTitle "Egoist Voice"
+  #define PackageName "EgoistVoice-Setup-Russian-" + AppVersion + "-win-x64-inner"
+#else
+  #define AppTitle "Egoist Voice Compact"
+  #define PackageName "EgoistVoice-Setup-Compact-RU-" + AppVersion + "-win-x64"
+#endif
 #define AppExe "Egoist.Voice.exe"
 
 [Setup]
@@ -21,7 +32,7 @@ ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 MinVersion=10.0.18362
 OutputDir={#OutputDir}
-OutputBaseFilename=EgoistVoice-Setup-Compact-RU-2.2.0-win-x64
+OutputBaseFilename={#PackageName}
 SetupIconFile=..\assets\EgoistVoice.ico
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppTitle}
@@ -36,15 +47,23 @@ WizardResizable=no
 ShowLanguageDialog=no
 Compression=lzma2/normal
 SolidCompression=yes
+#ifdef BundleTextEditor
+DiskSpanning=yes
+DiskSliceSize=2100000000
+SlicesPerDisk=1
+#else
 DiskSpanning=no
-CloseApplications=no
+#endif
+CloseApplications=yes
+CloseApplicationsFilter=*.exe,*.dll
 RestartApplications=no
 UninstallLogMode=append
-VersionInfoVersion=2.2.0.0
+VersionInfoVersion={#AppFileVersion}
 VersionInfoCompany=EGOIST
 VersionInfoDescription=Egoist Voice Compact RU - offline CPU
 VersionInfoProductName={#AppTitle}
-VersionInfoProductVersion={#AppVersion}
+VersionInfoProductVersion={#AppFileVersion}
+VersionInfoProductTextVersion={#AppVersion}
 
 [Languages]
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
@@ -65,7 +84,7 @@ Filename: "{app}\{#AppExe}"; Description: "Запустить {#AppTitle}"; Work
 
 [Code]
 const
-  BackgroundColor    = $000C0A0A; // Deep obsidian black #0A0A0C
+  BackgroundColor    = $00000000; // Black #000000
   SurfaceColor       = $00181414; // Card surface #141418
   InputBoxColor      = $00120F0F; // Input box #0F0F12
   BorderColor        = $002E2626; // Subtle border #26262E
@@ -74,7 +93,7 @@ const
   PrimaryTextColor   = $00F6F5F5; // High-contrast white #F5F5F6
   SecondaryTextColor = $00A59EA0; // Muted silver-gray #A09EA5
   MutedTextColor     = $006C6666; // Subtle footnote gray #66666C
-  AccentColor        = $003426FF; // Signature Egoist crimson #FF2634
+  AccentColor        = $004824FF; // Scarlet #FF2448
   AccentHoverColor   = $004A3CFF; // Hover crimson #FF3C4A
 
 var
@@ -282,7 +301,7 @@ var
   SelectedDir: String;
 begin
   SelectedDir := GetDefaultTargetDir('');
-  if BrowseForFolder('Выберите папку для установки Egoist Voice Compact:', SelectedDir, False) then
+  if BrowseForFolder('Выберите папку для установки {#AppTitle}:', SelectedDir, False) then
   begin
     TargetInstallDir := SelectedDir;
     DirPathLabel.Caption := SelectedDir;
@@ -525,7 +544,11 @@ begin
   DetailLabel.Top := ScaleY(280);
   DetailLabel.Width := ScaleX(450);
   DetailLabel.Height := ScaleY(18);
+#ifdef BundleTextEditor
+  DetailLabel.Caption := 'Русская диктовка GigaAM и оформление Qwen включены';
+#else
   DetailLabel.Caption := 'Все компоненты и нейросети GigaAM упакованы внутри';
+#endif
   StyleLabel(DetailLabel, 9, SecondaryTextColor, False);
 
   PercentLabel := CreateSurfaceLabel;
@@ -597,7 +620,7 @@ end;
 
 procedure CancelButtonClick(CurPageID: Integer; var Cancel, Confirm: Boolean);
 begin
-  if IsInstallStarted and not IsInstallFinished then
+  if CurPageID = wpInstalling then
     Cancel := False
   else
   begin
@@ -614,10 +637,22 @@ begin
     CloseButton.Visible := False;
     OptionsPanel.Visible := False;
     SetPrimaryButton('Подготовка…', False, TrackColor);
-    SetInstallerState('Подготовка к установке', 'Проверка свободного места и завершение старой версии…');
+    SetInstallerState('Подготовка к установке', 'Проверка свободного места и занятых файлов…');
+    BrandSurface.Visible := False;
+    WizardForm.OuterNotebook.Visible := True;
+    WizardForm.InnerNotebook.Visible := True;
+    WizardForm.NextButton.Visible := True;
+    WizardForm.CancelButton.Visible := True;
+    WizardForm.PreparingMemo.Color := BackgroundColor;
+    WizardForm.PreparingMemo.Font.Color := PrimaryTextColor;
   end
   else if CurPageID = wpInstalling then
   begin
+    BrandSurface.Visible := True;
+    WizardForm.OuterNotebook.Visible := False;
+    WizardForm.InnerNotebook.Visible := False;
+    WizardForm.NextButton.Visible := False;
+    WizardForm.CancelButton.Visible := False;
     IsInstallStarted := True;
     CloseButton.Visible := False;
     OptionsPanel.Visible := False;
@@ -628,8 +663,11 @@ begin
   begin
     IsInstallFinished := True;
     SetProgress(100, 100);
-    SetInstallerState('Установка завершена!', 'Egoist Voice Compact успешно установлен и готов к работе.');
-    SetPrimaryButton('Запустить', True, AccentColor);
+    SetInstallerState('Установка завершена!', '{#AppTitle} установлен и готов к работе.');
+    if ShouldLaunchApp then
+      SetPrimaryButton('Запустить', True, AccentColor)
+    else
+      SetPrimaryButton('Готово', True, AccentColor);
     CloseButton.Visible := False;
   end;
 end;
@@ -637,32 +675,4 @@ end;
 procedure CurInstallProgressChanged(CurProgress, MaxProgress: Integer);
 begin
   SetProgress(CurProgress, MaxProgress);
-end;
-
-function InitializeSetup(): Boolean;
-var
-  ResultCode: Integer;
-begin
-  Result := True;
-  // Automatically terminate any running instance before displaying wizard so no dialog blocks the user
-  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM Egoist.Voice.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(150);
-end;
-
-function InitializeUninstall(): Boolean;
-var
-  ResultCode: Integer;
-begin
-  Result := True;
-  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM Egoist.Voice.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(150);
-end;
-
-function PrepareToInstall(var NeedsRestart: Boolean): String;
-var
-  ResultCode: Integer;
-begin
-  Result := '';
-  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM Egoist.Voice.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(150);
 end;

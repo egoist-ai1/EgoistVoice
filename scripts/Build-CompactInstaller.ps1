@@ -6,6 +6,9 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+[xml]$projectXml = Get-Content -LiteralPath (Join-Path $projectRoot 'Egoist.Voice.csproj') -Raw
+$version = [string]$projectXml.Project.PropertyGroup.Version
+$fileVersion = [string]$projectXml.Project.PropertyGroup.FileVersion
 $artifactRoot = Join-Path $projectRoot 'artifacts'
 $stage = [IO.Path]::GetFullPath($StagingDirectory)
 if (!$stage.StartsWith($artifactRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Staging must be inside project artifacts.' }
@@ -28,7 +31,7 @@ $lines = foreach ($item in $manifest.files) {
 }
 $compiler = Join-Path $env:USERPROFILE '.nuget\packages\dotnet-innosetup\6.2.1\tools\is\ISCC.exe'
 if (!(Test-Path -LiteralPath $compiler)) { throw 'Restore the pinned dotnet tool manifest before building.' }
-$installer = Join-Path $output 'EgoistVoice-Setup-Compact-RU-2.2.0-win-x64.exe'
+$installer = Join-Path $output ('EgoistVoice-Setup-Compact-RU-' + $version + '-win-x64.exe')
 if (!$Build) {
     [pscustomobject]@{passed=$true;planOnly=$true;files=$actual.Count;unpackedBytes=$manifest.unpackedBytes;installer=$installer;compiler=$compiler} | ConvertTo-Json
     exit 0
@@ -42,7 +45,7 @@ if ($issBytes.Length -lt 3 -or $issBytes[0] -ne 0xEF -or $issBytes[1] -ne 0xBB -
     $issContent = [IO.File]::ReadAllText($issFile, [Text.Encoding]::UTF8)
     [IO.File]::WriteAllText($issFile, $issContent, [Text.UTF8Encoding]::new($true))
 }
-& $compiler ('/DPayloadInclude=' + $include) ('/DOutputDir=' + $output) $issFile > (Join-Path $output 'compact-installer-build.log')
+& $compiler ('/DPayloadInclude=' + $include) ('/DOutputDir=' + $output) ('/DAppVersion=' + $version) ('/DAppFileVersion=' + $fileVersion) $issFile > (Join-Path $output 'compact-installer-build.log')
 if ($LASTEXITCODE -ne 0) { throw 'Inno compilation failed; see compact-installer-build.log.' }
 $size = (Get-Item -LiteralPath $installer).Length
 if ($size -gt 600000000) { throw 'Installer exceeds 600 MB.' }
