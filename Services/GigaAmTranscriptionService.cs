@@ -132,10 +132,6 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
     {
         var stopwatch = Stopwatch.StartNew();
         await WarmUpAsync(progress, cancellationToken).ConfigureAwait(false);
-        var samples = await Task.Run(
-            () => AudioSampleReader.ReadMono16Khz(audioPath, cancellationToken),
-            cancellationToken).ConfigureAwait(false);
-
         await _decodeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -143,7 +139,7 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
             // the WPF dispatcher, freezing the capsule and starving the low-level mouse
             // hook until Windows evicts it on LowLevelHooksTimeout.
             var text = await Task.Run(
-                () => DecodeChunks(samples, progress, cancellationToken),
+                () => DecodeFile(audioPath, progress, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
             return new TranscriptionResult(text, stopwatch.Elapsed);
@@ -188,6 +184,33 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
     /// <summary>Above this, batching pays for the extra streams held in memory at once.</summary>
     private const int BatchDecodeThreshold = 2;
     internal static int BenchmarkBatchDecodeThreshold => BatchDecodeThreshold;
+
+    private string DecodeFile(string path, IProgress<ModelProgress>? progress, CancellationToken cancellationToken)
+    {
+        var decoded = new List<DecodedAudioChunk>();
+        var batch = new List<GigaAmAudioChunk>(MaxBatchSize);
+        foreach (var chunk in AudioSampleReader.ReadChunks(path, cancellationToken))
+        {
+            batch.Add(chunk);
+            if (batch.Count < MaxBatchSize) continue;
+            DecodePending();
+        }
+        if (batch.Count > 0) DecodePending();
+        return TranscriptChunkJoiner.Join(decoded);
+
+        void DecodePending()
+        {
+            for (var offset = 0; offset < batch.Count;)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                progress?.Report(new ModelProgress("Распознаю", null));
+                var size = GetBatchSize(batch, offset);
+                DecodeBatch(batch, offset, size, decoded, cancellationToken);
+                offset += size;
+            }
+            batch.Clear();
+        }
+    }
 
     private string DecodeChunks(
         float[] samples,
@@ -473,12 +496,64 @@ internal sealed record GigaAmRecognizerInitialization(
 
 internal static class AudioSampleReader
 {
+    internal static IEnumerable<GigaAmAudioChunk> ReadChunks(string path, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        using var reader = new AudioFileReader(path);
+        if (reader.WaveFormat.Channels > 2)
+            throw new InvalidOperationException("Для многоканальной записи сначала выберите дорожку или экспортируйте моно/стерео WAV.");
+        ISampleProvider provider = reader;
+        if (reader.WaveFormat.Channels > 1) provider = new StereoToMonoSampleProvider(provider);
+        if (provider.WaveFormat.SampleRate != 16_000) provider = new WdlResamplingSampleProvider(provider, 16_000);
+        foreach (var chunk in ReadChunks(provider, cancellationToken)) yield return chunk;
+    }
+
+    internal static IEnumerable<GigaAmAudioChunk> ReadChunks(ISampleProvider provider,
+        CancellationToken cancellationToken = default)
+    {
+        var sampleRate = provider.WaveFormat.SampleRate;
+        var capacity = checked(GigaAmAudioChunker.DefaultMaxSeconds * sampleRate + 1);
+        var buffer = new float[capacity];
+        var filled = 0;
+        var paragraphBefore = false;
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            while (filled < capacity)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var read = provider.Read(buffer, filled, capacity - filled);
+                if (read == 0) break;
+                filled += read;
+            }
+            if (filled == 0) yield break;
+            if (filled < capacity)
+            {
+                // Keep short recordings byte-for-byte identical to the memory path.
+                yield return new GigaAmAudioChunk(buffer.AsMemory(0, filled), paragraphBefore);
+                yield break;
+            }
+
+            // One sample of lookahead distinguishes the final window from a boundary.
+            // Reuse the same silence search and overlap as in-memory transcription;
+            // the adaptive level is estimated from this bounded window.
+            var split = GigaAmAudioChunker.Split(buffer, sampleRate);
+            var first = split[0];
+            yield return first with { ParagraphBreakBefore = paragraphBefore };
+            var nextStart = first.Samples.Length - sampleRate * GigaAmAudioChunker.OverlapMilliseconds / 1000;
+            var remaining = filled - nextStart;
+            var next = new float[capacity];
+            buffer.AsSpan(nextStart, remaining).CopyTo(next);
+            buffer = next;
+            filled = remaining;
+            paragraphBefore = split[1].ParagraphBreakBefore;
+        }
+    }
+
     internal static float[] ReadMono16Khz(string path, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         using var reader = new AudioFileReader(path);
-        if (reader.TotalTime > TimeSpan.FromMinutes(30))
-            throw new InvalidOperationException("Разделите запись на фрагменты до 30 минут.");
         ISampleProvider provider = reader;
         if (reader.WaveFormat.Channels > 2)
             throw new InvalidOperationException("Для многоканальной записи сначала выберите дорожку или экспортируйте моно/стерео WAV.");
@@ -491,7 +566,12 @@ internal static class AudioSampleReader
             provider = new WdlResamplingSampleProvider(provider, 16_000);
         }
 
-        var expected = (int)Math.Min(int.MaxValue, Math.Ceiling(reader.TotalTime.TotalSeconds * 16_000) + 1024);
+        // Compatibility callers explicitly need one contiguous waveform. Allow any
+        // duration that fits memory, reserving space for buffer growth and the final copy.
+        // Production file transcription uses ReadChunks and never takes this path.
+        var maximumSamples = (int)Math.Min(Array.MaxLength,
+            GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / (3L * sizeof(float)));
+        var expected = (int)Math.Min(16_000 * 35, Math.Ceiling(reader.TotalTime.TotalSeconds * 16_000) + 1024);
         var writer = new ArrayBufferWriter<float>(Math.Max(1024, expected));
         var buffer = ArrayPool<float>.Shared.Rent(16_000);
         try
@@ -500,12 +580,16 @@ internal static class AudioSampleReader
             while ((read = provider.Read(buffer, 0, buffer.Length)) > 0)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (writer.WrittenCount + read > 30 * 60 * 16_000)
-                    throw new InvalidOperationException("Разделите запись на фрагменты до 30 минут.");
+                if ((long)writer.WrittenCount + read > maximumSamples)
+                    throw new InvalidOperationException("Недостаточно памяти для загрузки всей записи. Используйте потоковое распознавание файла.");
                 buffer.AsSpan(0, read).CopyTo(writer.GetSpan(read));
                 writer.Advance(read);
             }
             return writer.WrittenSpan.ToArray();
+        }
+        catch (OutOfMemoryException exception)
+        {
+            throw new InvalidOperationException("Недостаточно памяти для загрузки всей записи. Используйте потоковое распознавание файла.", exception);
         }
         finally
         {
@@ -524,7 +608,7 @@ internal static class GigaAmAudioChunker
     private const int SearchSeconds = 4;
     private const int MinimumSilenceMilliseconds = 240;
     private const int ParagraphSilenceMilliseconds = 1050;
-    private const int OverlapMilliseconds = 240;
+    internal const int OverlapMilliseconds = 240;
 
     /// <summary>Default pause threshold, further limited by the recording's active level.</summary>
     internal const double DefaultSilenceRms = 0.009;
