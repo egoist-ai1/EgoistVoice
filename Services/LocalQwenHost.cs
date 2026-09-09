@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
 namespace Egoist.Voice.Services;
@@ -8,6 +7,7 @@ namespace Egoist.Voice.Services;
 /// <summary>Owns only the Qwen child it starts. Never controls the shared translation process.</summary>
 public sealed class LocalQwenHost : IDisposable
 {
+    private static readonly TimeSpan IdleUnloadDelay = TimeSpan.FromMinutes(5);
     public const string ModelId = "egoist-qwen3-4b";
     // A separate loopback port isolates native diagnostics from a running user session.
     private static readonly int Port = int.TryParse(Environment.GetEnvironmentVariable("EGOIST_VOICE_QWEN_TEST_PORT"), out var port)
@@ -18,9 +18,11 @@ public sealed class LocalQwenHost : IDisposable
     public const string ModelRevision = "bc640142c66e1fdd12af0bd68f40445458f3869b";
     private readonly object _gate = new();
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly System.Threading.Timer _idleStopTimer;
     private Task<bool>? _start;
     private Process? _process;
     private OwnedProcessJob? _job;
+    private int _activeLeases;
     private bool _disposed;
     internal static string AuthenticationToken { get; } = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     private string _status = "Локальная Qwen выключена.";
@@ -47,6 +49,41 @@ public sealed class LocalQwenHost : IDisposable
         "Egoist", "TranslationEngine", "v1", "runtime", "llama-b10219-vulkan-win-x64-vc143", "llama-server.exe");
     public static bool IsInstalled => File.Exists(RuntimePath) && File.Exists(ModelPath);
 
+    public LocalQwenHost() => _idleStopTimer = new System.Threading.Timer(OnIdleStop);
+
+    /// <summary>
+    /// Keeps this host's child loaded for one text operation. A cancelled caller stops waiting for
+    /// startup without cancelling a startup already shared with another caller.
+    /// </summary>
+    public async Task<IDisposable?> AcquireAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ActivityLease lease;
+        lock (_gate)
+        {
+            if (_disposed) return null;
+            _activeLeases++;
+            _idleStopTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            lease = new ActivityLease(this);
+        }
+
+        try
+        {
+            if (!await StartAsync().WaitAsync(cancellationToken).ConfigureAwait(false))
+            {
+                lease.Dispose();
+                return null;
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            return lease;
+        }
+        catch
+        {
+            lease.Dispose();
+            throw;
+        }
+    }
+
     public Task<bool> StartAsync()
     {
         lock (_gate)
@@ -54,7 +91,13 @@ public sealed class LocalQwenHost : IDisposable
             if (_disposed) return Task.FromResult(false);
             // A crashed child may be restarted by an explicit user action, never a retry loop.
             if (_start is { IsCompleted: true } && (_process is null || _process.HasExited)) _start = null;
-            return _start ??= Task.Run(StartCoreAsync);
+            if (_start is null)
+            {
+                _start = Task.Run(StartCoreAsync);
+                _ = _start.ContinueWith(_ => ScheduleIdleStopIfUnused(), CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
+            return _start;
         }
     }
 
@@ -102,7 +145,6 @@ public sealed class LocalQwenHost : IDisposable
                     { Status = "Qwen не ответила при прогреве. Повторите запуск."; StopChild(); return false; }
                     Status = "Qwen готова · локально · GPU";
                     AppLog.Write("Local Qwen ready; loopback-only; text logging disabled");
-                    TrimWorkingSet();
                     return true;
                 }
                 await Task.Delay(250, _lifetime.Token).ConfigureAwait(false);
@@ -151,63 +193,52 @@ public sealed class LocalQwenHost : IDisposable
             if (_disposed) return;
             _disposed = true;
             _lifetime.Cancel();
+            _idleStopTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         }
         StopChild();
+        _idleStopTimer.Dispose();
         // The startup task can still observe the process/token; handles are released after it ends.
         _ = (_start ?? Task.CompletedTask).ContinueWith(_ => { _process?.Dispose(); _lifetime.Dispose(); }, TaskScheduler.Default);
     }
 
-    [DllImport("psapi.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool EmptyWorkingSet(IntPtr hProcess);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetProcessWorkingSetSize(IntPtr hProcess, IntPtr dwMinimumWorkingSetSize, IntPtr dwMaximumWorkingSetSize);
-
-    public static void TrimWorkingSet()
+    private void ReleaseActivity()
     {
-        try
+        lock (_gate)
         {
-            foreach (var name in new[] { "llama-server", "llama-server-real" })
-            {
-                foreach (var p in Process.GetProcessesByName(name))
-                {
-                    try
-                    {
-                        using (p)
-                        {
-                            if (!p.HasExited)
-                            {
-                                EmptyWorkingSet(p.Handle);
-                                SetProcessWorkingSetSize(p.Handle, (IntPtr)(-1), (IntPtr)(-1));
-                            }
-                        }
-                    }
-                    catch { }
-                }
-            }
+            if (_activeLeases > 0) _activeLeases--;
+            ScheduleIdleStopIfUnusedLocked();
         }
-        catch { }
     }
 
-    private static long _lastActivityTicks = Environment.TickCount64;
-    private static readonly System.Threading.Timer _idleTrimTimer = new(OnIdleTrimCheck, null, 10_000, 10_000);
-
-    public static void NotifyActivity()
+    private void ScheduleIdleStopIfUnused()
     {
-        Interlocked.Exchange(ref _lastActivityTicks, Environment.TickCount64);
+        lock (_gate) ScheduleIdleStopIfUnusedLocked();
     }
 
-    private static void OnIdleTrimCheck(object? state)
+    private void ScheduleIdleStopIfUnusedLocked()
     {
-        try
+        if (_disposed || _activeLeases != 0 || _start is not { IsCompletedSuccessfully: true, Result: true } ||
+            _process is null || _process.HasExited) return;
+        _idleStopTimer.Change(IdleUnloadDelay, Timeout.InfiniteTimeSpan);
+    }
+
+    private void OnIdleStop(object? state)
+    {
+        lock (_gate)
         {
-            if (Environment.TickCount64 - Interlocked.Read(ref _lastActivityTicks) >= 20_000)
-            {
-                TrimWorkingSet();
-            }
+            if (_disposed || _activeLeases != 0 || _start is not { IsCompletedSuccessfully: true, Result: true } ||
+                _process is null || _process.HasExited) return;
+            StopChild();
+            _start = null;
+            Status = "Qwen выгружена после простоя. Запустится при следующем обращении.";
+            AppLog.Write("Local Qwen stopped after idle timeout");
         }
-        catch { }
     }
+
+    private sealed class ActivityLease(LocalQwenHost owner) : IDisposable
+    {
+        private LocalQwenHost? _owner = owner;
+        public void Dispose() => Interlocked.Exchange(ref _owner, null)?.ReleaseActivity();
+    }
+
 }
