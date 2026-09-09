@@ -4,7 +4,7 @@ import './style.css';
 
 const preview = !window.installer;
 const bridge = window.installer ?? {
-  info: async () => ({ directory: 'C:\\Users\\User\\AppData\\Local\\Programs\\Egoist Voice Compact', version: '2.2.1-rc.3' }),
+  info: async () => ({ directory: 'C:\\Users\\User\\AppData\\Local\\Programs\\Egoist Voice Compact', version: '2.2.1' }),
   chooseDirectory: async () => null,
   install: async () => ({ phase: 'success', progress: 100 }),
   close: () => {}, launch: () => {}, onProgress: () => () => {},
