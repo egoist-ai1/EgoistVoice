@@ -20,11 +20,13 @@ function trusted(event) {
 }
 function state(value) { if (window && !window.isDestroyed()) window.webContents.send('progress', value); }
 async function previousDirectory() {
-  const key = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{5F84E54F-BE2E-46BA-970C-D1A774D3D239}_is1';
-  await new Promise(resolve => execFile(path.join(process.env.WINDIR, 'System32', 'reg.exe'),
-    ['query', key, '/v', 'InstallLocation', '/reg:64'], { windowsHide: true, timeout: 2000 }, (error, output) => {
-      const match = !error && output.match(/InstallLocation\s+REG_SZ\s+([^\r\n]+)/);
-      if (match && validDirectory(match[1].trim())) directory = path.normalize(match[1].trim());
+  const key = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{5F84E54F-BE2E-46BA-970C-D1A774D3D239}_is1';
+  // Base64 avoids the console code page corrupting an existing Cyrillic install path.
+  const command = `$value = Get-ItemPropertyValue -LiteralPath '${key}' -Name InstallLocation -ErrorAction Stop; [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($value))`;
+  await new Promise(resolve => execFile(path.join(process.env.WINDIR, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+    ['-NoProfile', '-NonInteractive', '-Command', command], { windowsHide: true, timeout: 2500 }, (error, output) => {
+      const previous = !error && Buffer.from(output.trim(), 'base64').toString('utf8');
+      if (previous && validDirectory(previous)) directory = path.normalize(previous);
       resolve();
     }));
 }
