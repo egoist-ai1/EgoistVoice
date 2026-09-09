@@ -5,6 +5,12 @@ Egoist Voice распространяется вместе с речевыми �
 
 Исходный код самого Egoist Voice лицензирован отдельно — см. `LICENSE`.
 
+Установщик 2.2.1 дополнительно включает React/React DOM 19.2.8 (MIT) и Electron
+44.2.0 (MIT и лицензии включённых компонентов Chromium/Node). Лицензия React
+находится в архиве приложения установщика, лицензии Electron/Chromium поставляются
+с его runtime. Эти компоненты не входят в установленный Voice.
+Источники: https://github.com/facebook/react и https://github.com/electron/electron.
+
 Компактная версия Portable RU включает GigaAM, sherpa-onnx, ONNX Runtime,
 NAudio и .NET. Нативные Whisper, CUDA, Vulkan и движок перевода в неё не входят.
 Текстовая Qwen устанавливается отдельно от Portable; источник закреплённой модели:

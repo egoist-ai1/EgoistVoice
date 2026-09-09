@@ -4,12 +4,13 @@
 в [`PROGRAM-PLAN.md`](../../egoist-translator/docs/program/PROGRAM-PLAN.md);
 указатель на межпроектные документы — [`docs/program/README.md`](./program/README.md).
 
-## Current publication — 2026-09-05
+## Current publication — 2026-09-09
 
-`v2.2.0-preview.2` packages EV-2224 as Compact RU and Full + Qwen. Current evidence,
-remaining Full lifecycle checks and preview limits live in [STATUS](../STATUS.md)
-and [release notes](releases/2.2.0-preview.2.md). The owner requested publication
-without repeating the interrupted Full Sandbox test. Stable remains 2.1.0.
+`v2.2.1` promotes the Russian RC3 to the final publication channel at the owner's
+explicit request. It includes the scarlet capsule, literal mode, streaming audio
+and React installer. Current evidence and remaining Windows lifecycle limits live
+in [STATUS](../STATUS.md) and [release notes](releases/2.2.1.md). This publication
+does not close the historical Full Offline/EV-2210 verification program below.
 
 ## Historical program baseline
 
