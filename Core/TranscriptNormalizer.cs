@@ -22,6 +22,7 @@ public static partial class TranscriptNormalizer
 
     private static readonly string[] QuestionStarters =
     [
+        "are you sure",
         "ты уверен", "вы уверены", "ты готов", "вы готовы", "ты согласен", "вы согласны",
         "ты можешь", "вы можете", "ты сможешь", "вы сможете", "ты хочешь", "вы хотите", "ты будешь", "вы будете",
         "как дела", "как поживаешь", "как ты", "как вы", "как настроение", "как успехи",
@@ -32,7 +33,9 @@ public static partial class TranscriptNormalizer
         "кто это", "кто там", "кто такой", "кто такая", "кто такие"
     ];
 
-    public static string Normalize(string? input)
+    public static string Normalize(string? input) => Normalize(input, preserveFinalTerminalPunctuation: false);
+
+    internal static string Normalize(string? input, bool preserveFinalTerminalPunctuation)
     {
         if (string.IsNullOrWhiteSpace(input))
         {
@@ -41,8 +44,16 @@ public static partial class TranscriptNormalizer
 
         var paragraphs = ParagraphBreakRegex()
             .Split(input.Trim())
-            .Select(NormalizeParagraph)
-            .Where(paragraph => paragraph.Length > 0);
+            .Select(paragraph => paragraph.Trim())
+            .Where(paragraph => paragraph.Length > 0)
+            .ToArray();
+
+        for (var index = 0; index < paragraphs.Length; index++)
+        {
+            paragraphs[index] = NormalizeParagraph(
+                paragraphs[index],
+                preserveFinalTerminalPunctuation && index == paragraphs.Length - 1);
+        }
 
         return string.Join(Environment.NewLine + Environment.NewLine, paragraphs);
     }
@@ -51,11 +62,11 @@ public static partial class TranscriptNormalizer
     /// Single line breaks survive normalization. They used to be collapsed into spaces along with
     /// every other whitespace run, which silently undid the "new line" voice command.
     /// </summary>
-    private static string NormalizeParagraph(string input)
+    private static string NormalizeParagraph(string input, bool preserveFinalTerminalPunctuation)
     {
         var lines = LineBreakRegex()
             .Split(input.Trim())
-            .Select(NormalizeLine)
+            .Select(line => line.Trim())
             .Where(line => line.Length > 0)
             .ToArray();
 
@@ -64,11 +75,18 @@ public static partial class TranscriptNormalizer
             return string.Empty;
         }
 
+        for (var index = 0; index < lines.Length; index++)
+        {
+            lines[index] = NormalizeLine(
+                lines[index],
+                preserveFinalTerminalPunctuation && index == lines.Length - 1);
+        }
+
         lines[0] = Capitalize(lines[0]);
         return string.Join(Environment.NewLine, lines);
     }
 
-    private static string NormalizeLine(string input)
+    private static string NormalizeLine(string input, bool preserveFinalTerminalPunctuation)
     {
         var text = WhitespaceRegex().Replace(input.Trim(), " ");
         text = SpaceBeforePunctuationRegex().Replace(text, "$1");
@@ -78,7 +96,7 @@ public static partial class TranscriptNormalizer
         text = NormalizeCommonOrthography(text);
         text = NormalizeRussianHyphens(text);
         text = NormalizeRussianPunctuation(text);
-        text = NormalizeSentenceQuestions(text);
+        text = NormalizeSentenceQuestions(text, preserveFinalTerminalPunctuation);
 
         return CapitalizeSentenceStarts(text);
     }
@@ -135,18 +153,19 @@ public static partial class TranscriptNormalizer
             PreserveCase(match.Value, "всё-таки"),
             RegexOptions.IgnoreCase);
 
-        // по-прежнему, по-видимому, по-нашему, по-твоему
-        text = Regex.Replace(text, @"\b(по)\s+(прежнему|видимому|нашему|твоему)\b", match =>
-            PreserveCase(match.Value, $"{match.Groups[1].Value}-{match.Groups[2].Value}"),
-            RegexOptions.IgnoreCase);
-
         // по-русски, по-английски, по-немецки, по-французски
         text = Regex.Replace(text, @"\b(по)\s+(русски|английски|немецки|французски)\b", match =>
             PreserveCase(match.Value, $"{match.Groups[1].Value}-{match.Groups[2].Value}"),
             RegexOptions.IgnoreCase);
 
-        // по-быстрому, по-новому, по-старому, по-настоящему, по-хорошему, по-человечески, по-простому
-        text = Regex.Replace(text, @"\b(по)\s+(быстрому|новому|старому|настоящему|хорошему|человечески|простому)\b", match =>
+        // Формы на -ому/-ему бывают наречиями («сделай по-новому») и определениями
+        // («по новому адресу»). Не склеиваем их перед ограниченным набором частых существительных.
+        const string dativeNoun = @"(?:мнению|желанию|плану|совету|указанию|слову|адресу|месту|пути|правилу|проекту|договору|дому|номеру|телефону|сценарию|маршруту|вопросу|каналу|способу|методу|подходу|заданию|расписанию|формату)";
+        text = Regex.Replace(text,
+            $@"\b(по)\s+(прежнему|видимому|моему|нашему|твоему|быстрому|новому|старому|настоящему|хорошему|простому)\b(?!\s+{dativeNoun}\b)",
+            match => PreserveCase(match.Value, $"{match.Groups[1].Value}-{match.Groups[2].Value}"),
+            RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"\b(по)\s+(человечески)\b", match =>
             PreserveCase(match.Value, $"{match.Groups[1].Value}-{match.Groups[2].Value}"),
             RegexOptions.IgnoreCase);
 
@@ -168,11 +187,6 @@ public static partial class TranscriptNormalizer
             PreserveCase(match.Value, "как-никак"), RegexOptions.IgnoreCase);
         text = Regex.Replace(text, @"\b(де)\s+(факто|юре)\b", match =>
             PreserveCase(match.Value, $"{match.Groups[1].Value}-{match.Groups[2].Value}"), RegexOptions.IgnoreCase);
-
-        // по-моему (когда не следует слову «мнению», «плану», «желанию», «совету», «слову»)
-        text = Regex.Replace(text, @"\b(по)\s+(моему)\b(?!\s+(?:мнению|желанию|плану|совету|указанию|слову)\b)", match =>
-            PreserveCase(match.Value, "по-моему"),
-            RegexOptions.IgnoreCase);
 
         // Постфикс -то
         text = Regex.Replace(text, @"\b(как|что|где|куда|когда|кто|какой|какая|какое|какие|каком|каких|каким|какими|какую|почему|зачем|откуда|так)\s+(то)\b", match =>
@@ -223,7 +237,7 @@ public static partial class TranscriptNormalizer
         text = Regex.Replace(text, @"(?<=[\p{L}\p{N}])\s+потому что\b", ", потому что");
         text = Regex.Replace(text, @"(?<=[\p{L}\p{N}])\s+так как\b", ", так как");
         text = Regex.Replace(text, @"(?<=[\p{L}\p{N}])\s+то есть\b", ", то есть");
-        text = Regex.Replace(text, @"(?<=[\p{L}\p{N}])\s+хотя\b", ", хотя");
+        text = Regex.Replace(text, @"(?<=[\p{L}\p{N}])\s+хотя\b(?!\s+б(?:ы)?\b)", ", хотя");
         text = Regex.Replace(text, @"(?<=[\p{L}\p{N}])\s+чтобы\b", ", чтобы");
         text = Regex.Replace(text, @"(?<=[\p{L}\p{N}])\s+если\b", ", если");
 
@@ -235,7 +249,7 @@ public static partial class TranscriptNormalizer
         return text;
     }
 
-    private static string NormalizeSentenceQuestions(string text)
+    private static string NormalizeSentenceQuestions(string text, bool preserveFinalTerminalPunctuation)
     {
         if (text.Length < 3)
         {
@@ -245,22 +259,29 @@ public static partial class TranscriptNormalizer
         var parts = SentenceBoundaryRegex().Split(text);
         if (parts.Length == 1)
         {
-            return ProcessQuestionSegment(parts[0]);
+            return ProcessQuestionSegment(parts[0], preserveFinalTerminalPunctuation);
         }
 
         var results = new string[parts.Length];
         for (var i = 0; i < parts.Length; i++)
         {
-            results[i] = ProcessQuestionSegment(parts[i]);
+            results[i] = ProcessQuestionSegment(
+                parts[i],
+                preserveFinalTerminalPunctuation && i == parts.Length - 1);
         }
 
         return string.Join(" ", results);
     }
 
-    private static string ProcessQuestionSegment(string segment)
+    private static string ProcessQuestionSegment(string segment, bool preserveTerminalPunctuation)
     {
         var trimmed = segment.Trim();
         if (trimmed.Length == 0)
+        {
+            return segment;
+        }
+
+        if (preserveTerminalPunctuation)
         {
             return segment;
         }

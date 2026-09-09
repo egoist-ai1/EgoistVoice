@@ -55,11 +55,41 @@ public sealed class TranscriptPostProcessor
             text = RussianNumberNormalizer.Normalize(text);
         }
 
+        var preserveFinalTerminalPunctuation = false;
         if (Options.ApplyVoiceCommands)
         {
+            var beforeCommands = text;
+            var expectedTerminalPunctuation = FindDefaultTerminalPunctuationCommand(text);
             text = _commands.Apply(text);
+            preserveFinalTerminalPunctuation = expectedTerminalPunctuation is not null &&
+                !string.Equals(beforeCommands, text, StringComparison.Ordinal) &&
+                text.TrimEnd().EndsWith(expectedTerminalPunctuation, StringComparison.Ordinal);
         }
 
-        return TranscriptNormalizer.Normalize(text);
+        return TranscriptNormalizer.Normalize(text, preserveFinalTerminalPunctuation);
+    }
+
+    private static string? FindDefaultTerminalPunctuationCommand(string text)
+    {
+        var candidate = text.TrimEnd().TrimEnd('.', ',', '!', '?', ';', ':').TrimEnd();
+        foreach (var command in VoiceCommandProcessor.DefaultCommands.Where(command =>
+                     command.Replacement is "," or "." or ";" or ":" or "?" or "!" or "…"))
+        {
+            foreach (var spoken in command.Spoken)
+            {
+                if (!candidate.EndsWith(spoken, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var commandStart = candidate.Length - spoken.Length;
+                if (commandStart == 0 || !char.IsLetterOrDigit(candidate[commandStart - 1]))
+                {
+                    return command.Replacement;
+                }
+            }
+        }
+
+        return null;
     }
 }

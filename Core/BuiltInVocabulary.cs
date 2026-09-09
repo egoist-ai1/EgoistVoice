@@ -17,7 +17,7 @@ namespace Egoist.Voice.Core;
 /// </remarks>
 public static class BuiltInVocabulary
 {
-    public const string Version = "5";
+    public const string Version = "6";
 
     /// <summary>
     /// The dictionary sorts aliases by length, so a longer entity always wins over a contained one.
@@ -97,7 +97,8 @@ public static class BuiltInVocabulary
                 "ростову на дону", "ростову-на-дону", "ростову надону"
             ],
             "Ростову-на-Дону"),
-        new(["джунгарик", "джунгарики"], "Джунгарики"),
+        new(["джунгарик"], "Джунгарик"),
+        new(["джунгарики"], "Джунгарики"),
 
         // ── AI and local assistants ──────────────────────────────────────────
         new(["войс студио", "войс студия", "voicestudio"], "VoiceStudio"),
@@ -260,11 +261,11 @@ public static class BuiltInVocabulary
         new(["си эл ай", "cli"], "CLI"),
         new(["джи ю ай", "гуи", "gui"], "GUI"),
         new(["урл", "ю ар эл", "url"], "URL"),
-        new(["днс сервер", "ди эн эс", "dns"], "DNS"),
-        new(["ай пи адрес", "айпи адрес", "ip адрес", "ip"], "IP"),
+        new(["днс", "ди эн эс", "dns"], "DNS"),
+        new(["ай пи", "айпи", "ip"], "IP"),
         new(["впн", "ви пи эн", "vpn"], "VPN"),
         new(["ссх", "эс эс эйч", "ssh"], "SSH"),
-        new(["ссл сертификат", "эс эс эл", "ssl"], "SSL"),
+        new(["ссл", "эс эс эл", "ssl"], "SSL"),
         new(["тлс", "tls"], "TLS"),
 
         // ── Operating systems, hardware and large companies ─────────────────
@@ -384,7 +385,8 @@ public static class BuiltInVocabulary
             ],
             "Battlegrounds Coach"),
         new(["фортнайт", "fortnite"], "Fortnite"),
-        new(["кс 2", "кс два", "кс2", "cs:go", "cs go", "ксго", "кс го", "counter strike 2", "cs 2", "cs2"], "CS2"),
+        new(["cs:go", "cs go", "ксго", "кс го"], "CS:GO"),
+        new(["кс 2", "кс два", "кс2", "counter strike 2", "cs 2", "cs2"], "CS2"),
         new(["контр страйк", "counter strike", "counter-strike"], "Counter-Strike"),
         new(["дота два", "дота 2", "дота2", "дотка 2", "dota 2"], "Dota 2"),
         new(["лига легенд", "league of legends"], "League of Legends"),
@@ -594,7 +596,7 @@ public static class BuiltInVocabulary
             [
                 "are you sure", "ар ю шур", "а ю шур"
             ],
-            "Are you sure?"),
+            "Are you sure"),
         new(
             [
                 "i don't know", "i dont know", "ай донт ноу", "ай донт но"

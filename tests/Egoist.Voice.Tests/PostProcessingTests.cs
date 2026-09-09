@@ -195,6 +195,16 @@ public sealed class PostProcessingTests
     }
 
     [Fact]
+    public void Explicit_terminal_punctuation_command_wins_over_question_inference()
+    {
+        var processor = new TranscriptPostProcessor(UserDictionary.BuiltIn);
+
+        Assert.Equal("Ты можешь прийти завтра.", processor.Process("ты можешь прийти завтра точка"));
+        Assert.Equal("Ты можешь прийти завтра.", processor.Process("ты можешь прийти завтра точка."));
+        Assert.Equal("Ты можешь прийти завтра?", processor.Process("ты можешь прийти завтра"));
+    }
+
+    [Fact]
     public void Point_as_an_ordinary_noun_is_not_treated_as_punctuation()
     {
         var processor = new VoiceCommandProcessor();
@@ -293,6 +303,22 @@ public sealed class PostProcessingTests
         Assert.Equal(
             "Где логи сервера и сколько FPS выдает видеокарта?",
             processor.Process("где логи сервера и сколько фпс выдает видеокарта"));
+    }
+
+    [Theory]
+    [InlineData("мой ай пи адрес", "Мой IP адрес")]
+    [InlineData("проверь днс сервер", "Проверь DNS сервер")]
+    [InlineData("обнови ссл сертификат", "Обнови SSL сертификат")]
+    [InlineData("играл в CS:GO в 2015 году", "Играл в CS:GO в 2015 году")]
+    [InlineData("джунгарик", "Джунгарик")]
+    [InlineData("ар ю шур", "Are you sure?")]
+    [InlineData("Are you sure?", "Are you sure?")]
+    public void Pipeline_preserves_meaning_and_is_idempotent(string input, string expected)
+    {
+        var processor = new TranscriptPostProcessor(UserDictionary.BuiltIn);
+
+        Assert.Equal(expected, processor.Process(input));
+        Assert.Equal(expected, processor.Process(expected));
     }
 
     private static string Normalized(string text) => TranscriptNormalizer.Normalize(text);

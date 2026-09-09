@@ -186,7 +186,7 @@ public sealed class BuiltInVocabularyTests
     [Fact]
     public void Versioned_catalog_covers_ai_apps_companies_and_games()
     {
-        Assert.Equal("5", BuiltInVocabulary.Version);
+        Assert.Equal("6", BuiltInVocabulary.Version);
         var written = BuiltInVocabulary.Terms
             .Select(term => term.Written)
             .ToHashSet(StringComparer.Ordinal);
@@ -196,7 +196,7 @@ public sealed class BuiltInVocabularyTests
             "Claude Code", "Anthropic", "OpenAI", "ChatGPT", "Gemini", "DeepSeek",
             "GitHub", "Docker", "Kubernetes", "Visual Studio Code", "Microsoft Teams",
             "Figma", "Notion", "Cloudflare", "Stripe", "NVIDIA", "AMD", "Intel",
-            "Apple", "Microsoft", "Steam", "Epic Games Store", "PlayStation", "Xbox",
+            "Apple", "Microsoft", "Steam", "Epic Games Store", "PlayStation", "Xbox", "CS:GO",
             "Unreal Engine", "Unity", "Minecraft", "Counter-Strike", "Cyberpunk 2077",
             "Egoist Voice", "EGOIST Translator", "Egoist Games", "Path of Exile 2", "Ростов-на-Дону"
         };
@@ -235,7 +235,7 @@ public sealed class BuiltInVocabularyTests
     [InlineData("си ю лейтер", "See you later")]
     [InlineData("тейк кер", "Take care")]
     [InlineData("ван мор синг", "one more thing")]
-    [InlineData("ар ю шур", "Are you sure?")]
+    [InlineData("ар ю шур", "Are you sure")]
     [InlineData("ай донт ноу", "I don't know")]
     [InlineData("оф корс", "of course")]
     [InlineData("хэв э найс дей", "Have a nice day")]
@@ -267,6 +267,13 @@ public sealed class BuiltInVocabularyTests
     }
 
     [Theory]
+    [InlineData("мой ай пи адрес", "мой IP адрес")]
+    [InlineData("проверь днс сервер", "проверь DNS сервер")]
+    [InlineData("обнови ссл сертификат", "обнови SSL сертификат")]
+    public void Technical_acronyms_do_not_swallow_their_nouns(string spoken, string expected) =>
+        Assert.Equal(expected, UserDictionary.BuiltIn.Apply(spoken));
+
+    [Theory]
     [InlineData("запусти кс 2 и дота 2", "CS2", "Dota 2")]
     [InlineData("побег из таркова и вар тандер", "Escape from Tarkov", "War Thunder")]
     [InlineData("запусти варзон и апекс", "Warzone", "Apex Legends")]
@@ -287,6 +294,12 @@ public sealed class BuiltInVocabularyTests
             Assert.Contains(expected2, result, StringComparison.Ordinal);
         }
     }
+
+    [Theory]
+    [InlineData("играл в CS:GO в 2015 году", "играл в CS:GO в 2015 году")]
+    [InlineData("запусти кс 2", "запусти CS2")]
+    public void Counter_strike_versions_keep_their_identity(string spoken, string expected) =>
+        Assert.Equal(expected, UserDictionary.BuiltIn.Apply(spoken));
 
     [Theory]
     [InlineData("настрой си ай си ди пайплайн", "CI/CD", "pipeline")]
