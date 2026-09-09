@@ -96,7 +96,7 @@ Whisper и движок перевода не входят. Для Qwen пред
 $files = @(Get-ChildItem -LiteralPath $stage -File -Recurse | Sort-Object FullName | ForEach-Object {
     $relative = [IO.Path]::GetRelativePath($stage, $_.FullName).Replace('\', '/')
     if ($relative -match '(^|/)(Data|Logs|Backups|\.\.)(/|$)|\.(wav|aac|mp3|log)$' -or $relative -match '[":;\r\n{}]' -or $_.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Private or unsafe staging entry.' }
-    [ordered]@{ path=$relative; bytes=$_.Length; sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
+    [pscustomobject][ordered]@{ path=$relative; bytes=$_.Length; sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
 })
 $sourceRevision = (& git -C $project rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Could not bind source revision.' }
