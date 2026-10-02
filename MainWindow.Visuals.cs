@@ -12,6 +12,11 @@ public partial class MainWindow
 {
     private readonly object _spectrumFrameGate = new();
     private VoiceSpectrum _spectrumFrame;
+    private readonly CapsuleAnimationCadence _waveCadence = new();
+    private int _lastDisplayedRecordingSecond = -1;
+    private CapsuleVisualState? _lastVisualLayout;
+    private bool _processingIsIndeterminate;
+    private ModelTransferStage? _lastTransferStage;
     private void BuildWaveform()
     {
         Waveform.HighContrast = EffectiveTheme == EffectiveAppTheme.HighContrast;
@@ -75,22 +80,31 @@ public partial class MainWindow
         _timbreTrebleCurrent = 0;
         _timbreTrebleTarget = 0;
         lock (_spectrumFrameGate) _spectrumFrame = default;
+        _lastDisplayedRecordingSecond = -1;
         StartWaveformAnimation();
     }
 
     private void SetProcessingState(string label, double? percentage)
     {
         var alreadyProcessing = _lastVisualStateKind == CapsuleVisualStateKind.Recognizing;
-        ApplyVisualStateLayout(new CapsuleVisualState(CapsuleVisualStateKind.Recognizing, label, percentage, percentage is null));
-        // Changing the stage label must not restart the orbit, reanimate the shell or allocate brushes.
-        if (alreadyProcessing) return;
-        StopWaveformAnimation();
-        SetStateDisc(ActiveDiscBrush);
-        SetStateBorder(ActiveBorderBrush);
-        StateHalo.Opacity = 0;
-        StopStateAnimations();
-        BeginStateStoryboard("ProcessingStoryboard");
-        ShowCapsule();
+        ApplyVisualStateLayout(new CapsuleVisualState(CapsuleVisualStateKind.Recognizing, label, percentage, CanCancel: true));
+        var indeterminate = percentage is null;
+        if (!alreadyProcessing)
+        {
+            StopWaveformAnimation();
+            SetStateDisc(ActiveDiscBrush);
+            SetStateBorder(ActiveBorderBrush);
+            StateHalo.Opacity = 0;
+            StopStateAnimations();
+            ShowCapsule();
+        }
+        // Progress updates keep the existing clock. Only a change of progress mode needs motion.
+        if (!alreadyProcessing || _processingIsIndeterminate != indeterminate)
+        {
+            ((Storyboard)Resources["ProcessingStoryboard"]).Stop(this);
+            if (indeterminate) BeginStateStoryboard("ProcessingStoryboard");
+        }
+        _processingIsIndeterminate = indeterminate;
     }
 
     private void ShowSuccess(string label = "Вставлено")
@@ -122,6 +136,8 @@ public partial class MainWindow
 
     private void SetModelTransferState(ModelTransferProgress progress)
     {
+        var stageChanged = _lastVisualStateKind != CapsuleVisualStateKind.Downloading || _lastTransferStage != progress.Stage;
+        _lastTransferStage = progress.Stage;
         ApplyVisualStateLayout(new CapsuleVisualState(CapsuleVisualStateKind.Downloading, ModelProgressFormatter.Capsule(progress), progress.Percentage));
         StopWaveformAnimation();
         CheckIcon.Visibility = progress.Stage == ModelTransferStage.Ready ? Visibility.Visible : Visibility.Collapsed;
@@ -134,8 +150,10 @@ public partial class MainWindow
         DownloadProgress.Visibility = progress.Stage is ModelTransferStage.Downloading or ModelTransferStage.Verifying or ModelTransferStage.Loading
             ? Visibility.Visible
             : Visibility.Collapsed;
+        if (!stageChanged) return;
+        ApplyThemeToCapsule();
         SetStateDisc(progress.Stage == ModelTransferStage.Ready ? SuccessDiscBrush : System.Windows.Media.Brushes.Transparent);
-        SetStateBorder(progress.Stage == ModelTransferStage.Failed ? ActiveBorderBrush : IdleBorderBrush);
+        SetStateBorder(progress.Stage == ModelTransferStage.Failed ? ErrorBrush : IdleBorderBrush);
         StateHalo.Opacity = 0;
         StopStateAnimations();
         if (downloading)
@@ -163,9 +181,8 @@ public partial class MainWindow
         _isProcessing = false;
         SetStateDisc(SuccessDiscBrush);
 
-        // The error outline is amber rather than the brand red, so a failure is distinguishable
-        // from an active recording without reading the label.
-        SetStateBorder(SystemParameters.HighContrast ? ActiveBorderBrush : ErrorBorderBrush);
+        // Recording uses a filled microphone disc; failures use a scarlet outline and error icon.
+        SetStateBorder(ErrorBrush);
         StateHalo.Opacity = 0;
         StopStateAnimations();
         BeginStateStoryboard("ErrorStoryboard");
@@ -212,7 +229,12 @@ public partial class MainWindow
             return;
         }
 
-        RecordingTimer.Text = $"{(int)elapsed.TotalMinutes:0}:{elapsed.Seconds:00}";
+        var wholeSeconds = Math.Max(0, (int)elapsed.TotalSeconds);
+        if (wholeSeconds != _lastDisplayedRecordingSecond)
+        {
+            _lastDisplayedRecordingSecond = wholeSeconds;
+            RecordingTimer.Text = $"{wholeSeconds / 60:0}:{wholeSeconds % 60:00}";
+        }
         SetRecordingTimerVisible(true);
     }
 
@@ -225,7 +247,7 @@ public partial class MainWindow
 
         _timerVisible = visible;
         RecordingTimer.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        TimerColumn.Width = new GridLength(33);
+        TimerColumn.Width = new GridLength(visible ? 33 : 0);
     }
 
     private static readonly TimeSpan TimerAppearsAfter = TimeSpan.Zero;
@@ -279,20 +301,20 @@ public partial class MainWindow
             CapsuleVisualStateKind.Recognizing => state.Progress is null
                 ? state.Label ?? "Распознавание"
                 : $"{state.Label} {state.Progress:0} процентов",
-            CapsuleVisualStateKind.Success => "Текст вставлен",
+            CapsuleVisualStateKind.Success => state.Label is null or "Вставлено" ? "Текст вставлен" : state.Label,
             CapsuleVisualStateKind.Clipboard => "Текст скопирован, нажмите Ctrl+V",
             CapsuleVisualStateKind.Error => $"Ошибка: {state.Label}",
             CapsuleVisualStateKind.Downloading => state.Label ?? "Загрузка модели",
             _ => "Готово"
         };
 
-        System.Windows.Automation.AutomationProperties.SetName(CapsuleShell, announcement);
         if (_lastAnnouncement == announcement)
         {
             return;
         }
 
         _lastAnnouncement = announcement;
+        System.Windows.Automation.AutomationProperties.SetName(CapsuleShell, announcement);
         var peer = System.Windows.Automation.Peers.UIElementAutomationPeer.FromElement(CapsuleShell)
             ?? System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(CapsuleShell);
         peer?.RaiseAutomationEvent(
@@ -301,6 +323,8 @@ public partial class MainWindow
 
     private void ApplyVisualStateLayout(CapsuleVisualState state)
     {
+        if (_lastVisualLayout == state) return;
+        _lastVisualLayout = state;
         var stateChanged = _lastVisualStateKind != state.Kind;
         _lastVisualStateKind = state.Kind;
         MicIcon.Visibility = state.Kind is CapsuleVisualStateKind.Ready or CapsuleVisualStateKind.Listening or CapsuleVisualStateKind.Recognizing
@@ -333,11 +357,11 @@ public partial class MainWindow
         SetCancelActionVisible(state.CanCancel);
         AnnounceState(state);
 
-        if (state.Kind is CapsuleVisualStateKind.Ready or CapsuleVisualStateKind.Downloading)
+        if (state.Kind != CapsuleVisualStateKind.Listening)
             SetRecordingTimerVisible(false);
         AnimateCapsuleWidth(256);
 
-        ApplyThemeToCapsule();
+        if (stateChanged) ApplyThemeToCapsule();
 
         if (stateChanged && IsVisible && !IsReducedMotion)
         {
@@ -354,10 +378,19 @@ public partial class MainWindow
         }
 
         Waveform.HighContrast = args.EffectiveTheme == EffectiveAppTheme.HighContrast;
-        Waveform.InvalidateVisual();
+        _waveCadence.Reset();
         if (args.ReducedMotion)
         {
             ApplyReducedMotionImmediately();
+        }
+        else if (_lastVisualStateKind == CapsuleVisualStateKind.Recognizing && _processingIsIndeterminate)
+        {
+            BeginStateStoryboard("ProcessingStoryboard");
+        }
+        else if (_lastVisualStateKind == CapsuleVisualStateKind.Downloading)
+        {
+            if (_lastTransferStage == ModelTransferStage.Downloading) BeginStateStoryboard("DownloadStoryboard");
+            else if (_lastTransferStage is ModelTransferStage.Verifying or ModelTransferStage.Loading) BeginStateStoryboard("SpinStoryboard");
         }
         ApplyThemeToCapsule();
     }
@@ -381,6 +414,8 @@ public partial class MainWindow
         StateDiscScale.ScaleX = 1;
         StateDiscScale.ScaleY = 1;
         StateContentTranslate.X = 0;
+        CenterContent.Opacity = 1;
+        StateDisc.Opacity = 1;
         SpinnerOrbitRotate.Angle = 0;
         DownloadArrowOffset.Y = 0;
         DownloadIcon.Opacity = 1;
@@ -408,6 +443,13 @@ public partial class MainWindow
     private void ApplyThemeToCapsule()
     {
         BuildWaveform();
+        SetStateDisc(_lastVisualStateKind switch
+        {
+            CapsuleVisualStateKind.Listening or CapsuleVisualStateKind.Recognizing => ActiveDiscBrush,
+            CapsuleVisualStateKind.Success or CapsuleVisualStateKind.Clipboard or CapsuleVisualStateKind.Error => SuccessDiscBrush,
+            CapsuleVisualStateKind.Downloading when _lastTransferStage == ModelTransferStage.Ready => SuccessDiscBrush,
+            _ => System.Windows.Media.Brushes.Transparent
+        });
         if (EffectiveTheme == EffectiveAppTheme.HighContrast)
         {
             RootBorder.PhysicalStroke = 1.6;
@@ -438,8 +480,8 @@ public partial class MainWindow
             RootBorder.BorderBrush = _lastVisualStateKind switch
             {
                 CapsuleVisualStateKind.Listening or CapsuleVisualStateKind.Recognizing => ActiveBorderBrush,
-                CapsuleVisualStateKind.Error => ErrorBorderBrush,
-                CapsuleVisualStateKind.Downloading when _lastModelProgress?.Stage == ModelTransferStage.Failed => ErrorBorderBrush,
+                CapsuleVisualStateKind.Error => ErrorBrush,
+                CapsuleVisualStateKind.Downloading when _lastTransferStage == ModelTransferStage.Failed => ErrorBrush,
                 _ => IdleBorderBrush
             };
             DetailText.Foreground = PrimaryTextBrush;
@@ -454,7 +496,8 @@ public partial class MainWindow
             SetStroke(ErrorIcon, ErrorBrush);
             DownloadProgress.Foreground = AccentBrush;
             DownloadProgress.Background = ProgressTrackBrush;
-            RootBorder.PhysicalStroke = 0;
+            RootBorder.PhysicalStroke = _lastVisualStateKind == CapsuleVisualStateKind.Error ||
+                _lastVisualStateKind == CapsuleVisualStateKind.Downloading && _lastTransferStage == ModelTransferStage.Failed ? 1.25 : 0;
             SurfaceGradient.Visibility = Visibility.Collapsed;
             InnerSpecularBorder.Visibility = Visibility.Collapsed;
             HoverSurface.Visibility = Visibility.Collapsed;
@@ -528,7 +571,7 @@ public partial class MainWindow
     private void StartWaveformAnimation()
     {
         if (_waveRendering) return;
-        _lastWaveFrame = TimeSpan.Zero;
+        _waveCadence.Reset();
         CompositionTarget.Rendering += OnWaveformRendering;
         _waveRendering = true;
     }
@@ -540,14 +583,10 @@ public partial class MainWindow
             return;
         }
 
-        var elapsed = _lastWaveFrame == TimeSpan.Zero
-            ? TimeSpan.FromSeconds(1d / 60d)
-            : rendering.RenderingTime - _lastWaveFrame;
-        if (_lastWaveFrame != TimeSpan.Zero && elapsed < TimeSpan.FromMilliseconds(IsReducedMotion ? 100 : 8))
+        if (!_isRecording || !IsVisible) return;
+        if (_waveCadence.TryAdvance(rendering.RenderingTime, IsReducedMotion, out var deltaSeconds))
         {
-            return;
+            AnimateWaveformFrame(deltaSeconds);
         }
-        _lastWaveFrame = rendering.RenderingTime;
-        AnimateWaveformFrame(Math.Clamp(elapsed.TotalSeconds, 1d / 240d, 0.05));
     }
 }

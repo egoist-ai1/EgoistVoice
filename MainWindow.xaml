@@ -25,7 +25,7 @@
         <KeySpline x:Key="MorphSpline">0.16,1.0 0.3,1.0</KeySpline>
 
         <!-- One staggered processing rhythm; the orbit is reserved for model transfer. -->
-        <Storyboard x:Key="SpinStoryboard" RepeatBehavior="Forever">
+        <Storyboard x:Key="SpinStoryboard" RepeatBehavior="Forever" Timeline.DesiredFrameRate="30">
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="SpinnerOrbitRotate"
                                            Storyboard.TargetProperty="Angle">
                 <SplineDoubleKeyFrame KeyTime="0:0:0" Value="0" />
@@ -33,7 +33,7 @@
                 <SplineDoubleKeyFrame KeyTime="0:0:1.1" Value="360" KeySpline="0.4,0.0 0.2,1.0" />
             </DoubleAnimationUsingKeyFrames>
         </Storyboard>
-        <Storyboard x:Key="ProcessingStoryboard" RepeatBehavior="Forever">
+        <Storyboard x:Key="ProcessingStoryboard" RepeatBehavior="Forever" Timeline.DesiredFrameRate="30">
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ProcessingDot1" Storyboard.TargetProperty="Opacity">
                 <SplineDoubleKeyFrame KeyTime="0:0:0" Value="0.25" />
                 <SplineDoubleKeyFrame KeyTime="0:0:0.22" Value="1.0" />
@@ -83,7 +83,7 @@
             </DoubleAnimationUsingKeyFrames>
         </Storyboard>
 
-        <Storyboard x:Key="ListenPulseStoryboard" RepeatBehavior="Forever" AutoReverse="True">
+        <Storyboard x:Key="ListenPulseStoryboard" RepeatBehavior="Forever" AutoReverse="True" Timeline.DesiredFrameRate="30">
             <DoubleAnimation Storyboard.TargetName="StateHalo" Storyboard.TargetProperty="Opacity"
                              From="0.08" To="0.28" Duration="0:0:1.3">
                 <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
@@ -98,7 +98,7 @@
             </DoubleAnimation>
         </Storyboard>
 
-        <Storyboard x:Key="DownloadStoryboard" RepeatBehavior="Forever" AutoReverse="True">
+        <Storyboard x:Key="DownloadStoryboard" RepeatBehavior="Forever" AutoReverse="True" Timeline.DesiredFrameRate="30">
             <DoubleAnimation Storyboard.TargetName="DownloadArrowOffset" Storyboard.TargetProperty="Y"
                              From="-0.8" To="0.8" Duration="0:0:0.62">
                 <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
@@ -107,7 +107,7 @@
                              From="0.68" To="1" Duration="0:0:0.62" />
         </Storyboard>
 
-        <Storyboard x:Key="SuccessStoryboard">
+        <Storyboard x:Key="SuccessStoryboard" Timeline.DesiredFrameRate="60">
             <DoubleAnimation Storyboard.TargetName="CheckScale" Storyboard.TargetProperty="ScaleX"
                              From="0.45" To="1" Duration="0:0:0.24">
                 <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.25" /></DoubleAnimation.EasingFunction>
@@ -122,7 +122,7 @@
             </DoubleAnimation>
         </Storyboard>
 
-        <Storyboard x:Key="ErrorStoryboard">
+        <Storyboard x:Key="ErrorStoryboard" Timeline.DesiredFrameRate="60">
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ShellTranslate" Storyboard.TargetProperty="X">
                 <EasingDoubleKeyFrame Value="0" KeyTime="0:0:0" />
                 <EasingDoubleKeyFrame Value="-4" KeyTime="0:0:0.05" />
@@ -133,7 +133,7 @@
         </Storyboard>
 
         <!-- Fluid Dynamic Island Entrance with crisp arrival curve and micro-spring settle -->
-        <Storyboard x:Key="EnterStoryboard">
+        <Storyboard x:Key="EnterStoryboard" Timeline.DesiredFrameRate="60">
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ShellScale" Storyboard.TargetProperty="ScaleX">
                 <SplineDoubleKeyFrame KeyTime="0:0:0" Value="0.88" />
                 <SplineDoubleKeyFrame KeyTime="0:0:0.14" Value="1.018" KeySpline="{StaticResource DecelerateSpline}" />
@@ -159,7 +159,7 @@
             </DoubleAnimation>
         </Storyboard>
 
-        <Storyboard x:Key="ExitStoryboard">
+        <Storyboard x:Key="ExitStoryboard" Timeline.DesiredFrameRate="60">
             <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ShellScale" Storyboard.TargetProperty="ScaleX">
                 <SplineDoubleKeyFrame KeyTime="0:0:0.13" Value="0.94" KeySpline="{StaticResource AccelerateSpline}" />
             </DoubleAnimationUsingKeyFrames>
@@ -175,7 +175,7 @@
                              To="0" Duration="0:0:0.11" />
         </Storyboard>
 
-        <Storyboard x:Key="StateTransitionStoryboard">
+        <Storyboard x:Key="StateTransitionStoryboard" Timeline.DesiredFrameRate="60">
             <DoubleAnimation Storyboard.TargetName="CenterContent" Storyboard.TargetProperty="Opacity"
                              From="0.20" To="1" Duration="0:0:0.16"
                              EasingFunction="{StaticResource DirectEase}" />
@@ -295,7 +295,7 @@
 
             <Border x:Name="ShadowSurface" Visibility="Collapsed" IsHitTestVisible="False" />
 
-            <Grid x:Name="CapsuleShell" Opacity="1" RenderTransformOrigin="0.5,0.5"
+            <controls:CapsuleStatusSurface x:Name="CapsuleShell" Opacity="1" RenderTransformOrigin="0.5,0.5"
                   AutomationProperties.Name="Egoist Voice"
                   AutomationProperties.LiveSetting="Polite">
             <Grid.RenderTransform>
@@ -372,7 +372,7 @@
                             <ColumnDefinition Width="32" />
                             <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition x:Name="TimerColumn" Width="33" />
+                            <ColumnDefinition x:Name="TimerColumn" Width="0" />
                             <ColumnDefinition x:Name="ActionDividerColumn" Width="3" />
                             <ColumnDefinition x:Name="ActionColumn" Width="24" />
                         </Grid.ColumnDefinitions>
@@ -448,11 +448,16 @@
                                                       AutomationProperties.Name="Индикатор уровня звука" />
 
                             <!-- Active Thinking / Recognition with cascading micro-dots -->
-                            <StackPanel x:Name="ProcessingDots" Orientation="Horizontal" Visibility="Collapsed"
-                                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Grid x:Name="ProcessingDots" Visibility="Collapsed"
+                                  HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
                                 <TextBlock x:Name="ProcessingLabel" Text="Распознаю" Foreground="{DynamicResource AppTextPrimaryBrush}"
-                                           FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                <StackPanel Orientation="Horizontal" Margin="5,2,0,0" VerticalAlignment="Center">
+                                           FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" TextAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="5,2,0,0" VerticalAlignment="Center">
                                     <Ellipse x:Name="ProcessingDot1" Width="3.5" Height="3.5" Margin="1.5,0"
                                              Fill="{DynamicResource AppAccentBrush}" Opacity="0.25" RenderTransformOrigin="0.5,0.5">
                                         <Ellipse.RenderTransform><ScaleTransform x:Name="ProcessingDot1Scale" /></Ellipse.RenderTransform>
@@ -466,10 +471,11 @@
                                         <Ellipse.RenderTransform><ScaleTransform x:Name="ProcessingDot3Scale" /></Ellipse.RenderTransform>
                                     </Ellipse>
                                 </StackPanel>
-                            </StackPanel>
+                            </Grid>
 
                             <TextBlock x:Name="DetailText" Visibility="Collapsed" TextTrimming="CharacterEllipsis"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       HorizontalAlignment="Stretch" VerticalAlignment="Center" TextAlignment="Center"
+                                       ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"
                                        Foreground="{DynamicResource AppTextPrimaryBrush}" FontSize="12.5" FontWeight="SemiBold" />
                             <ProgressBar x:Name="DownloadProgress" Visibility="Collapsed" Height="2"
                                          Margin="0,0,0,1" VerticalAlignment="Bottom" Minimum="0" Maximum="100"
@@ -486,7 +492,7 @@
                         <!-- Minimalist tactile cancel button with vector cross -->
                         <Button x:Name="CloseButton" Grid.Column="5" Click="CloseButton_OnClick"
                                 Width="24" Height="24" Background="Transparent" BorderThickness="0"
-                                Foreground="{DynamicResource AppTextMutedBrush}" Focusable="False" Cursor="Hand" ToolTip="Отменить"
+                                Foreground="{DynamicResource AppTextMutedBrush}" Focusable="False" Cursor="Hand" ToolTip="Отменить диктовку · Esc"
                                 AutomationProperties.Name="Отменить диктовку">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
@@ -512,7 +518,7 @@
                     </Grid>
                 </Grid>
             </controls:PixelPerfectCapsuleBorder>
-            </Grid>
+            </controls:CapsuleStatusSurface>
         </Grid>
     </Grid>
 </Window>

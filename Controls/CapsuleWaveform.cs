@@ -10,12 +10,15 @@ namespace Egoist.Voice.Controls;
 public sealed class CapsuleWaveform : FrameworkElement
 {
     private readonly double[] _levels = new double[CapsuleWaveformProfile.BarCount];
+    private readonly double[] _drawnLevels = new double[CapsuleWaveformProfile.BarCount];
     private bool _highContrast;
+    internal int RedrawRequestCount { get; private set; }
     private static readonly Brush ScarletBrush = CapsuleWaveformProfile.CreateBarBrush(0, 1);
 
     public CapsuleWaveform()
     {
         Array.Fill(_levels, CapsuleWaveformProfile.MinimumScale);
+        Array.Fill(_drawnLevels, CapsuleWaveformProfile.MinimumScale);
         Height = CapsuleWaveformProfile.BarHeight;
         IsHitTestVisible = false;
     }
@@ -34,7 +37,7 @@ public sealed class CapsuleWaveform : FrameworkElement
     public void SetUniformScale(double scale)
     {
         Array.Fill(_levels, Math.Clamp(scale, CapsuleWaveformProfile.MinimumScale, 1));
-        InvalidateVisual();
+        RequestRedrawIfChanged();
     }
 
     public void Advance(double level, double phase, double deltaSeconds, bool reducedMotion,
@@ -47,7 +50,21 @@ public sealed class CapsuleWaveform : FrameworkElement
             var frameTime = reducedMotion ? deltaSeconds * 0.35 : deltaSeconds;
             _levels[index] = CapsuleWaveformProfile.SmoothLevel(_levels[index], target, frameTime);
         }
-        InvalidateVisual();
+        RequestRedrawIfChanged();
+    }
+
+    private void RequestRedrawIfChanged()
+    {
+        // Sub-pixel settling and silence do not need a new retained drawing on every tick.
+        var height = ActualHeight > 0 ? ActualHeight : CapsuleWaveformProfile.BarHeight;
+        for (var index = 0; index < _levels.Length; index++)
+        {
+            if (Math.Abs(_levels[index] - _drawnLevels[index]) * height < 0.15) continue;
+            Array.Copy(_levels, _drawnLevels, _levels.Length);
+            RedrawRequestCount++;
+            InvalidateVisual();
+            return;
+        }
     }
 
     protected override Size MeasureOverride(Size availableSize) => new(

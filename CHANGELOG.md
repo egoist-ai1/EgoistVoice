@@ -1,5 +1,13 @@
 # История изменений
 
+## 2.3.0 — 2026-10-02
+
+- One plain GigaAM v3 RNNT INT8 Russian CPU profile, measured precision/decoder/thread selection.
+- Quiet-speech acceptance fix; PCM and 320/350 ms boundaries retained.
+- Budgeted capsule animations, stable waveform, readable cancellable progress and accessible state peer.
+- Explicit Russian settings, verified offline native package and transactional local upgrade.
+- See docs/releases/2.3.0.md for verification and remaining limits.
+
 ## 2.2.1 — релиз 9 сентября 2026
 
 - Чёрно-алая капсула 256×48 и новая волна с откликом на голос.

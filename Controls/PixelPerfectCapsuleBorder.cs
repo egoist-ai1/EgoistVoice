@@ -69,7 +69,7 @@ public sealed class PixelPerfectCapsuleBorder : Decorator
             PhysicalStroke,
             RasterScale,
             Background,
-            BorderBrush);
+            PhysicalStroke > 0 ? BorderBrush : System.Windows.Media.Brushes.Transparent);
 
         if (_cachedChrome is null || !_cacheKey.Equals(key))
         {
@@ -116,7 +116,7 @@ public sealed class PixelPerfectCapsuleBorder : Decorator
             chromeContext.PushTransform(new ScaleTransform(
                 scaleX * rasterScale,
                 scaleY * rasterScale));
-            chromeContext.DrawRoundedRectangle(Background, pen, rect, radius, radius);
+            chromeContext.DrawRoundedRectangle(Background, stroke > 0 ? pen : null, rect, radius, radius);
             chromeContext.Pop();
         }
 
@@ -161,7 +161,7 @@ public sealed class PixelPerfectCapsuleBorder : Decorator
     {
         var scaleX = Math.Max(1, dpiScaleX);
         var scaleY = Math.Max(1, dpiScaleY);
-        var normalizedStroke = Math.Clamp(physicalStroke, 0.5d, 3d);
+        var normalizedStroke = Math.Clamp(physicalStroke, 0d, 3d);
         var normalizedRasterScale = Math.Clamp(rasterScale, 1, 8);
         return new CapsuleRasterProfile(
             scaleX,

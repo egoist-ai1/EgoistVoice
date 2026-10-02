@@ -8,6 +8,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);artifacts/**;build/**</DefaultItemExcludes>
     <ApplicationIcon>assets\EgoistVoice.ico</ApplicationIcon>
     <!--
       DPI awareness is declared in app.manifest, not here. ApplicationHighDpiMode only takes
@@ -24,9 +25,9 @@
     <NoWarn>$(NoWarn);WFAC010</NoWarn>
     <AssemblyName>Egoist.Voice</AssemblyName>
     <RootNamespace>Egoist.Voice</RootNamespace>
-    <Version>2.2.1</Version>
-    <AssemblyVersion>2.2.1.0</AssemblyVersion>
-    <FileVersion>2.2.1.4</FileVersion>
+    <Version>2.3.0</Version>
+    <AssemblyVersion>2.3.0.0</AssemblyVersion>
+    <FileVersion>2.3.0.0</FileVersion>
     <Company>EGOIST</Company>
     <Product>Egoist Voice</Product>
     <Description>Быстрая локальная русская диктовка для Windows</Description>

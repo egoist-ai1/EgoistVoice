@@ -1,4 +1,4 @@
-﻿<Window x:Class="Egoist.Voice.SettingsWindow"
+<Window x:Class="Egoist.Voice.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
@@ -503,12 +503,12 @@
                             <Border Style="{StaticResource Card}">
                                 <StackPanel>
                                     <TextBlock Text="Как оформить диктовку" Style="{StaticResource SectionTitle}" />
-                                    <DockPanel Margin="0,0,0,10"><Button DockPanel.Dock="Right" Content="Настроить Qwen" Click="OpenModelsTab_OnClick" Style="{StaticResource CompactButton}" /><TextBlock x:Name="RuntimeProfileText" Style="{StaticResource Hint}" VerticalAlignment="Center" /></DockPanel>
+                                    <DockPanel Margin="0,0,0,10"><Button x:Name="ConfigureTextModelButton" DockPanel.Dock="Right" Content="Настроить Qwen" Click="OpenModelsTab_OnClick" Style="{StaticResource CompactButton}" /><TextBlock x:Name="RuntimeProfileText" Style="{StaticResource Hint}" VerticalAlignment="Center" /></DockPanel>
                                     <ComboBox x:Name="FormattingModeCombo" SelectionChanged="FormattingMode_OnChanged"
                                               AutomationProperties.Name="Режим оформления диктовки">
                                         <ComboBoxItem Content="Дословно · без перефразирования" Tag="literal" />
                                         <ComboBoxItem Content="Словарь и голосовые команды" Tag="fast" />
-                                        <ComboBoxItem Content="Qwen · пунктуация и абзацы" Tag="qwen" />
+                                        <ComboBoxItem x:Name="QwenFormattingOption" Content="Qwen · пунктуация и абзацы" Tag="qwen" />
                                     </ComboBox>
                                     <TextBlock Text="«Дословно» сохраняет результат распознавания и исправляет написание известных названий Egoist. Команды, перевод и Qwen выключены. Ошибки самой модели возможны. Другие режимы включают общий словарь и команды."
                                                Style="{StaticResource Hint}" Margin="0,10,0,0" />
@@ -520,7 +520,7 @@
                                 <StackPanel>
                                     <TextBlock Text="Распознавание и вставка" Style="{StaticResource SectionTitle}" />
                                     <CheckBox x:Name="DirectFastModeCheck" Content="Быстрый режим: прямое распознавание без задержек Whisper" Checked="GeneralSetting_OnChanged" Unchecked="GeneralSetting_OnChanged" />
-                                    <TextBlock x:Name="DirectFastModeHint" Text="Распознавание русской речи через GigaAM v3 INT8. Отключает повторную сверку Whisper для ускорения вставки."
+                                    <TextBlock x:Name="DirectFastModeHint" Text="Распознавание русской речи через GigaAM v3 RNNT. Отключает повторную сверку Whisper для ускорения вставки."
                                                Style="{StaticResource Hint}" Margin="26,2,0,8" />
                                     <CheckBox x:Name="MixedLanguageCheck" Content="Смешанная русско-английская речь" Checked="GeneralSetting_OnChanged" Unchecked="GeneralSetting_OnChanged" />
                                     <CheckBox x:Name="NumbersCheck" Content="Преобразовывать числа в цифры" Checked="GeneralSetting_OnChanged" Unchecked="GeneralSetting_OnChanged" />
@@ -564,7 +564,7 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
                                         <TextBlock Text="Модели распознавания" Style="{StaticResource SectionTitle}" />
-                                        <TextBlock x:Name="RecognitionModelStatusText" Text="GigaAM + Whisper"
+                                        <TextBlock x:Name="RecognitionModelStatusText" Text="GigaAM v3 RNNT"
                                                    Style="{StaticResource Hint}" AutomationProperties.LiveSetting="Polite" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -575,7 +575,7 @@
                                     </StackPanel>
                                 </Grid>
                             </Border>
-                            <Border Style="{StaticResource Card}">
+                            <Border x:Name="TextEditorModelCard" Style="{StaticResource Card}">
                                 <StackPanel>
                                     <TextBlock Text="Текстовая Qwen" Style="{StaticResource SectionTitle}" />
                                 <StackPanel Margin="0,12,0,0">

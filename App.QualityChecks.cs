@@ -230,7 +230,7 @@ public partial class App
             {
                 passed, scorePostProcessing, vocabularyVersion = BuiltInVocabulary.Version,
                 profile = VoiceRuntimeProfile.Label, warmupMs, audioSeconds = samples.Length / 16000d,
-                runs, note = "Synthetic public fixture only. No claim about private speech or end-to-end delivery. No transcript persisted."
+                runs, note = "Explicit audio/reference fixture only. No claim about private speech or end-to-end delivery. No transcript persisted."
             }, new JsonSerializerOptions { WriteIndented = true }));
             Shutdown(passed ? 0 : 1);
         }

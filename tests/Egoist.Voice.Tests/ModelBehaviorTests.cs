@@ -29,10 +29,11 @@ public sealed class ModelBehaviorTests
     {
         var models = ModelCatalog.CreateRequiredModels();
 
-        Assert.Equal(6, models.Count);
+        Assert.Equal(5, models.Count);
         Assert.All(models, model => Assert.Equal(ModelKind.Speech, model.Kind));
         Assert.Equal(5, models.Count(model => !model.Optional));
-        Assert.Equal(ModelCatalog.GigaAmTokenizer, Assert.Single(models, model => model.Optional));
+        Assert.DoesNotContain(models, model => model.Optional);
+        Assert.DoesNotContain(ModelCatalog.GigaAmTokenizer, models);
         Assert.Equal(ModelCatalog.GigaAmEncoder.Id, models[0].Id);
         Assert.Contains(ModelCatalog.GigaAmTokens, models);
         Assert.Contains(ModelCatalog.Whisper, models);

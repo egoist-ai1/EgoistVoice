@@ -497,6 +497,7 @@ public static class CorpusBenchmark
         string whisperRuntimePreference = "auto",
         string whisperRuntimeLoaded = "not-loaded")
     {
+        enableContextualBias &= RussianAsrProfile.ContextualBiasSupported;
         var postProcessing = PostProcessingOptions.Default;
         return new BenchmarkParameters(
             nameof(HybridTranscriptionService),

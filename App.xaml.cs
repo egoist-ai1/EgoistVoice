@@ -687,6 +687,8 @@ public partial class App : System.Windows.Application
     {
         try
         {
+            if (!RussianAsrProfile.ContextualBiasSupported)
+                throw new NotSupportedException("Plain RNNT does not support the historical E2E BPE hotwords.");
             int baselineSilenceChars;
             using (var baseline = new GigaAmTranscriptionService())
             {
@@ -759,6 +761,8 @@ public partial class App : System.Windows.Application
                 "hotwords" => true,
                 _ => throw new ArgumentException("Decoder mode must be baseline or hotwords.", nameof(decoderMode))
             };
+            if (enableContextualBias && !RussianAsrProfile.ContextualBiasSupported)
+                throw new NotSupportedException("Use baseline decoder mode for plain GigaAM v3 RNNT.");
             var whisperRuntimePreference = WhisperRuntimePolicy.ConfigureForBenchmark(whisperRuntimeMode);
             corpusDirectory = Path.GetFullPath(corpusDirectory);
             var script = CorpusScript.Load(corpusDirectory);

@@ -78,7 +78,6 @@ public partial class MainWindow : Window, IDisposable
     private bool _disposed;
     private bool _waveRendering;
     private bool _activationCaptureActive;
-    private TimeSpan _lastWaveFrame;
     private CapsuleVisualStateKind? _lastVisualStateKind;
     private string? _lastAnnouncement;
     private bool _timerVisible;

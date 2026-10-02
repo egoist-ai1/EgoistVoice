@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [Parameter(Mandatory)][string]$WorkDirectory,
@@ -92,7 +92,7 @@ $defaultsPath = Join-Path $work 'dictation-defaults.json'
 Egoist Voice — русская диктовка, офлайн
 
 Закройте прежний Voice через трей. Запустите Egoist.Voice.exe.
-GigaAM и .NET включены. Настройки находятся в Data рядом с приложением.
+GigaAM v3 RNNT INT8 и .NET включены. Настройки находятся в Data рядом с приложением.
 Обычная сборка не включает Qwen; её можно добавить отдельным параметром сборки.
 По умолчанию выбран режим «Дословно»: без замены слов словарём, голосовых команд
 и автооформления. Ошибки самого распознавателя возможны.
@@ -112,8 +112,11 @@ $files = @(Get-ChildItem -LiteralPath $stage -File -Recurse | Sort-Object FullNa
 })
 $sourceRevision = (& git -C $project rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Could not bind source revision.' }
-$manifest = [ordered]@{ schemaVersion=1; version=$version; fileVersion=$fileVersion; sourceRevision=$sourceRevision; fileCount=$files.Count; unpackedBytes=($files | Measure-Object bytes -Sum).Sum; files=$files; defaults=[ordered]@{ path='Data/dictation.json'; sha256=(Get-FileHash -LiteralPath $defaultsPath).Hash.ToLowerInvariant(); preserveOnUpgrade=$true; preserveOnUninstall=$true } }
+$sourceDirty = [bool](@(& git -C $project status --porcelain).Count)
+if ($sourceDirty) { throw 'Freeze and commit the reviewed release source before packaging.' }
+$manifest = [ordered]@{ schemaVersion=1; version=$version; sourceDirty=$sourceDirty; fileVersion=$fileVersion; sourceRevision=$sourceRevision; fileCount=$files.Count; unpackedBytes=($files | Measure-Object bytes -Sum).Sum; files=$files; defaults=[ordered]@{ path='Data/dictation.json'; sha256=(Get-FileHash -LiteralPath $defaultsPath).Hash.ToLowerInvariant(); preserveOnUpgrade=$true; preserveOnUninstall=$true } }
 [IO.File]::WriteAllText((Join-Path $output 'russian-payload.manifest.json'), ($manifest | ConvertTo-Json -Depth 6), $utf8)
+[IO.File]::WriteAllText((Join-Path $output 'portable-stage.manifest.json'), ($manifest | ConvertTo-Json -Depth 6), $utf8)
 $include = Join-Path $work 'russian-payload.iss'
 $lines = @($files | ForEach-Object {
     $source = Join-Path $stage $_.path
@@ -135,7 +138,7 @@ $assemblyInfo = Join-Path $work 'BootstrapAssemblyInfo.cs'
 [IO.File]::WriteAllText($assemblyInfo, @"
 using System.Reflection;
 [assembly: AssemblyTitle("Egoist Voice Installer")]
-[assembly: AssemblyDescription("Offline Russian dictation and text editor")]
+[assembly: AssemblyDescription("Offline Russian RNNT dictation")]
 [assembly: AssemblyCompany("EGOIST")]
 [assembly: AssemblyProduct("Egoist Voice")]
 [assembly: AssemblyVersion("$fileVersion")]

@@ -259,9 +259,9 @@ public sealed class CorpusBenchmarkPrivacyTests
         Assert.False(parameters.ModelDownloadAllowed);
 
         var hotwords = CorpusBenchmark.CaptureParameters(enableContextualBias: true);
-        Assert.True(hotwords.GigaAmContextualBias);
-        Assert.Equal(GigaAmHotwordResources.Version, hotwords.GigaAmHotwordVersion);
-        Assert.Equal(GigaAmHotwordResources.GlobalScore, hotwords.GigaAmHotwordScore);
+        Assert.False(hotwords.GigaAmContextualBias);
+        Assert.Null(hotwords.GigaAmHotwordVersion);
+        Assert.Null(hotwords.GigaAmHotwordScore);
     }
 
     [Fact]

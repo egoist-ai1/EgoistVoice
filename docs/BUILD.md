@@ -91,3 +91,7 @@ Electron нужной версии). Версии закреплены в `insta
 Новый EXE запускает Inno без его мастера, получает действительный прогресс через
 файл состояния и показывает результат по коду завершения. Контекст React изолирован
 от Node; путь, опции и запуск обрабатываются узким preload-мостом.
+
+## Russian RNNT 2.3.0
+
+Один CPU plain-RNNT профиль; точные четыре файла и ревизия в docs/models/gigaam-v3-rnnt.json. Примените актуальный SHA-bound Models/Speech/id/file layout. Сначала dotnet restore Egoist.Voice.csproj -r win-x64 -p:VoiceFlavor=Compact -p:RuntimeFrameworkVersion=8.0.30. После commit чистых reviewed sources запустите Build-RussianInstaller.ps1 с явными OutputDirectory, своим task WorkDirectory, SpeechModelsRoot и -Build. Сборка не скачивает модели и не устанавливает приложение. Внешний bootstrap и Inno работают без React/Electron. Финальный russian-payload.manifest.json содержит sourceDirty=false, версию и полный состав после добавления лицензий; именно его передавайте transactional updater. Dev bin после чередования Full/Compact не является release payload; проверяйте финальный publish с portable marker.

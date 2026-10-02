@@ -507,11 +507,11 @@ public sealed class LocalTextFormatterTests
     }
 
     [Fact]
-    public void Compact_catalog_contains_only_existing_Russian_core_and_fits_model_budget()
+    public void Compact_catalog_contains_only_plain_Russian_RNNT_and_fits_model_budget()
     {
         var models = ModelCatalog.CreateCompactModels();
         Assert.Equal(4, models.Count);
-        Assert.Equal(326_322_304L, models.Sum(m => m.SizeBytes));
+        Assert.Equal(323_768_215L, models.Sum(m => m.SizeBytes));
         Assert.DoesNotContain(ModelCatalog.Whisper, models);
         Assert.All(models, m => Assert.Contains(m, ModelCatalog.CreateRequiredModels()));
     }
