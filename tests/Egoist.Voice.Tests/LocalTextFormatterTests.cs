@@ -9,6 +9,11 @@ using Egoist.Voice.Services;
 
 namespace Egoist.Voice.Tests;
 
+// Real timer budgets must run without unrelated parallel workload in shared CI.
+[CollectionDefinition("Timed services", DisableParallelization = true)]
+public sealed class TimedServicesCollection;
+
+[Collection("Timed services")]
 public sealed class LocalTextFormatterTests
 {
     [Fact]

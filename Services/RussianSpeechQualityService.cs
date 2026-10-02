@@ -99,7 +99,7 @@ public sealed class RussianSpeechQualityService : ITranscriptionService, ISample
             var format = FormatSpeechPunctuation;
             foreach (var chunk in chunks)
             {
-                var text = await DecodeChunkAsync(chunk.Samples.ToArray(), format, cancellationToken)
+                var text = await DecodeChunkAsync(GigaAmTranscriptionService.GetEngineSamples(chunk.Samples), format, cancellationToken)
                     .ConfigureAwait(false);
                 if (!string.IsNullOrWhiteSpace(text))
                     decoded.Add(new DecodedAudioChunk(text, chunk.ParagraphBreakBefore));
@@ -130,7 +130,7 @@ public sealed class RussianSpeechQualityService : ITranscriptionService, ISample
                 foreach (var chunk in AudioSampleReader.ReadChunks(audioPath, cancellationToken))
                 {
                     progress?.Report(new ModelProgress("Распознаю и оформляю", null));
-                    var value = await DecodeChunkAsync(chunk.Samples.ToArray(), format, cancellationToken)
+                    var value = await DecodeChunkAsync(GigaAmTranscriptionService.GetEngineSamples(chunk.Samples), format, cancellationToken)
                         .ConfigureAwait(false);
                     if (!string.IsNullOrWhiteSpace(value))
                         decoded.Add(new DecodedAudioChunk(value, chunk.ParagraphBreakBefore));

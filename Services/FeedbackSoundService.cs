@@ -113,7 +113,9 @@ public sealed class FeedbackSoundService : IDisposable
     {
         lock (_sync)
         {
-            if (_disposed || Volume <= 0) return;
+            // Disabled cues must not allocate wave buffers or load players during background
+            // startup/settings refresh. Preview still creates its requested cue on demand.
+            if (_disposed || !Enabled || Volume <= 0) return;
             foreach (FeedbackSound sound in Enum.GetValues<FeedbackSound>())
             {
                 try
