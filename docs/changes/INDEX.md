@@ -4,6 +4,7 @@
 
 ## Recent notes
 
+- [2026-10-02T010524Z-russian-rnnt-230-release](./2026-10-02T010524Z-russian-rnnt-230-release.md)
 - [2026-09-09T113000Z-final-221-publication](./2026-09-09T113000Z-final-221-publication.md)
 - [2026-09-09T111000Z-react-installer-spelling](./2026-09-09T111000Z-react-installer-spelling.md)
 - [2026-09-09T103600Z-literal-streaming-rc2](./2026-09-09T103600Z-literal-streaming-rc2.md)
@@ -13,11 +14,10 @@
 - [2026-08-07T235957Z-web-offline-github-delivery](./2026-08-07T235957Z-web-offline-github-delivery.md)
 - [2026-08-07T230344Z-one-file-installer-runtime-fix](./2026-08-07T230344Z-one-file-installer-runtime-fix.md)
 - [2026-08-07T215832Z-voice-full-offline-field-candidate](./2026-08-07T215832Z-voice-full-offline-field-candidate.md)
-- [2026-08-06T190639Z-ev-2206-voice-220-test-build](./2026-08-06T190639Z-ev-2206-voice-220-test-build.md)
 
 ## Archive
 
-- [2026/08](./archive/2026/08/) - 11 notes
+- [2026/08](./archive/2026/08/) - 12 notes
 - [2026/07](./archive/2026/07/) - 1 notes
 
-Hot set: 10. Archived: 12.
+Hot set: 10. Archived: 13.

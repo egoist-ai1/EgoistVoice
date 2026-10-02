@@ -1,5 +1,11 @@
 # Egoist Voice — application map
 
+## Russian Compact 2.3.0
+
+Warm WASAPI pre-roll 320 ms → whole session + release tail 350 ms → 16 kHz mono PCM → quiet-session acceptance without cropping → plain GigaAM v3 RNNT INT8 encoder / FP32 decoder/joiner, CPU greedy, up to 8 threads → deterministic text rules → safe delivery. Compact has one Russian profile and hides Qwen/Whisper/translation cards. Capsule cadence is 60 Hz (10 Hz with reduced animation).
+
+RussianAsrProfile, SpeechActivityDetector and CapsuleAnimationCadence own these policies. Build-RussianInstaller produces the native self-contained offline package; Update-CompactInstallation applies a verified transactional payload and preserves user Data. Full/translation flows below remain separate.
+
 ## Actors and flows
 
 - Warm WASAPI pre-roll → user presses configured trigger → in-memory session +

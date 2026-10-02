@@ -7,3 +7,4 @@
 Приёмка: hash-pinned четыре файла, реальный native decoder smoke; парное публичное сравнение precision/runtime; tests полной и Compact редакций; native UI previews; целостность self-contained payload/installer; транзакционный upgrade fixture/rollback; readback локальной версии, hashes, настроек и готовности модели; readback опубликованного релиза.
 
 Не утверждать персональный WER, безошибочность, качество интонации или проверку чистой VM без соответствующих измерений. Исторический Full Offline EV-2210 не переименовывается в пройденный. Corpus/audio/transcripts и пользовательские Data не включаются в Git/релиз. DNS не входит в задачу.
+Статус: выполнено и проверено 02.10.2026. [Релиз](https://github.com/egoist-ai1/EgoistVoice/releases/tag/v2.3.0), [итог](../releases/2.3.0.md), текущая установленная модель готова.

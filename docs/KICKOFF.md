@@ -1,5 +1,9 @@
 # KICKOFF — с чего начать новую сессию в этом проекте
 
+## Current route — 2026-10-02
+
+Start with STATUS → EV-2230 → releases/2.3.0.md. The Russian RNNT release is published and installed. The owner authorized model/settings/UI changes, publication and workstation replacement. Instructions below describe the historical 2.2 program; they are not the current kickoff or authority for 2.3. Personal quality and clean-VM limits remain explicit.
+
 Дата подготовки: `2026-08-02T16:37:11Z`.
 
 ## 1. Порядок чтения (не читайте больше, чем нужно)
