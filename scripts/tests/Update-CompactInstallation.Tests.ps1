@@ -241,9 +241,9 @@ Describe 'Compact installation transaction boundaries' {
     }
 
     It 'requires fresh primary and formatter markers for the exact PID when enabled' {
-        $started = [datetime]'2026-10-02T03:00:00Z'
-        $primary = '2026-10-02T03:00:01Z [7654] Russian ASR ready: engine=GigaAM v3 RNNT'
-        $formatter = '2026-10-02T03:00:02Z [7654] Russian formatter ready: engine=GigaAM v3 E2E RNNT'
+        $started = [DateTime]::UtcNow.AddSeconds(-5)
+        $primary = $started.AddSeconds(1).ToString('o') + ' [7654] Russian ASR ready: engine=GigaAM v3 RNNT'
+        $formatter = $started.AddSeconds(2).ToString('o') + ' [7654] Russian formatter ready: engine=GigaAM v3 E2E RNNT'
         (Get-ReadinessState -Lines @($primary) -ProcessId 7654 -StartedUtc $started -RequireFormatter $true).Ready | Should -BeFalse
         $state = Get-ReadinessState -Lines @($primary,$formatter) -ProcessId 7654 -StartedUtc $started -RequireFormatter $true
         $state.AsrReady | Should -BeTrue
@@ -252,17 +252,55 @@ Describe 'Compact installation transaction boundaries' {
     }
 
     It 'accepts primary readiness alone when audio punctuation is explicitly disabled' {
-        $state = Get-ReadinessState -Lines @('2026-10-02T03:00:01Z [7654] Russian ASR ready: engine=GigaAM v3 RNNT') -ProcessId 7654 -StartedUtc ([datetime]'2026-10-02T03:00:00Z') -RequireFormatter $false
+        $started = [DateTime]::UtcNow.AddSeconds(-5)
+        $primary = $started.AddSeconds(1).ToString('o') + ' [7654] Russian ASR ready: engine=GigaAM v3 RNNT'
+        $state = Get-ReadinessState -Lines @($primary) -ProcessId 7654 -StartedUtc $started -RequireFormatter $false
         $state.Ready | Should -BeTrue
         $state.FormatterReady | Should -BeFalse
     }
 
     It 'rejects stale other-PID wrong-engine and malformed readiness markers' {
-        $lines = @('2026-10-02T02:59:59Z [7654] Russian ASR ready: engine=GigaAM v3 RNNT','2026-10-02T03:00:01Z [7655] Russian ASR ready: engine=GigaAM v3 RNNT','2026-10-02T03:00:01Z [7654] Russian ASR ready: engine=GigaAM v3 E2E RNNT','invalid-time [7654] Russian ASR ready: engine=GigaAM v3 RNNT','2026-10-02T03:00:02Z [7654] Russian formatter ready: engine=GigaAM v3 E2E RNNT')
-        $state = Get-ReadinessState -Lines $lines -ProcessId 7654 -StartedUtc ([datetime]'2026-10-02T03:00:00Z') -RequireFormatter $true
+        $started = [DateTime]::UtcNow.AddSeconds(-5)
+        $fresh = $started.AddSeconds(1).ToString('o')
+        $lines = @(
+            ($started.AddSeconds(-1).ToString('o') + ' [7654] Russian ASR ready: engine=GigaAM v3 RNNT'),
+            ($fresh + ' [7655] Russian ASR ready: engine=GigaAM v3 RNNT'),
+            ($fresh + ' [7654] Russian ASR ready: engine=GigaAM v3 E2E RNNT'),
+            'invalid-time [7654] Russian ASR ready: engine=GigaAM v3 RNNT',
+            ($fresh + ' [7654] Russian formatter ready: engine=GigaAM v3 E2E RNNT')
+        )
+        $state = Get-ReadinessState -Lines $lines -ProcessId 7654 -StartedUtc $started -RequireFormatter $true
         $state.AsrReady | Should -BeFalse
         $state.FormatterReady | Should -BeTrue
         $state.Ready | Should -BeFalse
+    }
+
+    It 'rejects future readiness markers despite the matching PID and valid process start' {
+        $started = [DateTime]::UtcNow.AddSeconds(-5)
+        $future = [DateTime]::UtcNow.AddSeconds(60).ToString('o')
+        $futurePrimary = $future + ' [7654] Russian ASR ready: engine=GigaAM v3 RNNT'
+        $futureFormatter = $future + ' [7654] Russian formatter ready: engine=GigaAM v3 E2E RNNT'
+        $state = Get-ReadinessState -Lines @($futurePrimary,$futureFormatter) -ProcessId 7654 -StartedUtc $started -RequireFormatter $true
+        $state.AsrReady | Should -BeFalse
+        $state.FormatterReady | Should -BeFalse
+        $state.Ready | Should -BeFalse
+        (Get-ReadinessState -Lines @($futurePrimary) -ProcessId 7654 -StartedUtc $started -RequireFormatter $false).Ready | Should -BeFalse
+        $freshPrimary = $started.AddSeconds(1).ToString('o') + ' [7654] Russian ASR ready: engine=GigaAM v3 RNNT'
+        $mixed = Get-ReadinessState -Lines @($freshPrimary,$futureFormatter) -ProcessId 7654 -StartedUtc $started -RequireFormatter $true
+        $mixed.AsrReady | Should -BeTrue
+        $mixed.FormatterReady | Should -BeFalse
+        $mixed.Ready | Should -BeFalse
+    }
+
+    It 'allows a small clock skew within the five-second readiness tolerance' {
+        $started = [DateTime]::UtcNow.AddSeconds(-5)
+        $nearFuture = [DateTime]::UtcNow.AddSeconds(3).ToString('o')
+        $primary = $nearFuture + ' [7654] Russian ASR ready: engine=GigaAM v3 RNNT'
+        $formatter = $nearFuture + ' [7654] Russian formatter ready: engine=GigaAM v3 E2E RNNT'
+        $state = Get-ReadinessState -Lines @($primary,$formatter) -ProcessId 7654 -StartedUtc $started -RequireFormatter $true
+        $state.AsrReady | Should -BeTrue
+        $state.FormatterReady | Should -BeTrue
+        $state.Ready | Should -BeTrue
     }
 
     It 'recovers a recorded interrupted transaction without touching a user process' {

@@ -63,12 +63,14 @@ function Get-ReadinessState([string[]]$Lines, [int]$ProcessId, [DateTime]$Starte
     $asrReady = $false
     $formatterReady = $false
     $processStartedUtc = $StartedUtc.ToUniversalTime()
+    $latestAllowedUtc = [DateTime]::UtcNow.AddSeconds(5)
     foreach ($line in $Lines) {
         $asrMatch = $line -match ('\[' + $ProcessId + '\] Russian ASR ready: engine=GigaAM v3 RNNT$')
         $formatterMatch = $line -match ('\[' + $ProcessId + '\] Russian formatter ready: engine=GigaAM v3 E2E RNNT$')
         if (!$asrMatch -and !$formatterMatch) { continue }
         [DateTimeOffset]$stamp = [DateTimeOffset]::MinValue
-        if (![DateTimeOffset]::TryParse(($line -split ' ', 2)[0], [ref]$stamp) -or $stamp.UtcDateTime -lt $processStartedUtc) { continue }
+        if (![DateTimeOffset]::TryParse(($line -split ' ', 2)[0], [ref]$stamp) -or
+            $stamp.UtcDateTime -lt $processStartedUtc -or $stamp.UtcDateTime -gt $latestAllowedUtc) { continue }
         if ($asrMatch) { $asrReady = $true }
         if ($formatterMatch) { $formatterReady = $true }
     }
