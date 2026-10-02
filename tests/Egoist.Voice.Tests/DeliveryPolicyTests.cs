@@ -2,6 +2,7 @@ using Egoist.Voice.Services;
 
 namespace Egoist.Voice.Tests;
 
+[Collection("Timed services")]
 public sealed class DeliveryPolicyTests
 {
     [Theory]
