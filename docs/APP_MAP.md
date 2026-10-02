@@ -1,6 +1,6 @@
 # Egoist Voice — application map
 
-## Russian Compact 2.4.0 quality profile
+## Russian Compact 2.4.1 quality profile
 
 Warm WASAPI pre-roll 320 ms → complete session + release tail 350 ms → 16 kHz mono PCM → quiet-session acceptance without cropping → plain GigaAM v3 RNNT INT8 words → GigaAM v3 E2E RNNT INT8 on the same PCM → bounded punctuation/case projection → audio-confirmed known names → literal text rules → safe delivery. Both native engines use four CPU threads and greedy decoding; one user-facing profile. Disabling audio formatting retains the exact primary result. Capsule cadence remains 60 Hz (10 Hz reduced motion).
 
@@ -8,11 +8,11 @@ Warm WASAPI pre-roll 320 ms → complete session + release tail 350 ms → 16 kH
 
 Eight pinned model assets total 650090519 bytes. Source-only sherpa-onnx UTF-8 bindings fix Unicode model paths; official no-TTS native CAPI retains the stock frontend; ONNX Runtime stays unchanged. Build-RussianInstaller produces the native self-contained offline package; Update-CompactInstallation applies a verified transactional payload and preserves user Data. Full/translation flows below remain separate.
 
-## Current Windows patch candidate2.4.1
+## Shipped Windows patch 2.4.1
 
 `CaptureOperationQueue` owns FIFO native work outside the dispatcher and drains shutdown. `App` awaits background capture construction; `MainWindow` tracks init/start/release/cancel/model/translation work and exposes cached microphone state. `AudioCaptureService` resolves a fresh Windows default on Start and distinguishes transient unavailability from user pause; `MicrophoneDeviceCatalog` serializes topology observers. `SettingsWindow` refreshes inventory asynchronously, gates timers to visible pages and flushes volume before hiding. Capsule render/clock eligibility follows window visibility and reduced motion.
 
-Bounded text repairs support catalogue-backed Russian-name/preposition joins and exact uppercase abbreviation repetition only with secondary audio confirmation and two unchanged anchors. Unknown words/endings are preserved. No general secondary lexical switching, gain/decoder parameter change or new model is selected. Source integration Full1148/Compact1141+7 and exact source-bound native UI checks pass; final versioned package/installed readback remains pending.
+Bounded text repairs support catalogue-backed Russian-name/preposition joins and exact uppercase abbreviation repetition only with secondary audio confirmation and two unchanged anchors. Unknown words/endings are preserved. No general secondary lexical switching, gain/decoder parameter change or new model is selected. Final source Full1150/Compact1143+7 and cleanWindowsCI1150 pass; exact final UI24capsule/17settings/two startup modes and all545installedhashes match. Public release/tag66f79ad and installed2.4.1 are verified. [Resources](models/EVALUATION-2.4.1.md) distinguish background idle from cold CLI and unmeasured warm latency.
 
 ## Actors and flows
 
@@ -32,8 +32,7 @@ Bounded text repairs support catalogue-backed Russian-name/preposition joins and
   corpus-only WAV boundary. Current EV-2233 source adds an internal endpoint
   factory, native retirement outside callback locks with tracked cleanup and generation checks
   for stale callbacks, release tails and state notifications. Tests exercise the
-  actual service with fake IWaveIn; no microphone is opened. This delta is not yet
-  installed in2.4.0. Root WPF files and the remaining `Services/`,
+  actual service with fake IWaveIn; no microphone is opened. This delta is shipped and installed in2.4.1. Root WPF files and the remaining `Services/`,
   `Core/` paths own UI, hooks, inference and delivery.
 - `Core/BuiltInVocabulary.cs` owns canonical names and exact observed aliases;
   `Services/EntityProfilePolicy.cs` enables only justified technology/gaming

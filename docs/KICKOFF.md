@@ -2,7 +2,7 @@
 
 ## Current route — 2026-10-02
 
-Start with STATUS → active EV-2233 → artifacts/quality-next/gigaam-tuning-windows. The user chose currentGigaAMv3 tuning (5–10% desired quality gain), Windows/default-mic/resource/animation improvements and removal of unused trial models. EV-2232's50% search is superseded, not achieved.2.4 remains the immutable installed baseline; validate the new scope before final packaging. Historical2.2 instructions below do not define this task.
+Start with STATUS → EV-2233 → docs/releases/2.4.1.md and docs/models/EVALUATION-2.4.1.md. Current2.4.1 is published and installed; engineering/text/Windows work and cleanup are delivered. Desired5–10% acoustic gain is unproven; earlier50% scope superseded, not achieved. Do not redo accepted builds/inference/install/publication without a new reason. Preserve final source/tag66f79ad and accepted evidence. Historical2.2 instructions below do not define this task.
 
 Дата подготовки: `2026-08-02T16:37:11Z`.
 

@@ -1,14 +1,14 @@
 # EV-2233 — GigaAM v3 quality and Windows tuning
 
-Status: active, 2026-10-02. The user explicitly chose the installed GigaAM v3 as the foundation and changed the desired improvement from the earlier 50% search to 5–10%, with Windows stability, animation, resource and settings work. EV-2232 is superseded by this instruction, not achieved. Larger candidates are deferred and user-requested unused trial weights are removed with ownership receipts.
+Status: engineering/text/Windows release delivered, 2026-10-02. Version2.4.1 is published and installed under the owner's explicit instruction. The5–10% acoustic improvement is unachieved; EV-2232's earlier50% scope was superseded, not achieved. [Final release](../releases/2.4.1.md), [evaluation](../models/EVALUATION-2.4.1.md).
 
-## Measured status — 2026-10-02
+## Measured final status
 
-The first frozen adaptive-b05 control assessment is complete and rejected:114→122 word errors,220→237 normalized character errors on192 recordings/1204 reference words. Root canonical C# verifies384 baseline/candidate pairs after output-lock3cead68ae9d44855ab4be4720c120100cb1e4cb4c581062bda2660db455282b2. No gain/BlankPenalty change is integrated. Three synthetic float negatives remain empty across3 decodes each. One Windows DLL filename-case bookkeeping failure was retained and corrected before the first control decode;113 root synthetic checks passed with unchanged decoder/transform/settings. Guards remained4GiB physical/globalcommit and1.5GiB ownprivate;223 samples/maxgap63ms, observedownprivate708702208B, exactworker22096 terminal. This is a single standalone CPU-run scope, not product cold-start/peak proof.
+Stock plain words + E2E punctuation/case retained. Frozen adaptive-b05 control192 worsened114→122 word/220→237 character errors and was rejected after output-lock/rootC#384 scoring. Raw E2E dev12894/276 versus primary68/179 also rejects general secondary replacement. No tuning on the exposed control. Text191/41new cases and public80 saved-output byte equality26/130/241 accepted; personal acoustic corrections unverified.
 
-The control cannot be reused for candidate selection. Next same-pair analysis is development-only raw E2E complementarity, if justified, then fresh predetermined control. Text191tests/public80 byte equality and cleanup63.55GB are root accepted. Coherent source22 Full1148/Compact1141+7 and exact Compact native-after24capsule/17settings/8PNG/25resource states pass. The matched synthetic5sec resource comparison reduces hidden-listening/minimized CPU and hidden allocation, but not all case CPU; real-driver/FPS/full-product cold-start are unmeasured. Raw E2E dev128 scores94word276char vs current68/179; general secondary replacement is rejected. Final versioned2.4.1 package/public CLI/startup/readback gates remain. Installed2.4 is unchanged.
+Final source/tag66f79ad: Full1150, Compact1143+7, clean WindowsCI1150, exact finalUI24capsule/17settings/two startup modes. Package545files841185414B; installer445432853B; all8public assets verified. Transaction committed, all545installedhashes match,8models unchanged,bothenginesready,defaultmic selected,manualpause+13otherproperties preserved,5Datafilesmetadata preserved/no payload read. Actual installed isolated publicCLI exactoutput passes. Updater12+2/Pester24/Analyzer0/byte-exact rollback passes. Installer not run on workstation.
 
-The latest user instruction explicitly reaffirmed optimization, construction, checking, installation and publication of the best current model.2.4.1 is an engineering/text update; acoustic5–10% remains an unachieved research target and is not a release promise. Keep verified lexical/formatting nonregression and applicable Compact runtime/package gates.
+Actual installed idle20samples44.51s: whole-machine16CPUaverage0.008775%,maxinterval0.086769%,WS917.5MB/private842.8MB,GPUmaxownedengine0%,ded12.31MB. Three newcoldCLI runs median2.371s (includes startup/load/decode/exit), peakWS1.112GB, averageCPU10.83–12.31%/50mspeak59.23%; no activeGPU/warmlatency claim. Matched synthetic WPF improvement is case-specific. Cleanup23984files63549636138logicalB accepted;4latertemporarycopies separate. Personal audio, long real-driver endurance and cleanVM remain future evidence needs.
 
 ## Acceptance
 
@@ -21,14 +21,6 @@ The latest user instruction explicitly reaffirmed optimization, construction, ch
 7. Remove only downloaded-by-task unused experimental models, duplicate weights and clearly owned test runtime caches after exact boundary/ownership/hash/readback checks. Preserve working GigaAM assets, settings/Data/history, source/reports/corpus/unique evidence and unrelated models/projects. Historical immutable manifests retain acceptance-time evidence; removal ledgers disclose any now-deleted model payloads.
 8. Integrate independent diffs, run required actual Full/Compact and source-bound native/UI checks, create a source-bound final candidate only when these gates pass, then use prior publication/replacement authorization. Existing release tags/assets remain immutable and workstation installer is not run. User settings/history preserved; Windows default microphone selection is the explicitly requested setting.
 
-## Ownership
+## Final ownership and follow-up
 
-Root: acceptance, Settings/Contracts/Tray, held-out scoring, docs, integration, resource validation, packaging/publication/replacement.
-plain_rnnt: App/MainWindow/Models tracked native worker, snapshots and shutdown lifecycle; related isolated WPF tests.
-release_audit: AudioCaptureService/MicrophoneDeviceCatalog + focused tests.
-ui_refresh: Capsule controls/cadence/MainWindow.Visuals + focused tests.
-asr_models: locked current-GigaAM candidate runner and later authorised lexical implementation; Tone cleanup.
-multilingual: cleanup aggregate and deferred Vibe receipt; former600M cleanup is complete. Capture integration ownership returns to root after the focused owner work; final source-bound checks remain pending.
-Each source/artifact has one writer; benchmark/build windows are coordinated.
-
-Final version startup correction: clean Windows CI exposed initial reduced-motion notification before ExitStoryboard assignment (21constructor failures). Root deterministic isolated test reproduced old-source1pass/1failure without changing Windows preferences. Moving storyboard initialization before subscription/settings notification fixes it; new Full1150/Compact1143+7 pass. Historical1148/1141 and native22source evidence retain their pre-correction bindings. Clean CI/payload follow.
+All delegated source/evidence owners completed and released ownership. Root accepted source-bound integration, packaging, installation, resource sampling and publication. No required release/install operation remains. Further5–10% acoustic work needs a fresh predetermined independent control and, for personal examples, original audio; the exposed192 cannot select later candidates. Exact real-driver endurance and installer lifecycle are optional isolated follow-ups, not proven by fake-service tests.
