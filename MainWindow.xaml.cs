@@ -936,6 +936,7 @@ public partial class MainWindow : Window, IDisposable
         var settings = _settingsService.Load();
         MenuDirectFastMode.IsChecked = settings.DirectGigaamFastMode;
         MenuDirectFastMode.Visibility = VoiceRuntimeProfile.IsPortable ? Visibility.Collapsed : Visibility.Visible;
+        MenuFormatWithQwen.Visibility = VoiceRuntimeProfile.IsPortable ? Visibility.Collapsed : Visibility.Visible;
         MenuFormatWithQwen.IsChecked = settings.FormatWithQwen && !settings.PreserveSpokenWords;
         MenuSoundFeedback.IsChecked = _sounds.Enabled;
     }
@@ -953,6 +954,7 @@ public partial class MainWindow : Window, IDisposable
 
     private void MenuFormatWithQwen_OnClick(object sender, RoutedEventArgs e)
     {
+        if (VoiceRuntimeProfile.IsPortable) return;
         var current = _settingsService.Load();
         _settingsService.Save(current with { FormatWithQwen = MenuFormatWithQwen.IsChecked,
             PreserveSpokenWords = !MenuFormatWithQwen.IsChecked });

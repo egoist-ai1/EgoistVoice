@@ -124,8 +124,8 @@ public sealed class TrayService : IDisposable
         RefreshSettingsChecks();
 
         _modelStatus = CreateItem(modelManager.AreAllModelsReady
-            ? "GigaAM + Whisper · готовы"
-            : "GigaAM + Whisper · подготовка…");
+            ? (VoiceRuntimeProfile.IsPortable ? "GigaAM v3 RNNT · готово" : "GigaAM + Whisper · готовы")
+            : (VoiceRuntimeProfile.IsPortable ? "GigaAM v3 RNNT · подготовка…" : "GigaAM + Whisper · подготовка…"));
         _modelStatus.Enabled = false;
         menu.Items.Add(_modelStatus);
 
@@ -604,9 +604,9 @@ public sealed class TrayService : IDisposable
         var failed = progress.Stage == ModelTransferStage.Failed;
         var ready = progress.Stage == ModelTransferStage.Ready && _modelManager.AreAllModelsReady;
         _modelStatus.Text = failed
-            ? "GigaAM + Whisper · ошибка загрузки"
+            ? (VoiceRuntimeProfile.IsPortable ? "GigaAM v3 RNNT · ошибка загрузки" : "GigaAM + Whisper · ошибка загрузки")
             : ready
-                ? "GigaAM + Whisper · готовы"
+                ? (VoiceRuntimeProfile.IsPortable ? "GigaAM v3 RNNT · готово" : "GigaAM + Whisper · готовы")
                 : ModelProgressFormatter.Detail(progress);
         _showDownload.Visible = !ready && !failed;
         _retryDownload.Visible = failed;
