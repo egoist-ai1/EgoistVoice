@@ -4,6 +4,7 @@
 
 ## Recent notes
 
+- [2026-10-02T162134Z-current-model-resource-candidate-242](./2026-10-02T162134Z-current-model-resource-candidate-242.md)
 - [2026-10-02T153731Z-gigaam-windows-241-published-resources](./2026-10-02T153731Z-gigaam-windows-241-published-resources.md)
 - [2026-10-02T144800Z-reduced-motion-startup-241](./2026-10-02T144800Z-reduced-motion-startup-241.md)
 - [2026-10-02T140514Z-gigaam-windows-integration-241-candidate](./2026-10-02T140514Z-gigaam-windows-integration-241-candidate.md)
@@ -13,13 +14,12 @@
 - [2026-10-02T082318Z-gigachat-bounded-load-and-tone-plan](./2026-10-02T082318Z-gigachat-bounded-load-and-tone-plan.md)
 - [2026-10-02T073138Z-quality-measurements-v2-report](./2026-10-02T073138Z-quality-measurements-v2-report.md)
 - [2026-10-02T065625Z-capture-lifecycle-and-full-model-measurements](./2026-10-02T065625Z-capture-lifecycle-and-full-model-measurements.md)
-- [2026-10-02T054800Z-quality-50-measured-stage](./2026-10-02T054800Z-quality-50-measured-stage.md)
 
 ## Archive
 
-- [2026/10](./archive/2026/10/) - 6 notes
+- [2026/10](./archive/2026/10/) - 7 notes
 - [2026/09](./archive/2026/09/) - 6 notes
 - [2026/08](./archive/2026/08/) - 15 notes
 - [2026/07](./archive/2026/07/) - 1 notes
 
-Hot set: 10. Archived: 28.
+Hot set: 10. Archived: 29.

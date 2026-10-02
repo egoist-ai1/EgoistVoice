@@ -250,9 +250,11 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
             using var stream = _recognizer!.CreateStream();
             stream.AcceptWaveform(SampleRate, GetEngineSamples(chunks[index].Samples));
             _recognizer.Decode(stream);
-            if (!string.IsNullOrWhiteSpace(stream.Result.Text))
+            // Reading Result marshals token/timing arrays as well as text. Retrieve it once.
+            var text = stream.Result.Text;
+            if (!string.IsNullOrWhiteSpace(text))
             {
-                decoded.Add(new DecodedAudioChunk(stream.Result.Text.Trim(), chunks[index].ParagraphBreakBefore));
+                decoded.Add(new DecodedAudioChunk(text.Trim(), chunks[index].ParagraphBreakBefore));
             }
         }
 
@@ -363,7 +365,7 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
         }
     }
 
-    private static float[] GetEngineSamples(ReadOnlyMemory<float> samples)
+    internal static float[] GetEngineSamples(ReadOnlyMemory<float> samples)
     {
         if (MemoryMarshal.TryGetArray(samples, out var segment) &&
             segment.Offset == 0 && segment.Count == segment.Array!.Length)

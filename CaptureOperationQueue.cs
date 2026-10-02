@@ -33,7 +33,11 @@ internal sealed class CaptureOperationQueue(IAudioCaptureService capture)
                 }
                 finally { lock (_gate) _pending--; }
             });
-            _tail = next;
+            // Keep only a completion barrier: retaining Task<T> here would also keep the
+            // last capture/result array alive while the queue is idle. The caller still owns
+            // the original task, including its result, cancellation or failure.
+            _tail = next.ContinueWith(static completed => { _ = completed.Exception; },
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             return next;
         }
     }

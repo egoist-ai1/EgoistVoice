@@ -1,4 +1,4 @@
-﻿using Egoist.Voice.Services;
+using Egoist.Voice.Services;
 
 namespace Egoist.Voice.Tests;
 
@@ -20,6 +20,20 @@ public sealed class RussianSpeechQualityTests
         Assert.Equal(original, primary.LastSamples);
         Assert.True(service.FormattingAvailable);
         Assert.Equal(AudioFormattingStatus.Completed, result.AudioFormatting);
+    }
+
+    [Fact]
+    public async Task Short_memory_dictation_reuses_original_samples_without_a_recording_copy()
+    {
+        var pcm = new float[320_000];
+        var primary = new FakeEngine("исходные слова");
+        var formatter = new FakeEngine("Исходные слова.");
+        using var service = new RussianSpeechQualityService(primary, formatter);
+        var result = await service.TranscribeSamplesAsync(pcm, 16_000, CancellationToken.None);
+        Assert.Same(pcm, primary.ReceivedSamples);
+        Assert.Same(pcm, formatter.ReceivedSamples);
+        Assert.Equal("Исходные слова.", result.Text);
+        Assert.Equal(primary.LastSamples, formatter.LastSamples);
     }
 
     [Fact]
@@ -211,6 +225,7 @@ public sealed class RussianSpeechQualityTests
         public int WarmupCalls;
         public int DecodeCalls;
         public float[]? LastSamples;
+        public float[]? ReceivedSamples;
         public Exception? WarmupFailure;
         public Exception? DecodeFailure;
         public Action? AfterDecode;
@@ -225,7 +240,7 @@ public sealed class RussianSpeechQualityTests
         }
         public async Task<TranscriptionResult> TranscribeSamplesAsync(float[] samples, int sampleRate, CancellationToken cancellationToken)
         {
-            var call = Interlocked.Increment(ref DecodeCalls); LastSamples = samples.ToArray();
+            var call = Interlocked.Increment(ref DecodeCalls); ReceivedSamples = samples; LastSamples = samples.ToArray();
             if (BeforeDecode is not null) await BeforeDecode(call);
             if (DecodeFailure is not null) throw DecodeFailure;
             AfterDecode?.Invoke(); return new TranscriptionResult(text, TimeSpan.Zero);

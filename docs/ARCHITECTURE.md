@@ -110,3 +110,7 @@
 
 - Любая деталь, не подтверждённая указанными источниками или свежей проверкой,
   считается `not verified` и не должна достраиваться по предположению.
+
+## 2.4.2 resource ownership
+
+Short memory dictation reuses the entire original float array when offset0/count==array length; slices retain bounded copies. Each native stream Result is marshaled once. Capture queue stores a completion-only barrier; typed results remain caller-owned. Disabled feedback cues are loaded only if enabled or explicitly previewed. Models/native runtime/CPU4/arena/PCM stay unchanged. Generic queue ownership does not establish an ordinary idle leak. [EV-2234](tickets/EV-2234-current-model-resource-minimization.md).
