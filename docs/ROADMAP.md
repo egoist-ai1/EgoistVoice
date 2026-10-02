@@ -1,12 +1,12 @@
 # Egoist Voice — roadmap
 
-## Current quality candidate — 2026-10-02
+## Current quality release — 2026-10-02
 
-EV-2231 / 2.4.0 source is verified: plain words + audio punctuation/case and conservative known names; Full1037, Compact1030/7skip and actual public80 pass. Packaging/publication/local replacement pending. Personal acoustic quality and clean-Windows installer lifecycle remain unverified. [Evaluation](models/EVALUATION-2.4.0.md).
+EV-2231 / [2.4.0](https://github.com/egoist-ai1/EgoistVoice/releases/tag/v2.4.0) is published and installed: plain words + audio punctuation/case and conservative known names. Full/CI1037, Compact1030/7skip, Pester34 and exact shipped public80 pass.545 installed files match; both engines ready, punctuation on, existing user settings/Data preserved, actual installed CLI smoke passed. Public punctuation errors−53.07%/raw character errors−57.94%, lexical26/1169 unchanged. Personal acoustic/English-name/prosody gold and clean-Windows installer lifecycle remain future checks. [Evaluation](models/EVALUATION-2.4.0.md).
 
 ## Previous publication — 2026-10-02
 
-EV-2230 / [2.3.0](https://github.com/egoist-ai1/EgoistVoice/releases/tag/v2.3.0) is published and installed: single Russian plain RNNT profile, quiet acceptance fix, bounded native animation and transactional upgrade. CI920, independent package hashes and current installed readiness pass. Personal difficult-speech corpus and clean Windows lifecycle remain separate follow-up checks; historical Full EV-2210 is not declared complete.
+EV-2230 / [2.3.0](https://github.com/egoist-ai1/EgoistVoice/releases/tag/v2.3.0) was published and installed before2.4: single Russian plain RNNT profile, quiet acceptance fix, bounded native animation and transactional upgrade. CI920, independent package hashes and current installed readiness pass. Personal difficult-speech corpus and clean Windows lifecycle remain separate follow-up checks; historical Full EV-2210 is not declared complete.
 
 Программный контекст обоих продуктов и порядок фаз до финальных установщиков —
 в [`PROGRAM-PLAN.md`](../../egoist-translator/docs/program/PROGRAM-PLAN.md);
