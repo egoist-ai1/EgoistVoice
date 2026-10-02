@@ -2,6 +2,10 @@ using System.Runtime.CompilerServices;
 
 namespace Egoist.Voice.Tests;
 
+[CollectionDefinition("Resource lifetime", DisableParallelization = true)]
+public sealed class ResourceLifetimeCollection;
+
+[Collection("Resource lifetime")]
 public sealed class CaptureOperationQueueLifetimeTests
 {
     [Fact]
