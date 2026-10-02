@@ -1,4 +1,4 @@
-namespace Egoist.Voice.Services;
+﻿namespace Egoist.Voice.Services;
 
 public readonly record struct VoiceTimbreLevel(
     float Overall,
@@ -187,7 +187,17 @@ public interface IModelManager : IDisposable
     Task DownloadRequiredModelsAsync(CancellationToken cancellationToken);
 }
 
-public sealed record TranscriptionResult(string Text, TimeSpan Elapsed);
+public enum AudioFormattingStatus
+{
+    NotRequested,
+    Completed,
+    Unavailable
+}
+
+public sealed record TranscriptionResult(string Text, TimeSpan Elapsed)
+{
+    public AudioFormattingStatus AudioFormatting { get; init; }
+}
 
 /// <summary>
 /// A percentage of <c>null</c> means indeterminate — a stage that has no meaningful fraction, such

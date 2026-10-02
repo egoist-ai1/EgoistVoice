@@ -46,7 +46,7 @@ public static class ModelProgressFormatter
             _ => "Модель"
         };
         return progress.Stage == ModelTransferStage.Downloading
-            ? $"Whisper · {progress.Percentage:0}%"
+            ? $"Модель · {progress.Percentage:0}%"
             : progress.Stage is ModelTransferStage.Verifying or ModelTransferStage.Loading
                 ? $"{stage} · {progress.Percentage:0}%"
                 : stage;

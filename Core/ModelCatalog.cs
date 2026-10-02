@@ -46,6 +46,42 @@ public static class ModelCatalog
         195,
         "48c9111eb77c9c42d08ecc71c00c09407ef2cce01195d72b7cc0c3c08ce89213");
 
+    public static readonly ModelDescriptor GigaAmE2eEncoder = new(
+        "gigaam-v3-e2e-rnnt-int8-v1",
+        "GigaAM v3 · оформление · ядро",
+        ModelKind.Speech,
+        new Uri(GigaAmBaseUri + "gigaam_v3_e2e_rnnt_encoder_int8.onnx"),
+        "gigaam_v3_e2e_rnnt_encoder_int8.onnx",
+        318_995_997,
+        "2cac62d0c270bd128f898f2be1a2d34780d524a6e9483888ebac7b00f97410f1");
+
+    public static readonly ModelDescriptor GigaAmE2eDecoder = new(
+        "gigaam-v3-e2e-rnnt-decoder-v1",
+        "GigaAM v3 · оформление · декодер",
+        ModelKind.Speech,
+        new Uri(GigaAmBaseUri + "gigaam_v3_e2e_rnnt_decoder.onnx"),
+        "gigaam_v3_e2e_rnnt_decoder.onnx",
+        4_600_058,
+        "781971998e6a355d6a714f6932a30eab295e7ba0d14fd7e0f78c83b87e811860");
+
+    public static readonly ModelDescriptor GigaAmE2eJoiner = new(
+        "gigaam-v3-e2e-rnnt-joiner-v1",
+        "GigaAM v3 · оформление · связка",
+        ModelKind.Speech,
+        new Uri(GigaAmBaseUri + "gigaam_v3_e2e_rnnt_joint.onnx"),
+        "gigaam_v3_e2e_rnnt_joint.onnx",
+        2_712_896,
+        "602ff7017a93311aad34df1437c8d7f49911353c13d6eae7a6ee7b041339465c");
+
+    public static readonly ModelDescriptor GigaAmE2eTokens = new(
+        "gigaam-v3-e2e-rnnt-tokens-v1",
+        "GigaAM v3 · оформление · словарь",
+        ModelKind.Speech,
+        new Uri(GigaAmBaseUri + "gigaam_v3_e2e_rnnt_tokens.txt"),
+        "gigaam_v3_e2e_rnnt_tokens.txt",
+        13_353,
+        "7ddf22514c42c531358182c81446a8159771e9921019f09ae743ea622d40221d");
+
     /// <summary>
     /// Historical E2E tokenizer retained for explicit compatibility tools. The plain RNNT
     /// production model uses 34 character tokens and must not load this SentencePiece vocabulary.
@@ -74,4 +110,11 @@ public static class ModelCatalog
 
     public static IReadOnlyList<ModelDescriptor> CreateCompactModels() =>
         [GigaAmEncoder, GigaAmDecoder, GigaAmJoiner, GigaAmTokens];
+
+    public static IReadOnlyList<ModelDescriptor> CreateFormattingModels() =>
+        [GigaAmE2eEncoder, GigaAmE2eDecoder, GigaAmE2eJoiner, GigaAmE2eTokens];
+
+    public static IReadOnlyList<ModelDescriptor> CreateRussianQualityModels() =>
+        [GigaAmEncoder, GigaAmDecoder, GigaAmJoiner, GigaAmTokens,
+            GigaAmE2eEncoder, GigaAmE2eDecoder, GigaAmE2eJoiner, GigaAmE2eTokens];
 }

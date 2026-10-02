@@ -1,0 +1,820 @@
+{
+  "upstreamRepository": "https://github.com/k2-fsa/sherpa-onnx",
+  "upstreamRevision": "142807252687d81b40d6315f23470a1512a00de3",
+  "upstreamTag": "v1.13.4",
+  "namespace": "SherpaOnnx",
+  "assemblyName": "Egoist.Sherpa.Onnx.Utf8",
+  "targetFramework": "net8.0",
+  "lpstrReplacements": 162,
+  "ansiReturnReplacements": 2,
+  "files": [
+    {
+      "path": "src/AudioEvent.cs",
+      "upstreamPath": "scripts/dotnet/AudioEvent.cs",
+      "originalSha256": "b50346fe95036fa56fd69ddb87a44bbbbb0692281ec15c1f9c99ee478c3a3433",
+      "patchedSha256": "b50346fe95036fa56fd69ddb87a44bbbbb0692281ec15c1f9c99ee478c3a3433",
+      "modified": false,
+      "vendorPath": "src/AudioEvent.cs.txt"
+    },
+    {
+      "path": "src/AudioTagging.cs",
+      "upstreamPath": "scripts/dotnet/AudioTagging.cs",
+      "originalSha256": "4b70d723f8f4df7acda848fb6391a81d42c55e001346b1fc7d2469e725404301",
+      "patchedSha256": "4b70d723f8f4df7acda848fb6391a81d42c55e001346b1fc7d2469e725404301",
+      "modified": false,
+      "vendorPath": "src/AudioTagging.cs.txt"
+    },
+    {
+      "path": "src/AudioTaggingConfig.cs",
+      "upstreamPath": "scripts/dotnet/AudioTaggingConfig.cs",
+      "originalSha256": "1a6e97c4f3303a932f81e8832fd118470d39e395133e7c579110d4994f98d1ac",
+      "patchedSha256": "7add1768b010915dd88593c431e5fc5bf7938e61a3d5efbf37372b16ba8963e0",
+      "modified": true,
+      "vendorPath": "src/AudioTaggingConfig.cs.txt"
+    },
+    {
+      "path": "src/AudioTaggingModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/AudioTaggingModelConfig.cs",
+      "originalSha256": "04828773ddb7bb314e3ddef5e181372f88901add2622dcdf4556cba824903eb7",
+      "patchedSha256": "accfa4d468081c12048c0376d5b4ff7c15c772800856fb0900da81c31116c71e",
+      "modified": true,
+      "vendorPath": "src/AudioTaggingModelConfig.cs.txt"
+    },
+    {
+      "path": "src/CircularBuffer.cs",
+      "upstreamPath": "scripts/dotnet/CircularBuffer.cs",
+      "originalSha256": "39a8cbb917d4226450ccb8e9cac3e8be89d88ca3d6fbfcca55e8750cb94390f9",
+      "patchedSha256": "39a8cbb917d4226450ccb8e9cac3e8be89d88ca3d6fbfcca55e8750cb94390f9",
+      "modified": false,
+      "vendorPath": "src/CircularBuffer.cs.txt"
+    },
+    {
+      "path": "src/DenoisedAudio.cs",
+      "upstreamPath": "scripts/dotnet/DenoisedAudio.cs",
+      "originalSha256": "1eb917a0d84cce58c94e5434a899c5e4dc7b48bfb0e41317e70beee9d84192fb",
+      "patchedSha256": "1eb917a0d84cce58c94e5434a899c5e4dc7b48bfb0e41317e70beee9d84192fb",
+      "modified": false,
+      "vendorPath": "src/DenoisedAudio.cs.txt"
+    },
+    {
+      "path": "src/Dll.cs",
+      "upstreamPath": "scripts/dotnet/Dll.cs",
+      "originalSha256": "9ee1fab62e5fe1e76a791d32323f166bf383c050de2d6ba3e8c10008b449d625",
+      "patchedSha256": "9ee1fab62e5fe1e76a791d32323f166bf383c050de2d6ba3e8c10008b449d625",
+      "modified": false,
+      "vendorPath": "src/Dll.cs.txt"
+    },
+    {
+      "path": "src/FastClusteringConfig.cs",
+      "upstreamPath": "scripts/dotnet/FastClusteringConfig.cs",
+      "originalSha256": "8e2f2f7763de753e42ed3400ad712af1bcbad240a6e694be7936398bff54f5bd",
+      "patchedSha256": "8e2f2f7763de753e42ed3400ad712af1bcbad240a6e694be7936398bff54f5bd",
+      "modified": false,
+      "vendorPath": "src/FastClusteringConfig.cs.txt"
+    },
+    {
+      "path": "src/FeatureConfig.cs",
+      "upstreamPath": "scripts/dotnet/FeatureConfig.cs",
+      "originalSha256": "33be1f78066d1052fea0c95e70db510a7ebc3becd08acafa12e151f30766c2c7",
+      "patchedSha256": "33be1f78066d1052fea0c95e70db510a7ebc3becd08acafa12e151f30766c2c7",
+      "modified": false,
+      "vendorPath": "src/FeatureConfig.cs.txt"
+    },
+    {
+      "path": "src/HomophoneReplacerConfig.cs",
+      "upstreamPath": "scripts/dotnet/HomophoneReplacerConfig.cs",
+      "originalSha256": "5bf5fba96d61806fa091f4df278d88a90323cbca9c35aa667321dbb743ff9b1f",
+      "patchedSha256": "1e8c5e800749ecb877295494296065b49ee71506e17d18ea1c221d2c5d2d312a",
+      "modified": true,
+      "vendorPath": "src/HomophoneReplacerConfig.cs.txt"
+    },
+    {
+      "path": "src/KeywordResult.cs",
+      "upstreamPath": "scripts/dotnet/KeywordResult.cs",
+      "originalSha256": "ecd64caa54ddd35e315abae11f23b1189bc175dd60650891492d31865b07853f",
+      "patchedSha256": "ecd64caa54ddd35e315abae11f23b1189bc175dd60650891492d31865b07853f",
+      "modified": false,
+      "vendorPath": "src/KeywordResult.cs.txt"
+    },
+    {
+      "path": "src/KeywordSpotter.cs",
+      "upstreamPath": "scripts/dotnet/KeywordSpotter.cs",
+      "originalSha256": "195d67e7ef69096774ebf872d873fa839d969df071ac77221a136b99a8548db8",
+      "patchedSha256": "195d67e7ef69096774ebf872d873fa839d969df071ac77221a136b99a8548db8",
+      "modified": false,
+      "vendorPath": "src/KeywordSpotter.cs.txt"
+    },
+    {
+      "path": "src/KeywordSpotterConfig.cs",
+      "upstreamPath": "scripts/dotnet/KeywordSpotterConfig.cs",
+      "originalSha256": "7d95613df859aa92f804805b38150dc5985342858508a1912b3eeb399005647e",
+      "patchedSha256": "ee9c45db0b3dfa3f31537634ec2f53740b36718eebc0c39507b3a3ed874d6e6a",
+      "modified": true,
+      "vendorPath": "src/KeywordSpotterConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineCanaryModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineCanaryModelConfig.cs",
+      "originalSha256": "902369be5d04493f25affbafac6ec910ed42462cd2ed1a7f3b2ae00feb402071",
+      "patchedSha256": "aa90df3cb88604bb6b9e606ea8674027cc7b6bacf7a29316bc644aaa70b42538",
+      "modified": true,
+      "vendorPath": "src/OfflineCanaryModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineCohereTranscribeModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineCohereTranscribeModelConfig.cs",
+      "originalSha256": "6d1bc8ddaf70dafe04fcd4041d524bdea99f1bd17c2b69c4de2814b207517da5",
+      "patchedSha256": "514b33759776e766da617aaa4262c047b9aa07ec47794a8bbe7959f30df4e130",
+      "modified": true,
+      "vendorPath": "src/OfflineCohereTranscribeModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineDolphinModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineDolphinModelConfig.cs",
+      "originalSha256": "7340d39b0b18086f50c2664206463ad197fd200c7bd22043db68ad5cd8c44c6a",
+      "patchedSha256": "b9c077d6327f1a660b5af5779b0058e412a5cdae9a61bf82003afd41a0cca972",
+      "modified": true,
+      "vendorPath": "src/OfflineDolphinModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineFireRedAsrCtcModel.cs",
+      "upstreamPath": "scripts/dotnet/OfflineFireRedAsrCtcModel.cs",
+      "originalSha256": "0fe999b51ddd1d3bb055cc00b809625742781d411ccb4bff00b063f39fdea480",
+      "patchedSha256": "24ff3afca50932ad6be5685eaac54aaff7e7adbf618136180e8baa1c3385bf36",
+      "modified": true,
+      "vendorPath": "src/OfflineFireRedAsrCtcModel.cs.txt"
+    },
+    {
+      "path": "src/OfflineFireRedAsrModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineFireRedAsrModelConfig.cs",
+      "originalSha256": "e35818f4d0117af889b82bd1c6ed7f56874ec85078d64f0b4f17d880c8382159",
+      "patchedSha256": "159119dbe917933758ac252bdf122915982399473b53014f7b2dc72dab5fae57",
+      "modified": true,
+      "vendorPath": "src/OfflineFireRedAsrModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineFunAsrNanoModel.cs",
+      "upstreamPath": "scripts/dotnet/OfflineFunAsrNanoModel.cs",
+      "originalSha256": "c712a6d904e6fe778826b3cfe6e9f582a1b4c5ee30698048595145bbd4be045a",
+      "patchedSha256": "bec92addb1d0f848e7d39e83a82fd4f9d15e70b9354bed4cee8b8ab8e6876b25",
+      "modified": true,
+      "vendorPath": "src/OfflineFunAsrNanoModel.cs.txt"
+    },
+    {
+      "path": "src/OfflineLMConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineLMConfig.cs",
+      "originalSha256": "4ea7ff64297ba69f508646f304a8abac8645372161d1755bf327734e95a6024b",
+      "patchedSha256": "83828f547129b7c14aae4610fb8f7836ff9616dc63d29edb51c33a29de9dec67",
+      "modified": true,
+      "vendorPath": "src/OfflineLMConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineMedAsrCtcModel.cs",
+      "upstreamPath": "scripts/dotnet/OfflineMedAsrCtcModel.cs",
+      "originalSha256": "19db79c66e4e21ca81cbbe0b209361bc3dd7cdf1fbbe450e9201b82893ed08c2",
+      "patchedSha256": "a7c48b3d2ca8ac89f1f71d48479f5df63a84b1b475e1b627505b6e0ddd0162ff",
+      "modified": true,
+      "vendorPath": "src/OfflineMedAsrCtcModel.cs.txt"
+    },
+    {
+      "path": "src/OfflineModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineModelConfig.cs",
+      "originalSha256": "1e0426a761c42ccadb85147bcf8943342d9ea54cb5c96cfba2bd2666e038d405",
+      "patchedSha256": "3c9d6829b3ca55a0ec8c95865d7bf1ae3b909905aa52ee0f7d3276111a5f9184",
+      "modified": true,
+      "vendorPath": "src/OfflineModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineMoonshineModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineMoonshineModelConfig.cs",
+      "originalSha256": "0dd988936336b83a18c834eb1575103b55606d57a940f313e013190c19fdaab9",
+      "patchedSha256": "d1e2823809761ace0f13b37171fa4d24a73f074048327b2848cc194fc57a48d3",
+      "modified": true,
+      "vendorPath": "src/OfflineMoonshineModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineNemoEncDecCtcModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineNemoEncDecCtcModelConfig.cs",
+      "originalSha256": "1c6675f4b9c839675fce179300c61e0fb15fbee2160fa74de73a18fc8b288f24",
+      "patchedSha256": "f21f5d9efa12893c5bb22e8e136446fe7f1024bb5844680bf7551cc9e9c48f5b",
+      "modified": true,
+      "vendorPath": "src/OfflineNemoEncDecCtcModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineOmnilingualAsrCtcModel.cs",
+      "upstreamPath": "scripts/dotnet/OfflineOmnilingualAsrCtcModel.cs",
+      "originalSha256": "1cfec83b36b7c85f1aab84b9482954ccdf91bed96967c40e25e748d590acb426",
+      "patchedSha256": "de2e20ae1bf528ed2ad053d2f1550874507b706f3f256dffb4c53ec524ba70ac",
+      "modified": true,
+      "vendorPath": "src/OfflineOmnilingualAsrCtcModel.cs.txt"
+    },
+    {
+      "path": "src/OfflineParaformerModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineParaformerModelConfig.cs",
+      "originalSha256": "dedd4b4567ed5f545ef5451d114c6dd530b71625291d4640973981eb5ec25c0f",
+      "patchedSha256": "b7dcac9d80b0db105542f4f15002fe477d3bec39bfe306324953b97d174c9df2",
+      "modified": true,
+      "vendorPath": "src/OfflineParaformerModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflinePunctuation.cs",
+      "upstreamPath": "scripts/dotnet/OfflinePunctuation.cs",
+      "originalSha256": "f123757d3d8f70d0a151eb400efec619ca296b3b05bda5f3f69f47e85f9c491d",
+      "patchedSha256": "f123757d3d8f70d0a151eb400efec619ca296b3b05bda5f3f69f47e85f9c491d",
+      "modified": false,
+      "vendorPath": "src/OfflinePunctuation.cs.txt"
+    },
+    {
+      "path": "src/OfflinePunctuationConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflinePunctuationConfig.cs",
+      "originalSha256": "6f9b3b460c402ccee8b2417c01e5a58cd5cbacbe75e11387f2ad354ee0926599",
+      "patchedSha256": "6f9b3b460c402ccee8b2417c01e5a58cd5cbacbe75e11387f2ad354ee0926599",
+      "modified": false,
+      "vendorPath": "src/OfflinePunctuationConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflinePunctuationModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflinePunctuationModelConfig.cs",
+      "originalSha256": "b2f6ab907ff06e12da6164259424cb71ff089a7fd1470d0af37d82bc5b4d8b86",
+      "patchedSha256": "d96fa900067293fd66582609b36d8416c1bf0663c152902abfc60d25bd2d63b1",
+      "modified": true,
+      "vendorPath": "src/OfflinePunctuationModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineQwen3AsrModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineQwen3AsrModelConfig.cs",
+      "originalSha256": "23b5c7a4f9fe32bf04d7216f6ffc92ec3d3e0febac41d10d2acb95c9e6c375de",
+      "patchedSha256": "2d0d495f3fb47031fd8f6b76315e959aa053da8a4c43808929a5563dd8393c8c",
+      "modified": true,
+      "vendorPath": "src/OfflineQwen3AsrModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineRecognizer.cs",
+      "upstreamPath": "scripts/dotnet/OfflineRecognizer.cs",
+      "originalSha256": "fc61cd7f3ab19eb4b82a9cae4ff09eb2a7e27a2c547da10d2d0dd16a5173adc9",
+      "patchedSha256": "8e2612856c5efa4d6a92c6300c6767cc7803b9b0b09ddcd1b74b340015496ebf",
+      "modified": true,
+      "vendorPath": "src/OfflineRecognizer.cs.txt"
+    },
+    {
+      "path": "src/OfflineRecognizerConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineRecognizerConfig.cs",
+      "originalSha256": "b24f6daf11547e31ac79928126f77b5100479ec29657b73f4a0f922df567a541",
+      "patchedSha256": "34ff1ce27185d0051cc25bfdd2341e590938b0743a1750df29607d7d77dfe452",
+      "modified": true,
+      "vendorPath": "src/OfflineRecognizerConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineRecognizerResult.cs",
+      "upstreamPath": "scripts/dotnet/OfflineRecognizerResult.cs",
+      "originalSha256": "91913f0800df70f1ab353243f4680d0da979f473c2d5e353333b0d45faf7923e",
+      "patchedSha256": "d8b3130b1e0ee93b216e95fef5a3522e74efc8ee7e7430a9da66b674ad2090a7",
+      "modified": true,
+      "vendorPath": "src/OfflineRecognizerResult.cs.txt"
+    },
+    {
+      "path": "src/OfflineSenseVoiceModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSenseVoiceModelConfig.cs",
+      "originalSha256": "7833e6a9308a6c39f0c19db9033b4dde58374b3d0a580270392fe0e3f121cb75",
+      "patchedSha256": "cc2d85509f75f274af87f13fd27fc57169d46ba5d210ad7f201796e8c052fdc5",
+      "modified": true,
+      "vendorPath": "src/OfflineSenseVoiceModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineSourceSeparation.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSourceSeparation.cs",
+      "originalSha256": "3ae6100869b1ef550bc32e35b155d56713e036768c619d9790253ddaf866000d",
+      "patchedSha256": "3ae6100869b1ef550bc32e35b155d56713e036768c619d9790253ddaf866000d",
+      "modified": false,
+      "vendorPath": "src/OfflineSourceSeparation.cs.txt"
+    },
+    {
+      "path": "src/OfflineSourceSeparationConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSourceSeparationConfig.cs",
+      "originalSha256": "a79798d8b52318ba9e50eeb079e2ffd469fbceeca99e66cfedfbb492f6ebc2a2",
+      "patchedSha256": "a79798d8b52318ba9e50eeb079e2ffd469fbceeca99e66cfedfbb492f6ebc2a2",
+      "modified": false,
+      "vendorPath": "src/OfflineSourceSeparationConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineSourceSeparationModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSourceSeparationModelConfig.cs",
+      "originalSha256": "c719756b6d6ab3bbb4a9a858d083548e7ed6789f81c6140e0522d2dd0f5907b5",
+      "patchedSha256": "600f92ed19b372dc537dd7eeb80cf470f0a351ff1d7de3d37dba4e77c219dea9",
+      "modified": true,
+      "vendorPath": "src/OfflineSourceSeparationModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineSourceSeparationSpleeterModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSourceSeparationSpleeterModelConfig.cs",
+      "originalSha256": "151c9a791e487019b06b2c8a64dbbc37cd3fe26bb011b725038e7c3c0aaaa94a",
+      "patchedSha256": "efa340e2029f3ac7633b2f3d7c28d006dbadd75feed2466413b58be04d61e538",
+      "modified": true,
+      "vendorPath": "src/OfflineSourceSeparationSpleeterModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineSourceSeparationUvrModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSourceSeparationUvrModelConfig.cs",
+      "originalSha256": "2cc469c27f8c0ed851f1526ce5e5e7e37426982a84b5776fa9bd78636027b157",
+      "patchedSha256": "2e85125989829d903a9d22e43cbe39d78071a4ab97db3ff77fe8e85f4e5c62da",
+      "modified": true,
+      "vendorPath": "src/OfflineSourceSeparationUvrModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineSpeakerDiarization.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSpeakerDiarization.cs",
+      "originalSha256": "8d64126969c1e3757c7805cb41e9cbdc47ce9096bde774a36d392d0fbed749f7",
+      "patchedSha256": "8d64126969c1e3757c7805cb41e9cbdc47ce9096bde774a36d392d0fbed749f7",
+      "modified": false,
+      "vendorPath": "src/OfflineSpeakerDiarization.cs.txt"
+    },
+    {
+      "path": "src/OfflineSpeakerDiarizationConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSpeakerDiarizationConfig.cs",
+      "originalSha256": "94d82b9cf961e47a50e742a0dbafa8cdeabc5fdf7618e9c7f2e7debfc1d89465",
+      "patchedSha256": "94d82b9cf961e47a50e742a0dbafa8cdeabc5fdf7618e9c7f2e7debfc1d89465",
+      "modified": false,
+      "vendorPath": "src/OfflineSpeakerDiarizationConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineSpeakerDiarizationSegment.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSpeakerDiarizationSegment.cs",
+      "originalSha256": "30f662c0029d626124f6fe8c0b5120fb2aa3be555e8757346953d6ba8e896d81",
+      "patchedSha256": "30f662c0029d626124f6fe8c0b5120fb2aa3be555e8757346953d6ba8e896d81",
+      "modified": false,
+      "vendorPath": "src/OfflineSpeakerDiarizationSegment.cs.txt"
+    },
+    {
+      "path": "src/OfflineSpeakerSegmentationModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSpeakerSegmentationModelConfig.cs",
+      "originalSha256": "06217c01f1d5d4805d0677748e77fc17467de08d367947e5067ded856a422194",
+      "patchedSha256": "1a6616ae78bdb8b153a01964175d1f746c3d92491ae1b82a08e6c77413e72527",
+      "modified": true,
+      "vendorPath": "src/OfflineSpeakerSegmentationModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineSpeakerSegmentationPyannoteModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSpeakerSegmentationPyannoteModelConfig.cs",
+      "originalSha256": "7357a866efd7b7ff590338d859ff70906d51e9da92e1ef91aea40d927174693b",
+      "patchedSha256": "b858e0687aaac6ee5cb62ceb70cf544a239d3cf2c16ae7697b51afbac0cc58df",
+      "modified": true,
+      "vendorPath": "src/OfflineSpeakerSegmentationPyannoteModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineSpeechDenoiser.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSpeechDenoiser.cs",
+      "originalSha256": "bd2a953beabcc3238d613d14afceafe10ed72527d71114a2b29697fb78d6d815",
+      "patchedSha256": "bd2a953beabcc3238d613d14afceafe10ed72527d71114a2b29697fb78d6d815",
+      "modified": false,
+      "vendorPath": "src/OfflineSpeechDenoiser.cs.txt"
+    },
+    {
+      "path": "src/OfflineSpeechDenoiserConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSpeechDenoiserConfig.cs",
+      "originalSha256": "0c1f8b78ebb61c467dd8acf220483f97720b8a580b702bfd9fd0114c11e329a9",
+      "patchedSha256": "0c1f8b78ebb61c467dd8acf220483f97720b8a580b702bfd9fd0114c11e329a9",
+      "modified": false,
+      "vendorPath": "src/OfflineSpeechDenoiserConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineSpeechDenoiserDpdfNetModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSpeechDenoiserDpdfNetModelConfig.cs",
+      "originalSha256": "3ceefc6dfc297c2dbbcb34b0e0346d0ab2c7b60029ac14727bbdf15e15e33022",
+      "patchedSha256": "107d0aabd00972ecf7361e8b8795897f1d0df58b92ad3c7998b0c49f7438d164",
+      "modified": true,
+      "vendorPath": "src/OfflineSpeechDenoiserDpdfNetModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineSpeechDenoiserGtcrnModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSpeechDenoiserGtcrnModelConfig.cs",
+      "originalSha256": "04ff7c0d7481fbf8f23881426d16468fb9cfc6415e9e824577d933518c2a5391",
+      "patchedSha256": "edd820c0e90191000349ea8f2759d7c2245596bda24d11f2e29e03d45cd7db37",
+      "modified": true,
+      "vendorPath": "src/OfflineSpeechDenoiserGtcrnModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineSpeechDenoiserModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineSpeechDenoiserModelConfig.cs",
+      "originalSha256": "6cdb8cb7ace6a45b71fc5cff615f5a17d1038bb1151d515223236dd99ce81b82",
+      "patchedSha256": "22b39d8f8c5ebce7f25c4a26000526e4600761acc09720a642805e6c770aabd2",
+      "modified": true,
+      "vendorPath": "src/OfflineSpeechDenoiserModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineStream.cs",
+      "upstreamPath": "scripts/dotnet/OfflineStream.cs",
+      "originalSha256": "fd4012067a27d235d55443f4a5da3d00a84f0c787517c0f687d7b38618de3610",
+      "patchedSha256": "197b96794223c74ea7e045851c8b21b818322d6417f8ee0e4951a3aee93edd98",
+      "modified": true,
+      "vendorPath": "src/OfflineStream.cs.txt"
+    },
+    {
+      "path": "src/OfflineTdnnModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineTdnnModelConfig.cs",
+      "originalSha256": "65f524ad56da2bb04fa2a253b5c86649a2b46dc3b0b1c857bec7119c3e21b4bd",
+      "patchedSha256": "32a7d683d91f709f653ca181072d82e5f78575f34cb1bdd9d84bfb839b1c0f78",
+      "modified": true,
+      "vendorPath": "src/OfflineTdnnModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineTransducerModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineTransducerModelConfig.cs",
+      "originalSha256": "ea31067f2a89f02d875a2d564863d2a16a6a3616f3c34b022a11708717d7c5b3",
+      "patchedSha256": "a01dd381ae9dbd8dc6de5dd67ce7770862fe41b3b5e9fc08e15e7ede80ba8e30",
+      "modified": true,
+      "vendorPath": "src/OfflineTransducerModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineTts.cs",
+      "upstreamPath": "scripts/dotnet/OfflineTts.cs",
+      "originalSha256": "a911c6c213342c265a42f489e9ff28cf43a0b57b740f4a11b7caaa3adffe8f32",
+      "patchedSha256": "a911c6c213342c265a42f489e9ff28cf43a0b57b740f4a11b7caaa3adffe8f32",
+      "modified": false,
+      "vendorPath": "src/OfflineTts.cs.txt"
+    },
+    {
+      "path": "src/OfflineTtsConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineTtsConfig.cs",
+      "originalSha256": "1658f38ad858bf3ff5543d4b50e3025673ff128fae78081f1856c544c0f9ead5",
+      "patchedSha256": "926081e18045a543a1fce11aeb811945b71844d9999907a7a12442db0b56e0d1",
+      "modified": true,
+      "vendorPath": "src/OfflineTtsConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineTtsGeneratedAudio.cs",
+      "upstreamPath": "scripts/dotnet/OfflineTtsGeneratedAudio.cs",
+      "originalSha256": "ed5b7243744a5974a39c0103298bdc653f0fa01c77a0b6c8166463fe5600c3ba",
+      "patchedSha256": "ed5b7243744a5974a39c0103298bdc653f0fa01c77a0b6c8166463fe5600c3ba",
+      "modified": false,
+      "vendorPath": "src/OfflineTtsGeneratedAudio.cs.txt"
+    },
+    {
+      "path": "src/OfflineTtsGenerationConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineTtsGenerationConfig.cs",
+      "originalSha256": "e4791eb6ef4cbc7079aec4fdcc4da680820251fac62ee5f9a1f2e9c07f6dca5b",
+      "patchedSha256": "25b6ad2c19249b181966e3abd0ae580eb1591f7ba4b6902a4b4d7a19fab2f5c7",
+      "modified": true,
+      "vendorPath": "src/OfflineTtsGenerationConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineTtsKittenModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineTtsKittenModelConfig.cs",
+      "originalSha256": "27944c1e3582c859e63dc4c46e6781983b65dec578e3917d6d71eccb5cf2f9e2",
+      "patchedSha256": "401a1d0b411ffbc7b87f81a0913f5f1b59bc9b28d6fbf519680f8d1de79ba33c",
+      "modified": true,
+      "vendorPath": "src/OfflineTtsKittenModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineTtsKokoroModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineTtsKokoroModelConfig.cs",
+      "originalSha256": "bd18c613adedde5fb2123ccccc0df5dbce90697d4b51f3f05da883c41154a736",
+      "patchedSha256": "1afe97b195ac262488fe9d7b6a9c391c009d4c6bfbb9b19f24db88f96945b62f",
+      "modified": true,
+      "vendorPath": "src/OfflineTtsKokoroModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineTtsMatchaModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineTtsMatchaModelConfig.cs",
+      "originalSha256": "8a6c788ba3caa36264651c28a5c774c946a737b7227bc49f91c3f185e8721676",
+      "patchedSha256": "deaee152c6a9faf29eab3cf9b11a112106bc3723bc08aee41eab41bddbd25ac2",
+      "modified": true,
+      "vendorPath": "src/OfflineTtsMatchaModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineTtsModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineTtsModelConfig.cs",
+      "originalSha256": "7b80f0f654ff48dcfe1979fd4dfc1695b590bf4feaf82ce1bce0fe65f4555a8c",
+      "patchedSha256": "8a6c429ef2123eba20679a97ae1741d00a8c0555302661ff57cf217a599ea3a5",
+      "modified": true,
+      "vendorPath": "src/OfflineTtsModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineTtsPocketModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineTtsPocketModelConfig.cs",
+      "originalSha256": "669826aca0cae413e651ec39fea2aad06fe09a156bf8ce172cdb96b00f39bcb9",
+      "patchedSha256": "8b6a70b04a23ccca8648ca8dccf55a0449b7a26dd661785fcf5a14aa911d367d",
+      "modified": true,
+      "vendorPath": "src/OfflineTtsPocketModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineTtsSupertonicModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineTtsSupertonicModelConfig.cs",
+      "originalSha256": "97fd8241204251c2972d0238602d317f8b1c5365ecc1eeef6a92e248b5a88109",
+      "patchedSha256": "21ed93e8910b6a15934a7538070f7e70e3e82acd8fad68c4a1c1e489fbc3a2ac",
+      "modified": true,
+      "vendorPath": "src/OfflineTtsSupertonicModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineTtsVitsModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineTtsVitsModelConfig.cs",
+      "originalSha256": "2d3843eb51f65554dad4bd25571f0ef8daebe9d9aa6ac8b7b95b18dc235d19f0",
+      "patchedSha256": "e58b808d335085a7bb4447d2c14fab442f46e5ecfdc2640e1685377b06cc2309",
+      "modified": true,
+      "vendorPath": "src/OfflineTtsVitsModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineTtsZipVoiceModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineTtsZipVoiceModelConfig.cs",
+      "originalSha256": "4c5e3d703dc708fa9f4e5c5878975b224172ccb8aa8f8098e6119733c229706f",
+      "patchedSha256": "dd6167acc4b72b1b9b8c74b5315fa888596a80776e59ded4de0aa00579539ccf",
+      "modified": true,
+      "vendorPath": "src/OfflineTtsZipVoiceModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineWenetCtcModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineWenetCtcModelConfig.cs",
+      "originalSha256": "f1d797766548dd0975cc60fbbd7c980326d600f20590b089c4497a2ab3dc75bb",
+      "patchedSha256": "5f7d89d690d60e609130ce308076db1edf98dfda2f2247411eae2a04d9440c8f",
+      "modified": true,
+      "vendorPath": "src/OfflineWenetCtcModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineWhisperModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineWhisperModelConfig.cs",
+      "originalSha256": "6874f97d2399961be5757cd147fceaec1dcbaacb38e89a88a24289993d731eeb",
+      "patchedSha256": "c41fdd19922b38cbdcb2d271b7a52ac3e3fcf3e83241463f7bffad5c10d17f61",
+      "modified": true,
+      "vendorPath": "src/OfflineWhisperModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineZipformerAudioTaggingModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineZipformerAudioTaggingModelConfig.cs",
+      "originalSha256": "f1a0b4dc35bcd8138fef6aa7bdfea8dacbf44a9b0fd1f2cfbe889772f941e051",
+      "patchedSha256": "0c237c1000b28957cecafbf482f46f896ec161f519637b53bdc213ca820a5a24",
+      "modified": true,
+      "vendorPath": "src/OfflineZipformerAudioTaggingModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OfflineZipformerCtcModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OfflineZipformerCtcModelConfig.cs",
+      "originalSha256": "9e1fef7dbf6f68d400c9f8ba49f6302e6b1583b14071d0b0be89a35d944da64e",
+      "patchedSha256": "1464411864e12592762a775cbc076737a173987d787943759e8da55f05302a18",
+      "modified": true,
+      "vendorPath": "src/OfflineZipformerCtcModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OnlineCtcFstDecoderConfig.cs",
+      "upstreamPath": "scripts/dotnet/OnlineCtcFstDecoderConfig.cs",
+      "originalSha256": "cc280ff098ff6eef6b8419cc470c16de43701ebcadd05da37922fc0c5d2285fb",
+      "patchedSha256": "9fc7f5692adb71557cba99ad425a4f78303810bea235aa2d215ce784c2841a85",
+      "modified": true,
+      "vendorPath": "src/OnlineCtcFstDecoderConfig.cs.txt"
+    },
+    {
+      "path": "src/OnlineModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OnlineModelConfig.cs",
+      "originalSha256": "48f1c2fed12b11ced885af8c7b940c1fd17f72143b2263bc5ae34678af00177b",
+      "patchedSha256": "8768594e6b37f45661b3033ed1acf22d7ec82d97e6355f753cf564a3f50052f5",
+      "modified": true,
+      "vendorPath": "src/OnlineModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OnlineNemoCtcModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OnlineNemoCtcModelConfig.cs",
+      "originalSha256": "e90dbfd270cf4b92b7063fe1b6baadcd8ec024b07b22df632172518769ecba3c",
+      "patchedSha256": "fdc2f319632c92a14073a42c8272178479973f6f0434c7c2990a2dee3ae292d4",
+      "modified": true,
+      "vendorPath": "src/OnlineNemoCtcModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OnlineParaformerModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OnlineParaformerModelConfig.cs",
+      "originalSha256": "d05a695980151d82bc836ecff582f09b0d0e14d11ecc86ae877e36b3844eaf7e",
+      "patchedSha256": "174084233c598eaac69572a2f566321938a7b2bad4a3d4b3430934edd0ba75f1",
+      "modified": true,
+      "vendorPath": "src/OnlineParaformerModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OnlinePunctuation.cs",
+      "upstreamPath": "scripts/dotnet/OnlinePunctuation.cs",
+      "originalSha256": "26081c325e3f3a2016b097706d9dca1506915d79c99b8bec1b563d6f40668388",
+      "patchedSha256": "26081c325e3f3a2016b097706d9dca1506915d79c99b8bec1b563d6f40668388",
+      "modified": false,
+      "vendorPath": "src/OnlinePunctuation.cs.txt"
+    },
+    {
+      "path": "src/OnlinePunctuationConfig.cs",
+      "upstreamPath": "scripts/dotnet/OnlinePunctuationConfig.cs",
+      "originalSha256": "5b2da5bf1cd104f8612f7352f1e8e3c229d4ed43eec26ed0145953d6189a5ea3",
+      "patchedSha256": "5b2da5bf1cd104f8612f7352f1e8e3c229d4ed43eec26ed0145953d6189a5ea3",
+      "modified": false,
+      "vendorPath": "src/OnlinePunctuationConfig.cs.txt"
+    },
+    {
+      "path": "src/OnlinePunctuationModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OnlinePunctuationModelConfig.cs",
+      "originalSha256": "757eb99bc8e02460f2d24d931096d5e37253906f5255dfeab8278c6a40ea057a",
+      "patchedSha256": "f79dda11f8c94ce0a5c757646f6159b7cae56e5452be78dcf92971156cb96409",
+      "modified": true,
+      "vendorPath": "src/OnlinePunctuationModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OnlineRecognizer.cs",
+      "upstreamPath": "scripts/dotnet/OnlineRecognizer.cs",
+      "originalSha256": "b8c64495297f6fd280d503750b3025a36179e1bf09b3b2bb830089a78bc02da0",
+      "patchedSha256": "b8c64495297f6fd280d503750b3025a36179e1bf09b3b2bb830089a78bc02da0",
+      "modified": false,
+      "vendorPath": "src/OnlineRecognizer.cs.txt"
+    },
+    {
+      "path": "src/OnlineRecognizerConfig.cs",
+      "upstreamPath": "scripts/dotnet/OnlineRecognizerConfig.cs",
+      "originalSha256": "fd307b82824045fc0faa26e138156864b74c4ad4ac2b6fc70d01357e66d4120e",
+      "patchedSha256": "a433d8ecc8ee8f4b11caab95bd679151ca41bcf871ea027b5b33bf77170ea4e0",
+      "modified": true,
+      "vendorPath": "src/OnlineRecognizerConfig.cs.txt"
+    },
+    {
+      "path": "src/OnlineRecognizerResult.cs",
+      "upstreamPath": "scripts/dotnet/OnlineRecognizerResult.cs",
+      "originalSha256": "9adc37f45a4c548c884d893cc86adbbbc978e50ad81643afee1248ee795f59ed",
+      "patchedSha256": "9adc37f45a4c548c884d893cc86adbbbc978e50ad81643afee1248ee795f59ed",
+      "modified": false,
+      "vendorPath": "src/OnlineRecognizerResult.cs.txt"
+    },
+    {
+      "path": "src/OnlineSpeechDenoiser.cs",
+      "upstreamPath": "scripts/dotnet/OnlineSpeechDenoiser.cs",
+      "originalSha256": "2a523f7d9a17b07fd355ccbf5253f643dfaa155533d933efbca358f2821e880d",
+      "patchedSha256": "2a523f7d9a17b07fd355ccbf5253f643dfaa155533d933efbca358f2821e880d",
+      "modified": false,
+      "vendorPath": "src/OnlineSpeechDenoiser.cs.txt"
+    },
+    {
+      "path": "src/OnlineSpeechDenoiserConfig.cs",
+      "upstreamPath": "scripts/dotnet/OnlineSpeechDenoiserConfig.cs",
+      "originalSha256": "0521c300b2518e172e788c8cf95b56cb2dc33f7eb97f45c5df6ff7f2eb55ab50",
+      "patchedSha256": "0521c300b2518e172e788c8cf95b56cb2dc33f7eb97f45c5df6ff7f2eb55ab50",
+      "modified": false,
+      "vendorPath": "src/OnlineSpeechDenoiserConfig.cs.txt"
+    },
+    {
+      "path": "src/OnlineStream.cs",
+      "upstreamPath": "scripts/dotnet/OnlineStream.cs",
+      "originalSha256": "d5adf724881131b83671f2a81778fd84713ddd12af07fb78fff0acc103210199",
+      "patchedSha256": "28107bb546f8ff8def2e5a78140300048cf485c103e9809a69c6c4646106052c",
+      "modified": true,
+      "vendorPath": "src/OnlineStream.cs.txt"
+    },
+    {
+      "path": "src/OnlineToneCtcModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OnlineToneCtcModelConfig.cs",
+      "originalSha256": "0fb2a872cb6e26b45fdf4e1623031cffb3ead847f8772d0184eaaeb43d2aa3ba",
+      "patchedSha256": "7a460a3f9cab347d78fa0fe4ec001e7b574e6ff30f59d9b7a730259501a1067e",
+      "modified": true,
+      "vendorPath": "src/OnlineToneCtcModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OnlineTransducerModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OnlineTransducerModelConfig.cs",
+      "originalSha256": "c9a99a91add7918a2a72d47f77213cbcf2063f2f380bc364e311e1dde13b40e3",
+      "patchedSha256": "5efb2c85ff70f96108b71732e54325160acc436375e12c75b494c0de0c60f9c7",
+      "modified": true,
+      "vendorPath": "src/OnlineTransducerModelConfig.cs.txt"
+    },
+    {
+      "path": "src/OnlineZipformer2CtcModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/OnlineZipformer2CtcModelConfig.cs",
+      "originalSha256": "eaec6429ef3eac0c366b0568431ace96dba3b54b5c3109a7e3d4fbff7f45db12",
+      "patchedSha256": "e6f3ea7643d324131da777f6d3c37549711918b326b0102ffe700ab7d14ec985",
+      "modified": true,
+      "vendorPath": "src/OnlineZipformer2CtcModelConfig.cs.txt"
+    },
+    {
+      "path": "src/SileroVadModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/SileroVadModelConfig.cs",
+      "originalSha256": "2e95a601e6fb43981558e99811c8d91ae785d9d5f4b3343d1e968a5bd20fa6c1",
+      "patchedSha256": "1ed6e9e4b078ac32b6f81cceaf119245ee2d3b2b06b827c62f41f92977c22d70",
+      "modified": true,
+      "vendorPath": "src/SileroVadModelConfig.cs.txt"
+    },
+    {
+      "path": "src/SourceSeparationOutput.cs",
+      "upstreamPath": "scripts/dotnet/SourceSeparationOutput.cs",
+      "originalSha256": "f8e6f23ce937f9d21ec75df48ec439a56b194e9c44a9bae2015a7c133220c3a6",
+      "patchedSha256": "f8e6f23ce937f9d21ec75df48ec439a56b194e9c44a9bae2015a7c133220c3a6",
+      "modified": false,
+      "vendorPath": "src/SourceSeparationOutput.cs.txt"
+    },
+    {
+      "path": "src/SpeakerEmbeddingExtractor.cs",
+      "upstreamPath": "scripts/dotnet/SpeakerEmbeddingExtractor.cs",
+      "originalSha256": "bc9d3799cc3470041bfbc3d955ad9cb0517d3a4d44115954024eacbad6bcd6c2",
+      "patchedSha256": "bc9d3799cc3470041bfbc3d955ad9cb0517d3a4d44115954024eacbad6bcd6c2",
+      "modified": false,
+      "vendorPath": "src/SpeakerEmbeddingExtractor.cs.txt"
+    },
+    {
+      "path": "src/SpeakerEmbeddingExtractorConfig.cs",
+      "upstreamPath": "scripts/dotnet/SpeakerEmbeddingExtractorConfig.cs",
+      "originalSha256": "26afe2af9a0e5875d98963646f170883f22c769e25bf2e51099a8ddf82d1f82a",
+      "patchedSha256": "7d70987c355c362e752780d1b6004efe1473e10d4eae4cac3a9d676b2c856e6b",
+      "modified": true,
+      "vendorPath": "src/SpeakerEmbeddingExtractorConfig.cs.txt"
+    },
+    {
+      "path": "src/SpeakerEmbeddingManager.cs",
+      "upstreamPath": "scripts/dotnet/SpeakerEmbeddingManager.cs",
+      "originalSha256": "767bfca81856c8cd2b5d4d87ffe81ab8ec72c0a79679b6522bf8afa54cb6daf8",
+      "patchedSha256": "767bfca81856c8cd2b5d4d87ffe81ab8ec72c0a79679b6522bf8afa54cb6daf8",
+      "modified": false,
+      "vendorPath": "src/SpeakerEmbeddingManager.cs.txt"
+    },
+    {
+      "path": "src/SpeechSegment.cs",
+      "upstreamPath": "scripts/dotnet/SpeechSegment.cs",
+      "originalSha256": "4877a1aab5f406d7e8f5fb2947533e5537403b40178260c6293fcec5b7200b8c",
+      "patchedSha256": "4877a1aab5f406d7e8f5fb2947533e5537403b40178260c6293fcec5b7200b8c",
+      "modified": false,
+      "vendorPath": "src/SpeechSegment.cs.txt"
+    },
+    {
+      "path": "src/SpokenLanguageIdentification.cs",
+      "upstreamPath": "scripts/dotnet/SpokenLanguageIdentification.cs",
+      "originalSha256": "ee0d15e8cdfbb3900f0f1b52fbe0e907d2cbf223f4bc7bf953361336a27467a1",
+      "patchedSha256": "ee0d15e8cdfbb3900f0f1b52fbe0e907d2cbf223f4bc7bf953361336a27467a1",
+      "modified": false,
+      "vendorPath": "src/SpokenLanguageIdentification.cs.txt"
+    },
+    {
+      "path": "src/SpokenLanguageIdentificationConfig.cs",
+      "upstreamPath": "scripts/dotnet/SpokenLanguageIdentificationConfig.cs",
+      "originalSha256": "1cd06a498b25ef69c0adf3a2b5230420c18bbb6a37eea7fc0bebd73aad0d009a",
+      "patchedSha256": "3828844c263936c6395ab9e833a530e8f942c9d1ce7d04be81f464bb76e3de0e",
+      "modified": true,
+      "vendorPath": "src/SpokenLanguageIdentificationConfig.cs.txt"
+    },
+    {
+      "path": "src/SpokenLanguageIdentificationResult.cs",
+      "upstreamPath": "scripts/dotnet/SpokenLanguageIdentificationResult.cs",
+      "originalSha256": "547840ed57b17129ddb9f532b3bc63e33a7fc8fb7d43cb8df329f82a8b5a1da3",
+      "patchedSha256": "547840ed57b17129ddb9f532b3bc63e33a7fc8fb7d43cb8df329f82a8b5a1da3",
+      "modified": false,
+      "vendorPath": "src/SpokenLanguageIdentificationResult.cs.txt"
+    },
+    {
+      "path": "src/SpokenLanguageIdentificationWhisperConfig.cs",
+      "upstreamPath": "scripts/dotnet/SpokenLanguageIdentificationWhisperConfig.cs",
+      "originalSha256": "dc3f2a84ccd6d653fa1ce2b21e49d52e8a6e86d9231d95c4aecb5e2cf42c603e",
+      "patchedSha256": "cae0e3c7d43477ee7a434d08475badb582b6ac65ab7048060fab366b81604ecd",
+      "modified": true,
+      "vendorPath": "src/SpokenLanguageIdentificationWhisperConfig.cs.txt"
+    },
+    {
+      "path": "src/TenVadModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/TenVadModelConfig.cs",
+      "originalSha256": "ae41cd7f65727ddb6521d32b05926df0e46c39de90b455e9f8c223631cb9cddf",
+      "patchedSha256": "490b755bf88246b3cf5df71780e48bfadd8587cb0abde71e0b44216799378c54",
+      "modified": true,
+      "vendorPath": "src/TenVadModelConfig.cs.txt"
+    },
+    {
+      "path": "src/VadModelConfig.cs",
+      "upstreamPath": "scripts/dotnet/VadModelConfig.cs",
+      "originalSha256": "f1d62db91bdffa9329da795751a7e797666cf799f19450048289f637449d09fd",
+      "patchedSha256": "6ad8766d63ba9d2f5b2d87bb6554746bb2b0a3ca17ef3790b0091cd3d2643e27",
+      "modified": true,
+      "vendorPath": "src/VadModelConfig.cs.txt"
+    },
+    {
+      "path": "src/VersionInfo.cs",
+      "upstreamPath": "scripts/dotnet/VersionInfo.cs",
+      "originalSha256": "9c0b5d048f9d6acc9b6b09f75eb50f6c4a1b87e800a704c09e952ab2658f8331",
+      "patchedSha256": "9c0b5d048f9d6acc9b6b09f75eb50f6c4a1b87e800a704c09e952ab2658f8331",
+      "modified": false,
+      "vendorPath": "src/VersionInfo.cs.txt"
+    },
+    {
+      "path": "src/VoiceActivityDetector.cs",
+      "upstreamPath": "scripts/dotnet/VoiceActivityDetector.cs",
+      "originalSha256": "be5db776c95bfea99ca9858dc9aedb09e4e5933033fa2e23dc00849b2d849fa3",
+      "patchedSha256": "be5db776c95bfea99ca9858dc9aedb09e4e5933033fa2e23dc00849b2d849fa3",
+      "modified": false,
+      "vendorPath": "src/VoiceActivityDetector.cs.txt"
+    }
+  ],
+  "schemaVersion": 1,
+  "projectPath": "C:\\Users\\Egoist\\Desktop\\Проекты\\Приложения\\Egoist Voice",
+  "ownerTaskId": "01a0f9dd-55ba-7d43-83d9-ceb291d1b556",
+  "sourceArchiveSha256": "3e5584a6a41cdcad45072e2a62b6147f74cc61433c9a0f31ad22ae9e28efdba6",
+  "license": "Apache-2.0",
+  "licenseSha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+  "patchSha256": "a00d753011998a44ff42f8bb7d22bfb4d1009655eb27a79d82a7308d9947843d",
+  "projectFileSha256": "d4f2baaebfa35748cf7dcf8f2fda591f8d96269a8cdd1fcbd693642575e6e184",
+  "fileCount": 98,
+  "modifiedFileCount": 64,
+  "nativeDllReplacement": false,
+  "assemblyVersion": "1.13.4.1",
+  "buildArtifactSha256": "18be214bbc80e671a3e6f40eeed805ed4370610639372452833df97a0dfedb96",
+  "acceptedFileFormat": "UTF8 .cs.txt compiled explicitly; default compiler globs disabled",
+  "sourceLineEndings": "LF; one upstream CRLF file normalized; original EOF blank line retained",
+  "buildArtifactProfile": {
+    "configuration": "Release",
+    "platform": "AnyCPU",
+    "runtimeIdentifier": null,
+    "sdk": "8.0.424",
+    "sourceControlMetadata": "outside Git, SourceRevisionId/SourceLink absent",
+    "claim": "Isolated tested artifact only, not expected product DLL hash; source hashes authoritative"
+  },
+  "sameProfileDeterminism": "Two fresh isolated x64 builds agree; RID and Git metadata change binary hash. Exact root source-bound binary reproduction not yet established."
+}

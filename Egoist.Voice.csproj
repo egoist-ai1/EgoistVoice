@@ -25,17 +25,21 @@
     <NoWarn>$(NoWarn);WFAC010</NoWarn>
     <AssemblyName>Egoist.Voice</AssemblyName>
     <RootNamespace>Egoist.Voice</RootNamespace>
-    <Version>2.3.0</Version>
-    <AssemblyVersion>2.3.0.0</AssemblyVersion>
-    <FileVersion>2.3.0.0</FileVersion>
+    <Version>2.4.0</Version>
+    <AssemblyVersion>2.4.0.0</AssemblyVersion>
+    <FileVersion>2.4.0.0</FileVersion>
     <Company>EGOIST</Company>
     <Product>Egoist Voice</Product>
     <Description>Быстрая локальная русская диктовка для Windows</Description>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="vendor\sherpa-managed-utf8\1.13.4\Egoist.Sherpa.Onnx.Utf8.csproj" />
+    <Content Include="vendor\sherpa-managed-utf8\1.13.4\LICENSE" Link="licenses\sherpa-managed-utf8-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="vendor\sherpa-managed-utf8\1.13.4\source-manifest.json" Link="licenses\sherpa-managed-utf8-source-manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="vendor\sherpa-managed-utf8\1.13.4\utf8-binding.patch" Link="licenses\sherpa-managed-utf8.patch" CopyToOutputDirectory="PreserveNewest" />
     <PackageReference Include="NAudio" Version="2.3.0" />
-    <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.4" />
+    <PackageReference Include="org.k2fsa.sherpa.onnx.runtime.win-x64" Version="1.13.4" ExcludeAssets="runtime;native" />
     <PackageReference Include="Whisper.net" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" Condition="'$(VoiceFlavor)' != 'Compact'" />
     <PackageReference Include="Whisper.net.Runtime.Cuda" Version="1.9.1" Condition="'$(VoiceFlavor)' != 'Compact'" />
@@ -62,6 +66,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="vendor\**\*.cs" />
     <Compile Remove="tests\**\*.cs" />
     <Compile Remove="installer\EgoistVoiceBootstrap.cs" />
     <Compile Remove="installer\EgoistVoiceWebBootstrap.cs" />
@@ -80,5 +85,27 @@
              CopyToOutputDirectory="PreserveNewest" />
     <Resource Include="assets\EgoistVoice.png" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="vendor\sherpa-native-asr\1.13.4\sherpa-onnx-c-api.dll" Link="sherpa-onnx-c-api.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(NuGetPackageRoot)org.k2fsa.sherpa.onnx.runtime.win-x64/1.13.4/runtimes/win-x64/native/onnxruntime.dll" Link="onnxruntime.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="vendor\sherpa-native-asr\1.13.4\manifest.json" Link="licenses\native-asr\manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="vendor\sherpa-native-asr\1.13.4\licenses\*" Link="licenses\native-asr\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="VerifyPinnedNativeAsr" BeforeTargets="PrepareForBuild">
+    <ItemGroup>
+      <_PinnedNative Include="$(MSBuildProjectDirectory)/vendor/sherpa-native-asr/1.13.4/sherpa-onnx-c-api.dll">
+        <ExpectedHash>dcfc89cf50fbd0fb77c115a6b53ee9b2739e57d6d1f4158a3aeab31dd7139676</ExpectedHash>
+      </_PinnedNative>
+      <_PinnedNative Include="$(NuGetPackageRoot)org.k2fsa.sherpa.onnx.runtime.win-x64/1.13.4/runtimes/win-x64/native/onnxruntime.dll">
+        <ExpectedHash>daa77083a45bf525da0dde9e87f85d8eb146f58f9c9aa7124ca84545e1c0f148</ExpectedHash>
+      </_PinnedNative>
+    </ItemGroup>
+    <GetFileHash Files="@(_PinnedNative)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="_PinnedNativeHash" />
+    </GetFileHash>
+    <Error Condition="'%(_PinnedNativeHash.FileHash)' != '%(_PinnedNativeHash.ExpectedHash)'" Text="Pinned native ASR hash mismatch: %(_PinnedNativeHash.Identity)" />
+  </Target>
 
 </Project>

@@ -1,0 +1,1593 @@
+--- a/scripts/dotnet/AudioTaggingConfig.cs
++++ b/scripts/dotnet/AudioTaggingConfig.cs
+@@ -17,7 +17,7 @@
+ 
+         public AudioTaggingModelConfig Model;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Labels;
+ 
+         public int TopK;
+--- a/scripts/dotnet/AudioTaggingModelConfig.cs
++++ b/scripts/dotnet/AudioTaggingModelConfig.cs
+@@ -19,14 +19,14 @@
+ 
+         public OfflineZipformerAudioTaggingModelConfig Zipformer;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string CED;
+ 
+         public int NumThreads;
+ 
+         public int Debug;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Provider;
+     }
+ }
+--- a/scripts/dotnet/HomophoneReplacerConfig.cs
++++ b/scripts/dotnet/HomophoneReplacerConfig.cs
+@@ -14,13 +14,13 @@
+           RuleFsts = "";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string DictDir;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Lexicon;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string RuleFsts;
+     }
+ }
+--- a/scripts/dotnet/KeywordSpotterConfig.cs
++++ b/scripts/dotnet/KeywordSpotterConfig.cs
+@@ -28,10 +28,10 @@
+         public float KeywordsScore;
+         public float KeywordsThreshold;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string KeywordsFile;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string KeywordsBuf;
+ 
+         public int KeywordsBufSize;
+--- a/scripts/dotnet/OfflineCanaryModelConfig.cs
++++ b/scripts/dotnet/OfflineCanaryModelConfig.cs
+@@ -15,16 +15,16 @@
+             TgtLang = "en";
+             UsePnc = 1;
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Encoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Decoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string SrcLang;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string TgtLang;
+ 
+         public int UsePnc;
+--- a/scripts/dotnet/OfflineCohereTranscribeModelConfig.cs
++++ b/scripts/dotnet/OfflineCohereTranscribeModelConfig.cs
+@@ -16,13 +16,13 @@
+             UseItn = 1;
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Encoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Decoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Language;
+ 
+         public int UsePunct;
+--- a/scripts/dotnet/OfflineDolphinModelConfig.cs
++++ b/scripts/dotnet/OfflineDolphinModelConfig.cs
+@@ -11,7 +11,7 @@
+         {
+             Model = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+--- a/scripts/dotnet/OfflineFireRedAsrCtcModel.cs
++++ b/scripts/dotnet/OfflineFireRedAsrCtcModel.cs
+@@ -12,7 +12,7 @@
+         {
+             Model = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+--- a/scripts/dotnet/OfflineFireRedAsrModelConfig.cs
++++ b/scripts/dotnet/OfflineFireRedAsrModelConfig.cs
+@@ -12,10 +12,10 @@
+             Encoder = "";
+             Decoder = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Encoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Decoder;
+     }
+ }
+--- a/scripts/dotnet/OfflineFunAsrNanoModel.cs
++++ b/scripts/dotnet/OfflineFunAsrNanoModel.cs
+@@ -25,34 +25,34 @@
+             Hotwords = "";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string EncoderAdaptor;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string LLM;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Embedding;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Tokenizer;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string SystemPrompt;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string UserPrompt;
+ 
+         public int MaxNewTokens;
+         public float Temperature;
+         public float TopP;
+         public int Seed;
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Language;
+ 
+         public int Itn;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Hotwords;
+     }
+ }
+--- a/scripts/dotnet/OfflineLMConfig.cs
++++ b/scripts/dotnet/OfflineLMConfig.cs
+@@ -15,7 +15,7 @@
+             Model = "";
+             Scale = 0.5F;
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+ 
+         public float Scale;
+--- a/scripts/dotnet/OfflineMedAsrCtcModel.cs
++++ b/scripts/dotnet/OfflineMedAsrCtcModel.cs
+@@ -12,7 +12,7 @@
+         {
+             Model = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+--- a/scripts/dotnet/OfflineModelConfig.cs
++++ b/scripts/dotnet/OfflineModelConfig.cs
+@@ -43,26 +43,26 @@
+         public OfflineWhisperModelConfig Whisper;
+         public OfflineTdnnModelConfig Tdnn;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Tokens;
+ 
+         public int NumThreads;
+ 
+         public int Debug;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Provider;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string ModelType;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string ModelingUnit;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string BpeVocab;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string TeleSpeechCtc;
+ 
+         public OfflineSenseVoiceModelConfig SenseVoice;
+--- a/scripts/dotnet/OfflineMoonshineModelConfig.cs
++++ b/scripts/dotnet/OfflineMoonshineModelConfig.cs
+@@ -20,19 +20,19 @@
+             CachedDecoder = "";
+             MergedDecoder = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Preprocessor;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Encoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string UncachedDecoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string CachedDecoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string MergedDecoder;
+     }
+ }
+--- a/scripts/dotnet/OfflineNemoEncDecCtcModelConfig.cs
++++ b/scripts/dotnet/OfflineNemoEncDecCtcModelConfig.cs
+@@ -14,7 +14,7 @@
+         {
+             Model = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+\ No newline at end of file
+--- a/scripts/dotnet/OfflineOmnilingualAsrCtcModel.cs
++++ b/scripts/dotnet/OfflineOmnilingualAsrCtcModel.cs
+@@ -12,7 +12,7 @@
+         {
+             Model = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+--- a/scripts/dotnet/OfflineParaformerModelConfig.cs
++++ b/scripts/dotnet/OfflineParaformerModelConfig.cs
+@@ -11,7 +11,7 @@
+         {
+             Model = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ 
+--- a/scripts/dotnet/OfflinePunctuationModelConfig.cs
++++ b/scripts/dotnet/OfflinePunctuationModelConfig.cs
+@@ -15,14 +15,14 @@
+             Provider = "cpu";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string CtTransformer;
+ 
+         public int NumThreads;
+ 
+         public int Debug;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Provider;
+     }
+ }
+--- a/scripts/dotnet/OfflineQwen3AsrModelConfig.cs
++++ b/scripts/dotnet/OfflineQwen3AsrModelConfig.cs
+@@ -22,16 +22,16 @@
+             Hotwords = "";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string ConvFrontend;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Encoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Decoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Tokenizer;
+ 
+         public int MaxTotalLen;
+@@ -40,7 +40,7 @@
+         public float TopP;
+         public int Seed;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Hotwords;
+     }
+ }
+--- a/scripts/dotnet/OfflineRecognizer.cs
++++ b/scripts/dotnet/OfflineRecognizer.cs
+@@ -11,22 +11,35 @@
+         public OfflineRecognizer(OfflineRecognizerConfig config)
+         {
+             IntPtr h = SherpaOnnxCreateOfflineRecognizer(ref config);
++            if (h == IntPtr.Zero)
++            {
++                throw new InvalidOperationException("The offline ASR model or configuration could not be loaded.");
++            }
+             _handle = new HandleRef(this, h);
+         }
+ 
+         public void SetConfig(OfflineRecognizerConfig config)
+         {
++            ThrowIfDisposed();
+             SherpaOnnxOfflineRecognizerSetConfig(_handle.Handle, ref config);
+         }
+ 
+         public OfflineStream CreateStream()
+         {
++            ThrowIfDisposed();
+             IntPtr p = SherpaOnnxCreateOfflineStream(_handle.Handle);
++            if (p == IntPtr.Zero)
++            {
++                throw new InvalidOperationException("The offline ASR stream could not be created.");
++            }
+             return new OfflineStream(p);
+         }
+ 
+         public void Decode(OfflineStream stream)
+         {
++            ThrowIfDisposed();
++            if (stream == null) throw new ArgumentNullException(nameof(stream));
++            if (stream.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(OfflineStream));
+             Decode(_handle.Handle, stream.Handle);
+         }
+ 
+@@ -35,9 +48,13 @@
+         {
+             // TargetFramework=net20 does not support System.Linq
+             // IntPtr[] ptrs = streams.Select(s => s.Handle).ToArray();
++            ThrowIfDisposed();
++            if (streams == null) throw new ArgumentNullException(nameof(streams));
+             List<IntPtr> list = new List<IntPtr>();
+             foreach (OfflineStream s in streams)
+             {
++              if (s == null) throw new ArgumentException("An ASR stream is null.", nameof(streams));
++              if (s.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(OfflineStream));
+               list.Add(s.Handle);
+             }
+             IntPtr[] ptrs = list.ToArray();
+@@ -55,6 +72,11 @@
+         ~OfflineRecognizer()
+         {
+             Cleanup();
++        }
++
++        private void ThrowIfDisposed()
++        {
++            if (_handle.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(OfflineRecognizer));
+         }
+ 
+         private void Cleanup()
+--- a/scripts/dotnet/OfflineRecognizerConfig.cs
++++ b/scripts/dotnet/OfflineRecognizerConfig.cs
+@@ -26,20 +26,20 @@
+         public OfflineModelConfig ModelConfig;
+         public OfflineLMConfig LmConfig;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string DecodingMethod;
+ 
+         public int MaxActivePaths;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string HotwordsFile;
+ 
+         public float HotwordsScore;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string RuleFsts;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string RuleFars;
+ 
+         public float BlankPenalty;
+--- a/scripts/dotnet/OfflineRecognizerResult.cs
++++ b/scripts/dotnet/OfflineRecognizerResult.cs
+@@ -11,7 +11,9 @@
+     {
+         public OfflineRecognizerResult(IntPtr handle)
+         {
++            if (handle == IntPtr.Zero) throw new ArgumentException("The native offline ASR result is null.", nameof(handle));
+             Impl impl = (Impl)Marshal.PtrToStructure(handle, typeof(Impl));
++            if (impl.Text == IntPtr.Zero) throw new InvalidOperationException("The native offline ASR result has no text buffer.");
+ 
+             // PtrToStringUTF8() requires .net standard 2.1
+             // _text = Marshal.PtrToStringUTF8(impl.Text);
+--- a/scripts/dotnet/OfflineSenseVoiceModelConfig.cs
++++ b/scripts/dotnet/OfflineSenseVoiceModelConfig.cs
+@@ -13,10 +13,10 @@
+             Language = "";
+             UseInverseTextNormalization = 0;
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Language;
+ 
+         public int UseInverseTextNormalization;
+--- a/scripts/dotnet/OfflineSourceSeparationModelConfig.cs
++++ b/scripts/dotnet/OfflineSourceSeparationModelConfig.cs
+@@ -24,7 +24,7 @@
+ 
+         public int Debug;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Provider;
+     }
+ }
+--- a/scripts/dotnet/OfflineSourceSeparationSpleeterModelConfig.cs
++++ b/scripts/dotnet/OfflineSourceSeparationSpleeterModelConfig.cs
+@@ -13,10 +13,10 @@
+             Accompaniment = "";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Vocals;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Accompaniment;
+     }
+ }
+--- a/scripts/dotnet/OfflineSourceSeparationUvrModelConfig.cs
++++ b/scripts/dotnet/OfflineSourceSeparationUvrModelConfig.cs
+@@ -12,7 +12,7 @@
+             Model = "";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+--- a/scripts/dotnet/OfflineSpeakerSegmentationModelConfig.cs
++++ b/scripts/dotnet/OfflineSpeakerSegmentationModelConfig.cs
+@@ -24,7 +24,7 @@
+         /// true to print debug information of the model
+         public int Debug;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Provider;
+     }
+ }
+--- a/scripts/dotnet/OfflineSpeakerSegmentationPyannoteModelConfig.cs
++++ b/scripts/dotnet/OfflineSpeakerSegmentationPyannoteModelConfig.cs
+@@ -13,7 +13,7 @@
+             Model = "";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+--- a/scripts/dotnet/OfflineSpeechDenoiserDpdfNetModelConfig.cs
++++ b/scripts/dotnet/OfflineSpeechDenoiserDpdfNetModelConfig.cs
+@@ -12,7 +12,7 @@
+             Model = "";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+--- a/scripts/dotnet/OfflineSpeechDenoiserGtcrnModelConfig.cs
++++ b/scripts/dotnet/OfflineSpeechDenoiserGtcrnModelConfig.cs
+@@ -11,7 +11,7 @@
+         {
+             Model = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+--- a/scripts/dotnet/OfflineSpeechDenoiserModelConfig.cs
++++ b/scripts/dotnet/OfflineSpeechDenoiserModelConfig.cs
+@@ -22,7 +22,7 @@
+ 
+         public int Debug;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Provider;
+ 
+         public OfflineSpeechDenoiserDpdfNetModelConfig Dpdfnet;
+--- a/scripts/dotnet/OfflineStream.cs
++++ b/scripts/dotnet/OfflineStream.cs
+@@ -10,27 +10,36 @@
+     {
+         public OfflineStream(IntPtr p)
+         {
++            if (p == IntPtr.Zero)
++            {
++                throw new ArgumentException("The native offline ASR stream is null.", nameof(p));
++            }
+             _handle = new HandleRef(this, p);
+         }
+ 
+         public void AcceptWaveform(int sampleRate, float[] samples)
+         {
++            ThrowIfDisposed();
++            if (samples == null) throw new ArgumentNullException(nameof(samples));
+             AcceptWaveform(Handle, sampleRate, samples, samples.Length);
+         }
+ 
+         public void SetOption(string key, string value)
+         {
++            ThrowIfDisposed();
+             SherpaOnnxOfflineStreamSetOption(Handle, key, value);
+         }
+ 
+         public string GetOption(string key)
+         {
++            ThrowIfDisposed();
+             IntPtr p = SherpaOnnxOfflineStreamGetOption(Handle, key);
+-            return Marshal.PtrToStringAnsi(p) ?? "";
++            return Marshal.PtrToStringUTF8(p) ?? "";
+         }
+ 
+         public bool HasOption(string key)
+         {
++            ThrowIfDisposed();
+             return SherpaOnnxOfflineStreamHasOption(Handle, key) == 1;
+         }
+ 
+@@ -38,10 +47,20 @@
+         {
+             get
+             {
++                ThrowIfDisposed();
+                 IntPtr h = GetResult(_handle.Handle);
+-                OfflineRecognizerResult result = new OfflineRecognizerResult(h);
+-                DestroyResult(h);
+-                return result;
++                if (h == IntPtr.Zero)
++                {
++                    throw new InvalidOperationException("The offline ASR result is unavailable.");
++                }
++                try
++                {
++                    return new OfflineRecognizerResult(h);
++                }
++                finally
++                {
++                    DestroyResult(h);
++                }
+             }
+         }
+ 
+@@ -56,6 +75,11 @@
+             // Prevent the object from being placed on the
+             // finalization queue
+             System.GC.SuppressFinalize(this);
++        }
++
++        private void ThrowIfDisposed()
++        {
++            if (Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(OfflineStream));
+         }
+ 
+         private void Cleanup()
+@@ -76,13 +100,13 @@
+         private static extern void AcceptWaveform(IntPtr handle, int sampleRate, float[] samples, int n);
+ 
+         [DllImport(Dll.Filename)]
+-        private static extern void SherpaOnnxOfflineStreamSetOption(IntPtr handle, [MarshalAs(UnmanagedType.LPStr)] string key, [MarshalAs(UnmanagedType.LPStr)] string value);
++        private static extern void SherpaOnnxOfflineStreamSetOption(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string key, [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
+ 
+         [DllImport(Dll.Filename)]
+-        private static extern IntPtr SherpaOnnxOfflineStreamGetOption(IntPtr handle, [MarshalAs(UnmanagedType.LPStr)] string key);
++        private static extern IntPtr SherpaOnnxOfflineStreamGetOption(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string key);
+ 
+         [DllImport(Dll.Filename)]
+-        private static extern int SherpaOnnxOfflineStreamHasOption(IntPtr handle, [MarshalAs(UnmanagedType.LPStr)] string key);
++        private static extern int SherpaOnnxOfflineStreamHasOption(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string key);
+ 
+         [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxGetOfflineStreamResult")]
+         private static extern IntPtr GetResult(IntPtr handle);
+--- a/scripts/dotnet/OfflineTdnnModelConfig.cs
++++ b/scripts/dotnet/OfflineTdnnModelConfig.cs
+@@ -11,7 +11,7 @@
+         {
+             Model = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ 
+--- a/scripts/dotnet/OfflineTransducerModelConfig.cs
++++ b/scripts/dotnet/OfflineTransducerModelConfig.cs
+@@ -13,13 +13,13 @@
+             Decoder = "";
+             Joiner = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Encoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Decoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Joiner;
+     }
+ 
+--- a/scripts/dotnet/OfflineTtsConfig.cs
++++ b/scripts/dotnet/OfflineTtsConfig.cs
+@@ -17,12 +17,12 @@
+         }
+         public OfflineTtsModelConfig Model;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string RuleFsts;
+ 
+         public int MaxNumSentences;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string RuleFars;
+ 
+         public float SilenceScale;
+--- a/scripts/dotnet/OfflineTtsGenerationConfig.cs
++++ b/scripts/dotnet/OfflineTtsGenerationConfig.cs
+@@ -1,153 +1,153 @@
+-﻿/// Copyright (c)  2026  Xiaomi Corporation (authors: Fangjun Kuang)
+-
+-using System;
+-using System.Collections;
+-using System.Runtime.InteropServices;
+-using System.Text;
+-
+-namespace SherpaOnnx
+-{
+-    public class OfflineTtsGenerationConfig
+-    {
+-        public OfflineTtsGenerationConfig()
+-        {
+-            SilenceScale = 0.2f;
+-            Speed = 1.0f;
+-            Sid = 0;
+-            ReferenceAudio = null;
+-            ReferenceSampleRate = 0;
+-            ReferenceText = "";
+-            NumSteps = 5;
+-            Extra = new Hashtable();
+-        }
+-
+-        public float SilenceScale;
+-        public float Speed;
+-        public int Sid;
+-
+-        public float[] ReferenceAudio;
+-        public int ReferenceSampleRate;
+-        public string ReferenceText;
+-        public int NumSteps;
+-
+-        /// <summary>
+-        /// Extra attributes stored as key/value pairs
+-        /// </summary>
+-        public Hashtable Extra;
+-
+-        /// <summary>
+-        /// Convert to native struct for P/Invoke
+-        /// </summary>
+-        internal NativeStruct ToNative(out GCHandle? audioHandle)
+-        {
+-            NativeStruct native = new NativeStruct();
+-            native.SilenceScale = SilenceScale;
+-            native.Speed = Speed;
+-            native.Sid = Sid;
+-
+-            // Handle ReferenceAudio
+-            audioHandle = null;
+-            if (ReferenceAudio != null && ReferenceAudio.Length > 0)
+-            {
+-                audioHandle = GCHandle.Alloc(ReferenceAudio, GCHandleType.Pinned);
+-                native.ReferenceAudio = audioHandle.Value.AddrOfPinnedObject();
+-                native.ReferenceAudioLen = ReferenceAudio.Length;
+-            }
+-            else
+-            {
+-                native.ReferenceAudio = IntPtr.Zero;
+-                native.ReferenceAudioLen = 0;
+-            }
+-
+-            native.ReferenceSampleRate = ReferenceSampleRate;
+-            native.ReferenceText = ReferenceText ?? "";
+-            native.NumSteps = NumSteps;
+-
+-            // Handle Extra JSON
+-            native.Extra = "{}";
+-            if (Extra != null && Extra.Count > 0)
+-            {
+-                StringBuilder json = new StringBuilder();
+-                json.Append("{");
+-                bool first = true;
+-
+-                foreach (DictionaryEntry kv in Extra)
+-                {
+-                    if (!first) json.Append(",");
+-                    first = false;
+-
+-                    string key = JsonEscape(kv.Key.ToString());
+-                    string val;
+-
+-                    if (kv.Value is string)
+-                        val = JsonEscape((string)kv.Value);
+-                    else if (kv.Value is float || kv.Value is double)
+-                        val = ((IFormattable)kv.Value).ToString(null, System.Globalization.CultureInfo.InvariantCulture);
+-                    else if (kv.Value is bool)
+-                        val = (bool)kv.Value ? "true" : "false";
+-                    else
+-                        val = kv.Value.ToString();
+-
+-                    json.AppendFormat("{0}:{1}", key, val);
+-                }
+-
+-                json.Append("}");
+-                native.Extra = json.ToString();
+-            }
+-            return native;
+-        }
+-
+-        /// <summary>
+-        /// Escapes a string for JSON (for .NET 2.0)
+-        /// </summary>
+-        private static string JsonEscape(string s)
+-        {
+-            if (s == null) return "\"\"";
+-
+-            StringBuilder sb = new StringBuilder();
+-            sb.Append('"');
+-            foreach (char c in s)
+-            {
+-                switch (c)
+-                {
+-                    case '"': sb.Append("\\\""); break;
+-                    case '\\': sb.Append("\\\\"); break;
+-                    case '\b': sb.Append("\\b"); break;
+-                    case '\f': sb.Append("\\f"); break;
+-                    case '\n': sb.Append("\\n"); break;
+-                    case '\r': sb.Append("\\r"); break;
+-                    case '\t': sb.Append("\\t"); break;
+-                    default:
+-                        if (c < 32 || c > 126)
+-                            sb.AppendFormat("\\u{0:X4}", (int)c);
+-                        else
+-                            sb.Append(c);
+-                        break;
+-                }
+-            }
+-            sb.Append('"');
+-            return sb.ToString();
+-        }
+-
+-        [StructLayout(LayoutKind.Sequential)]
+-        internal struct NativeStruct
+-        {
+-            public float SilenceScale;
+-            public float Speed;
+-            public int Sid;
+-
+-            public IntPtr ReferenceAudio;
+-            public int ReferenceAudioLen;
+-            public int ReferenceSampleRate;
+-
+-            [MarshalAs(UnmanagedType.LPStr)]
+-            public string ReferenceText;
+-
+-            public int NumSteps;
+-
+-            [MarshalAs(UnmanagedType.LPStr)]
+-            public string Extra;
+-        }
+-    }
+-}
+-
++﻿/// Copyright (c)  2026  Xiaomi Corporation (authors: Fangjun Kuang)
++
++using System;
++using System.Collections;
++using System.Runtime.InteropServices;
++using System.Text;
++
++namespace SherpaOnnx
++{
++    public class OfflineTtsGenerationConfig
++    {
++        public OfflineTtsGenerationConfig()
++        {
++            SilenceScale = 0.2f;
++            Speed = 1.0f;
++            Sid = 0;
++            ReferenceAudio = null;
++            ReferenceSampleRate = 0;
++            ReferenceText = "";
++            NumSteps = 5;
++            Extra = new Hashtable();
++        }
++
++        public float SilenceScale;
++        public float Speed;
++        public int Sid;
++
++        public float[] ReferenceAudio;
++        public int ReferenceSampleRate;
++        public string ReferenceText;
++        public int NumSteps;
++
++        /// <summary>
++        /// Extra attributes stored as key/value pairs
++        /// </summary>
++        public Hashtable Extra;
++
++        /// <summary>
++        /// Convert to native struct for P/Invoke
++        /// </summary>
++        internal NativeStruct ToNative(out GCHandle? audioHandle)
++        {
++            NativeStruct native = new NativeStruct();
++            native.SilenceScale = SilenceScale;
++            native.Speed = Speed;
++            native.Sid = Sid;
++
++            // Handle ReferenceAudio
++            audioHandle = null;
++            if (ReferenceAudio != null && ReferenceAudio.Length > 0)
++            {
++                audioHandle = GCHandle.Alloc(ReferenceAudio, GCHandleType.Pinned);
++                native.ReferenceAudio = audioHandle.Value.AddrOfPinnedObject();
++                native.ReferenceAudioLen = ReferenceAudio.Length;
++            }
++            else
++            {
++                native.ReferenceAudio = IntPtr.Zero;
++                native.ReferenceAudioLen = 0;
++            }
++
++            native.ReferenceSampleRate = ReferenceSampleRate;
++            native.ReferenceText = ReferenceText ?? "";
++            native.NumSteps = NumSteps;
++
++            // Handle Extra JSON
++            native.Extra = "{}";
++            if (Extra != null && Extra.Count > 0)
++            {
++                StringBuilder json = new StringBuilder();
++                json.Append("{");
++                bool first = true;
++
++                foreach (DictionaryEntry kv in Extra)
++                {
++                    if (!first) json.Append(",");
++                    first = false;
++
++                    string key = JsonEscape(kv.Key.ToString());
++                    string val;
++
++                    if (kv.Value is string)
++                        val = JsonEscape((string)kv.Value);
++                    else if (kv.Value is float || kv.Value is double)
++                        val = ((IFormattable)kv.Value).ToString(null, System.Globalization.CultureInfo.InvariantCulture);
++                    else if (kv.Value is bool)
++                        val = (bool)kv.Value ? "true" : "false";
++                    else
++                        val = kv.Value.ToString();
++
++                    json.AppendFormat("{0}:{1}", key, val);
++                }
++
++                json.Append("}");
++                native.Extra = json.ToString();
++            }
++            return native;
++        }
++
++        /// <summary>
++        /// Escapes a string for JSON (for .NET 2.0)
++        /// </summary>
++        private static string JsonEscape(string s)
++        {
++            if (s == null) return "\"\"";
++
++            StringBuilder sb = new StringBuilder();
++            sb.Append('"');
++            foreach (char c in s)
++            {
++                switch (c)
++                {
++                    case '"': sb.Append("\\\""); break;
++                    case '\\': sb.Append("\\\\"); break;
++                    case '\b': sb.Append("\\b"); break;
++                    case '\f': sb.Append("\\f"); break;
++                    case '\n': sb.Append("\\n"); break;
++                    case '\r': sb.Append("\\r"); break;
++                    case '\t': sb.Append("\\t"); break;
++                    default:
++                        if (c < 32 || c > 126)
++                            sb.AppendFormat("\\u{0:X4}", (int)c);
++                        else
++                            sb.Append(c);
++                        break;
++                }
++            }
++            sb.Append('"');
++            return sb.ToString();
++        }
++
++        [StructLayout(LayoutKind.Sequential)]
++        internal struct NativeStruct
++        {
++            public float SilenceScale;
++            public float Speed;
++            public int Sid;
++
++            public IntPtr ReferenceAudio;
++            public int ReferenceAudioLen;
++            public int ReferenceSampleRate;
++
++            [MarshalAs(UnmanagedType.LPUTF8Str)]
++            public string ReferenceText;
++
++            public int NumSteps;
++
++            [MarshalAs(UnmanagedType.LPUTF8Str)]
++            public string Extra;
++        }
++    }
++}
++
+--- a/scripts/dotnet/OfflineTtsKittenModelConfig.cs
++++ b/scripts/dotnet/OfflineTtsKittenModelConfig.cs
+@@ -16,16 +16,16 @@
+ 
+             LengthScale = 1.0F;
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Voices;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Tokens;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string DataDir;
+ 
+         public float LengthScale;
+--- a/scripts/dotnet/OfflineTtsKokoroModelConfig.cs
++++ b/scripts/dotnet/OfflineTtsKokoroModelConfig.cs
+@@ -20,27 +20,27 @@
+             Lexicon = "";
+             Lang = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Voices;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Tokens;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string DataDir;
+ 
+         public float LengthScale;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string DictDir;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Lexicon;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Lang;
+     }
+ }
+--- a/scripts/dotnet/OfflineTtsMatchaModelConfig.cs
++++ b/scripts/dotnet/OfflineTtsMatchaModelConfig.cs
+@@ -20,25 +20,25 @@
+ 
+             DictDir = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string AcousticModel;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Vocoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Lexicon;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Tokens;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string DataDir;
+ 
+         public float NoiseScale;
+         public float LengthScale;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string DictDir;
+     }
+ }
+--- a/scripts/dotnet/OfflineTtsModelConfig.cs
++++ b/scripts/dotnet/OfflineTtsModelConfig.cs
+@@ -25,7 +25,7 @@
+         public int NumThreads;
+         public int Debug;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Provider;
+ 
+         public OfflineTtsMatchaModelConfig Matcha;
+--- a/scripts/dotnet/OfflineTtsPocketModelConfig.cs
++++ b/scripts/dotnet/OfflineTtsPocketModelConfig.cs
+@@ -20,25 +20,25 @@
+             VoiceEmbeddingCacheCapacity = 50;
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string LmFlow;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string LmMain;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Encoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Decoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string TextConditioner;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string VocabJson;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string TokenScoresJson;
+ 
+         public int VoiceEmbeddingCacheCapacity;
+--- a/scripts/dotnet/OfflineTtsSupertonicModelConfig.cs
++++ b/scripts/dotnet/OfflineTtsSupertonicModelConfig.cs
+@@ -18,25 +18,25 @@
+             VoiceStyle = "";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string DurationPredictor;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string TextEncoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string VectorEstimator;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Vocoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string TtsJson;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string UnicodeIndexer;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string VoiceStyle;
+     }
+ }
+--- a/scripts/dotnet/OfflineTtsVitsModelConfig.cs
++++ b/scripts/dotnet/OfflineTtsVitsModelConfig.cs
+@@ -20,23 +20,23 @@
+ 
+             DictDir = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Lexicon;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Tokens;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string DataDir;
+ 
+         public float NoiseScale;
+         public float NoiseScaleW;
+         public float LengthScale;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string DictDir;
+     }
+ }
+\ No newline at end of file
+--- a/scripts/dotnet/OfflineTtsZipVoiceModelConfig.cs
++++ b/scripts/dotnet/OfflineTtsZipVoiceModelConfig.cs
+@@ -21,22 +21,22 @@
+             TargetRms = 0.1F;
+             GuidanceScale = 1.0F;
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Tokens;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Encoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Decoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Vocoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string DataDir;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Lexicon;
+ 
+         public float FeatScale;
+--- a/scripts/dotnet/OfflineWenetCtcModelConfig.cs
++++ b/scripts/dotnet/OfflineWenetCtcModelConfig.cs
+@@ -12,7 +12,7 @@
+         {
+             Model = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+--- a/scripts/dotnet/OfflineWhisperModelConfig.cs
++++ b/scripts/dotnet/OfflineWhisperModelConfig.cs
+@@ -17,16 +17,16 @@
+             EnableTokenTimestamps = 0;
+             EnableSegmentTimestamps = 0;
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Encoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Decoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Language;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Task;
+ 
+         public int TailPaddings;
+--- a/scripts/dotnet/OfflineZipformerAudioTaggingModelConfig.cs
++++ b/scripts/dotnet/OfflineZipformerAudioTaggingModelConfig.cs
+@@ -12,7 +12,7 @@
+         {
+             Model = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+--- a/scripts/dotnet/OfflineZipformerCtcModelConfig.cs
++++ b/scripts/dotnet/OfflineZipformerCtcModelConfig.cs
+@@ -12,7 +12,7 @@
+         {
+             Model = "";
+         }
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+--- a/scripts/dotnet/OnlineCtcFstDecoderConfig.cs
++++ b/scripts/dotnet/OnlineCtcFstDecoderConfig.cs
+@@ -15,7 +15,7 @@
+             MaxActive = 3000;
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Graph;
+ 
+         public int MaxActive;
+--- a/scripts/dotnet/OnlineModelConfig.cs
++++ b/scripts/dotnet/OnlineModelConfig.cs
+@@ -32,28 +32,28 @@
+         public OnlineParaformerModelConfig Paraformer;
+         public OnlineZipformer2CtcModelConfig Zipformer2Ctc;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Tokens;
+ 
+         /// Number of threads used to run the neural network model
+         public int NumThreads;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Provider;
+ 
+         /// true to print debug information of the model
+         public int Debug;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string ModelType;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string ModelingUnit;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string BpeVocab;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string TokensBuf;
+ 
+         public int TokensBufSize;
+--- a/scripts/dotnet/OnlineNemoCtcModelConfig.cs
++++ b/scripts/dotnet/OnlineNemoCtcModelConfig.cs
+@@ -12,7 +12,7 @@
+             Model = "";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+--- a/scripts/dotnet/OnlineParaformerModelConfig.cs
++++ b/scripts/dotnet/OnlineParaformerModelConfig.cs
+@@ -16,10 +16,10 @@
+             Decoder = "";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Encoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Decoder;
+     }
+ 
+--- a/scripts/dotnet/OnlinePunctuationModelConfig.cs
++++ b/scripts/dotnet/OnlinePunctuationModelConfig.cs
+@@ -16,17 +16,17 @@
+             Provider = "cpu";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string CnnBiLstm;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string BpeVocab;
+ 
+         public int NumThreads;
+ 
+         public int Debug;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Provider;
+     }
+ }
+--- a/scripts/dotnet/OnlineRecognizerConfig.cs
++++ b/scripts/dotnet/OnlineRecognizerConfig.cs
+@@ -33,7 +33,7 @@
+         public FeatureConfig FeatConfig;
+         public OnlineModelConfig ModelConfig;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string DecodingMethod;
+ 
+         /// Used only when decoding_method is modified_beam_search
+@@ -60,7 +60,7 @@
+         public float Rule3MinUtteranceLength;
+ 
+         /// Path to the hotwords.
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string HotwordsFile;
+ 
+         /// Bonus score for each token in hotwords.
+@@ -68,15 +68,15 @@
+ 
+         public OnlineCtcFstDecoderConfig CtcFstDecoderConfig;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string RuleFsts;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string RuleFars;
+ 
+         public float BlankPenalty;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string HotwordsBuf;
+ 
+         public int HotwordsBufSize;
+--- a/scripts/dotnet/OnlineStream.cs
++++ b/scripts/dotnet/OnlineStream.cs
+@@ -32,7 +32,7 @@
+         public string GetOption(string key)
+         {
+             IntPtr p = SherpaOnnxOnlineStreamGetOption(Handle, key);
+-            return Marshal.PtrToStringAnsi(p) ?? "";
++            return Marshal.PtrToStringUTF8(p) ?? "";
+         }
+ 
+         public bool HasOption(string key)
+@@ -74,13 +74,13 @@
+         private static extern void SherpaOnnxOnlineStreamInputFinished(IntPtr handle);
+ 
+         [DllImport(Dll.Filename)]
+-        private static extern void SherpaOnnxOnlineStreamSetOption(IntPtr handle, [MarshalAs(UnmanagedType.LPStr)] string key, [MarshalAs(UnmanagedType.LPStr)] string value);
++        private static extern void SherpaOnnxOnlineStreamSetOption(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string key, [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
+ 
+         [DllImport(Dll.Filename)]
+-        private static extern IntPtr SherpaOnnxOnlineStreamGetOption(IntPtr handle, [MarshalAs(UnmanagedType.LPStr)] string key);
++        private static extern IntPtr SherpaOnnxOnlineStreamGetOption(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string key);
+ 
+         [DllImport(Dll.Filename)]
+-        private static extern int SherpaOnnxOnlineStreamHasOption(IntPtr handle, [MarshalAs(UnmanagedType.LPStr)] string key);
++        private static extern int SherpaOnnxOnlineStreamHasOption(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string key);
+     }
+ 
+ }
+--- a/scripts/dotnet/OnlineToneCtcModelConfig.cs
++++ b/scripts/dotnet/OnlineToneCtcModelConfig.cs
+@@ -12,7 +12,7 @@
+             Model = "";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+--- a/scripts/dotnet/OnlineTransducerModelConfig.cs
++++ b/scripts/dotnet/OnlineTransducerModelConfig.cs
+@@ -17,13 +17,13 @@
+             Joiner = "";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Encoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Decoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Joiner;
+     }
+ 
+--- a/scripts/dotnet/OnlineZipformer2CtcModelConfig.cs
++++ b/scripts/dotnet/OnlineZipformer2CtcModelConfig.cs
+@@ -14,7 +14,7 @@
+             Model = "";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+     }
+ }
+\ No newline at end of file
+--- a/scripts/dotnet/SileroVadModelConfig.cs
++++ b/scripts/dotnet/SileroVadModelConfig.cs
+@@ -17,7 +17,7 @@
+             MaxSpeechDuration = 5.0F;
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+ 
+         public float Threshold;
+--- a/scripts/dotnet/SpeakerEmbeddingExtractorConfig.cs
++++ b/scripts/dotnet/SpeakerEmbeddingExtractorConfig.cs
+@@ -15,13 +15,13 @@
+             Provider = "cpu";
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+ 
+         public int NumThreads;
+         public int Debug;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Provider;
+     }
+ 
+--- a/scripts/dotnet/SpokenLanguageIdentificationConfig.cs
++++ b/scripts/dotnet/SpokenLanguageIdentificationConfig.cs
+@@ -18,7 +18,7 @@
+         public int NumThreads;
+         public int Debug;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Provider;
+     }
+ 
+--- a/scripts/dotnet/SpokenLanguageIdentificationWhisperConfig.cs
++++ b/scripts/dotnet/SpokenLanguageIdentificationWhisperConfig.cs
+@@ -14,10 +14,10 @@
+             TailPaddings = -1;
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Encoder;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Decoder;
+ 
+         public int TailPaddings;
+--- a/scripts/dotnet/TenVadModelConfig.cs
++++ b/scripts/dotnet/TenVadModelConfig.cs
+@@ -17,7 +17,7 @@
+             MaxSpeechDuration = 5.0F;
+         }
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Model;
+ 
+         public float Threshold;
+--- a/scripts/dotnet/VadModelConfig.cs
++++ b/scripts/dotnet/VadModelConfig.cs
+@@ -23,7 +23,7 @@
+ 
+         public int NumThreads;
+ 
+-        [MarshalAs(UnmanagedType.LPStr)]
++        [MarshalAs(UnmanagedType.LPUTF8Str)]
+         public string Provider;
+ 
+         public int Debug;

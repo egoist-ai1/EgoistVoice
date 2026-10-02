@@ -1,0 +1,10 @@
+Eigen 3.4.0 source availability (MPL-2.0)
+This distribution includes unchanged Eigen 3.4.0 code from the original Sherpa-ONNX v1.13.4 dependency chain.
+Eigen is primarily licensed under MPL-2.0; the complete license and third-party notices accompany this distribution.
+The MPL-covered source is available under MPL-2.0 at:
+https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz
+SHA256: 8586084f71f9bde545ee7fa6d00288b264a2b7ac3607b974e54d13e7162c1c72
+A verified complete copy of this unchanged source archive is retained in the accepted release evidence.
+No Eigen source modifications are made by Egoist Voice.
+The official build workflow provenance is scoped to original source and published asset identity; it is not proof of every compiler input used by the upstream publisher.
+Optional LGPL/GPL Eigen sources occur in the complete upstream archive. The Sherpa source inspected uses Eigen/Dense; these optional source licenses are not claimed to govern unrelated Egoist Voice source files.

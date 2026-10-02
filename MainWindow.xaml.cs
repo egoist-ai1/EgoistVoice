@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -185,7 +185,10 @@ public partial class MainWindow : Window, IDisposable
 
     public bool IsProcessing => _isProcessing;
 
-    public bool AreRecognitionModelsReady => _modelManager.AreAllModelsReady;
+    public bool AreRecognitionModelsReady => _transcription is RussianSpeechQualityService quality &&
+        quality.PrimaryAvailable && !quality.FormatSpeechPunctuation || _modelManager.AreAllModelsReady;
+    public bool IsSpeechFormattingUnavailable => _transcription is RussianSpeechQualityService quality &&
+        quality.PrimaryAvailable && quality.FormatSpeechPunctuation && !quality.FormattingAvailable;
 
     public ModelTransferProgress? RecognitionModelProgress => _modelManager.CurrentProgress;
 
@@ -559,6 +562,9 @@ public partial class MainWindow : Window, IDisposable
                 _isProcessing = true;
                 SetProcessingState("Распознаю", null);
                 break;
+            case "success-unformatted":
+                ShowSuccess("Вставлено без оформления");
+                break;
             case "success":
                 ShowSuccess();
                 break;
@@ -765,6 +771,7 @@ public partial class MainWindow : Window, IDisposable
                 }
             }
 
+            var audioFormattingUnavailable = result.AudioFormatting == AudioFormattingStatus.Unavailable;
             string? formattingMessage = null;
             if (directive is null && textSettings.FormatWithQwen && !textSettings.PreserveSpokenWords)
             {
@@ -784,11 +791,13 @@ public partial class MainWindow : Window, IDisposable
             LastOperationSummary = $"От отпускания до результата: {trace.Total.TotalSeconds:0.00} с" +
                 (textSettings.PreserveSpokenWords ? " · дословно" :
                     formattingMessage is null ? " · быстрое оформление" : " · " + formattingMessage);
+            if (audioFormattingUnavailable)
+                LastOperationSummary += " · оформление временно недоступно";
             AppLog.Write($"Dictation timing: {trace.Format()}");
             switch (deliveryResult.Status)
             {
                 case DictationDeliveryStatus.Inserted:
-                    ShowSuccess("Вставлено");
+                    ShowSuccess(audioFormattingUnavailable ? "Вставлено без оформления" : "Вставлено");
                     break;
                 case DictationDeliveryStatus.ClipboardFallback:
                     ShowClipboardFallback();
@@ -1111,6 +1120,11 @@ public partial class MainWindow : Window, IDisposable
         if (!settings.SaveRecentRecordings)
         {
             _recentRecordings.CancelPending();
+        }
+
+        if (_transcription is RussianSpeechQualityService russianQuality)
+        {
+            russianQuality.FormatSpeechPunctuation = settings.FormatSpeechPunctuation;
         }
 
         if (_transcription is HybridTranscriptionService hybrid)

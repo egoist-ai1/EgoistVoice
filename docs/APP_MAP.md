@@ -1,5 +1,13 @@
 # Egoist Voice — application map
 
+## Russian Compact 2.4.0 quality profile
+
+Warm WASAPI pre-roll 320 ms → complete session + release tail 350 ms → 16 kHz mono PCM → quiet-session acceptance without cropping → plain GigaAM v3 RNNT INT8 words → GigaAM v3 E2E RNNT INT8 on the same PCM → bounded punctuation/case projection → audio-confirmed known names → literal text rules → safe delivery. Both native engines use four CPU threads and greedy decoding; one user-facing profile. Disabling audio formatting retains the exact primary result. Capsule cadence remains 60 Hz (10 Hz reduced motion).
+
+`RussianSpeechQualityService` serializes warm-up/decode, runs chunk planning and file reads off the WPF dispatcher and reports formatting availability. A formatter failure retains recognized words, announces delivery without formatting and allows retry on a later transcription after a 30-second backoff. `AudioTranscriptComposer` changes punctuation/initial case; `AudioConfirmedNameFormatter` replaces only catalogued unambiguous names with an exact Latin spelling confirmed by the secondary audio decoder and agreement of the whole chunk. Structured syntax and unknown names are protected. This is not arbitrary spelling/grammar rewriting.
+
+Eight pinned model assets total 650090519 bytes. Source-only sherpa-onnx UTF-8 bindings fix Unicode model paths; official no-TTS native CAPI retains the stock frontend; ONNX Runtime stays unchanged. Build-RussianInstaller produces the native self-contained offline package; Update-CompactInstallation applies a verified transactional payload and preserves user Data. Full/translation flows below remain separate.
+
 ## Actors and flows
 
 - Warm WASAPI pre-roll → user presses configured trigger → in-memory session +

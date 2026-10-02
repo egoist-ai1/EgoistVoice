@@ -10,6 +10,8 @@ param(
     [Parameter(Mandatory)][string]$ReceiptDirectory,
     [Parameter(ParameterSetName='Upgrade')][switch]$PlanOnly,
     [Parameter(Mandatory, ParameterSetName='RollbackCheck')][switch]$VerifyRollback,
+    [Parameter(ParameterSetName='RollbackCheck')][ValidateSet('2.3.0','2.4.0')][string]$RollbackFixtureVersion = '2.4.0',
+    [Parameter(ParameterSetName='RollbackCheck')][ValidateSet('Missing','Disabled','Enabled')][string]$RollbackSpeechPunctuation = 'Missing',
     [Parameter(Mandatory, ParameterSetName='Recover')][string]$RecoverTransaction,
     [ValidateRange(5,120)][int]$ReadyTimeoutSeconds = 45
 )
@@ -50,6 +52,30 @@ function Get-Hash([string]$Path) {
 function Write-Json([string]$Path, [object]$Value) {
     [IO.File]::WriteAllText($Path, ($Value | ConvertTo-Json -Depth 12), $utf8)
 }
+function Get-ExpectedModelId([string]$Version) {
+    $primary = @('gigaam-v3-rnnt-int8-v1','gigaam-v3-rnnt-decoder-v1','gigaam-v3-rnnt-joiner-v1','gigaam-v3-rnnt-tokens-v1')
+    if ([version]($Version -split '-', 2)[0] -ge [version]'2.4.0') {
+        return $primary + @('gigaam-v3-e2e-rnnt-int8-v1','gigaam-v3-e2e-rnnt-decoder-v1','gigaam-v3-e2e-rnnt-joiner-v1','gigaam-v3-e2e-rnnt-tokens-v1')
+    }
+    return $primary
+}
+function Get-ReadinessState([string[]]$Lines, [int]$ProcessId, [DateTime]$StartedUtc, [bool]$RequireFormatter) {
+    $asrReady = $false
+    $formatterReady = $false
+    $processStartedUtc = $StartedUtc.ToUniversalTime()
+    $latestAllowedUtc = [DateTime]::UtcNow.AddSeconds(5)
+    foreach ($line in $Lines) {
+        $asrMatch = $line -match ('\[' + $ProcessId + '\] Russian ASR ready: engine=GigaAM v3 RNNT$')
+        $formatterMatch = $line -match ('\[' + $ProcessId + '\] Russian formatter ready: engine=GigaAM v3 E2E RNNT$')
+        if (!$asrMatch -and !$formatterMatch) { continue }
+        [DateTimeOffset]$stamp = [DateTimeOffset]::MinValue
+        if (![DateTimeOffset]::TryParse(($line -split ' ', 2)[0], [ref]$stamp) -or
+            $stamp.UtcDateTime -lt $processStartedUtc -or $stamp.UtcDateTime -gt $latestAllowedUtc) { continue }
+        if ($asrMatch) { $asrReady = $true }
+        if ($formatterMatch) { $formatterReady = $true }
+    }
+    return [pscustomobject]@{AsrReady=$asrReady;FormatterReady=$formatterReady;Ready=($asrReady -and (!$RequireFormatter -or $formatterReady))}
+}
 function Read-VerifiedPayload([string]$Stage, [string]$Manifest, [string]$ExpectedHash) {
     Assert-NoReparse $Stage
     Assert-NoReparse $Manifest
@@ -78,17 +104,27 @@ function Read-VerifiedPayload([string]$Stage, [string]$Manifest, [string]$Expect
         if (!$seen.Contains($required)) { throw 'Required self-contained Compact payload is missing.' }
     }
     $models = @(Get-Content -LiteralPath (Join-Path $Stage 'compact-models.json') -Raw | ConvertFrom-Json)
-    if ($models.Count -ne 4) { throw 'Exactly four primary RNNT model assets are required.' }
+    $expectedModelIds = @(Get-ExpectedModelId -Version $catalog.version)
+    if ($models.Count -ne $expectedModelIds.Count) { throw 'Version requires four primary RNNT assets, and from 2.4 also four formatting RNNT assets.' }
     $modelIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($model in $models) {
         if ($model.Id -notmatch '^gigaam-[a-z0-9-]+$' -or !$modelIds.Add([string]$model.Id) -or $model.FileName -notmatch '^[a-zA-Z0-9_.-]+$' -or
             $model.Sha256 -notmatch '^[a-fA-F0-9]{64}$' -or $model.SizeBytes -le 0) { throw 'Invalid primary model catalog.' }
+    }
+    foreach ($expectedId in $expectedModelIds) {
+        if (!$modelIds.Contains($expectedId)) {
+            if ($expectedId -match '-e2e-') { throw 'Required formatting RNNT model asset is missing.' }
+            throw 'Required primary RNNT model asset is missing.'
+        }
+    }
+    foreach ($model in $models) {
         $relative = 'Models/Speech/' + $model.Id + '/' + $model.FileName
         $modelEntries = @($files | Where-Object { $_.path -ieq $relative })
         if ($modelEntries.Count -ne 1 -or $modelEntries[0].bytes -ne $model.SizeBytes -or $modelEntries[0].sha256 -ne $model.Sha256) {
             throw 'Primary model catalog differs from the reviewed payload.'
         }
     }
+    $catalog | Add-Member -MemberType NoteProperty -Name modelAssetCount -Value $models.Count -Force
     return $catalog
 }
 function Assert-CompactInstallation([string]$Root) {
@@ -149,7 +185,7 @@ function Stop-MatchingApplication([string]$Root, [object[]]$Processes) {
             $last = if (Test-Path -LiteralPath $log) {
                 Get-Content -LiteralPath $log -Tail 400 | Where-Object {
                     $_ -match ('\[' + $existing.Id + '\]') -and
-                    $_ -match 'Audio capture started|StopAndTranscribe requested|Dictation timing:|StartRecording failed|StopAndTranscribe failed|No speech detected|Recording operation cancelled|Dictation cancelled|Transcription complete: characters=0\b|Startup complete|Russian ASR ready:'
+                    $_ -match 'Audio capture started|StopAndTranscribe requested|Dictation timing:|StartRecording failed|StopAndTranscribe failed|No speech detected|Recording operation cancelled|Dictation cancelled|Transcription complete: characters=0\b|Startup complete|Russian ASR ready:|Russian formatter ready:'
                 } | Select-Object -Last 1
             } else { $null }
             # Fail closed when no technical marker can establish idle for this exact process.
@@ -206,6 +242,11 @@ function Invoke-UpgradeTransaction([string]$Stage, [object]$Catalog, [string]$Ro
     $settingsExisted = Test-Path -LiteralPath $settingsPath
     $settings = if ($settingsExisted) { Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json } else { [pscustomobject]@{} }
     if ($settings -isnot [pscustomobject]) { throw 'Existing settings must be a JSON object; preserved without changes.' }
+    $speechProperty = $settings.PSObject.Properties['formatSpeechPunctuation']
+    if ($speechProperty -and $speechProperty.Value -isnot [bool]) { throw 'Existing formatSpeechPunctuation must be a JSON boolean; preserved without changes.' }
+    $speechPunctuationEnabled = if ($speechProperty) { [bool]$speechProperty.Value } else { $true }
+    $requireFormatter = $Catalog.modelAssetCount -eq 8 -and $speechPunctuationEnabled
+
     New-Item -ItemType Directory -Path $Work, $Receipts -Force | Out-Null
     $transaction = Join-Path $Work ('compact-upgrade-' + [Guid]::NewGuid().ToString('N'))
     $previous = Join-Path $transaction 'previous'
@@ -229,6 +270,8 @@ function Invoke-UpgradeTransaction([string]$Stage, [object]$Catalog, [string]$Ro
     Write-Json $journalPath $journal
     $newProcess = $null
     $ready = $false
+    $asrReady = $false
+    $formatterReady = $false
     try {
         if (!$Fixture) { Stop-MatchingApplication $Root $processes }
         $journal.state = 'applying'
@@ -242,6 +285,7 @@ function Invoke-UpgradeTransaction([string]$Stage, [object]$Catalog, [string]$Ro
         foreach ($setting in @{preserveSpokenWords=$true;formatWithQwen=$false;startLocalQwen=$false;mixedLanguageMode=$false;directGigaamFastMode=$true}.GetEnumerator()) {
             $settings | Add-Member -MemberType NoteProperty -Name $setting.Key -Value $setting.Value -Force
         }
+        $settings | Add-Member -MemberType NoteProperty -Name formatSpeechPunctuation -Value $speechPunctuationEnabled -Force
         New-Item -ItemType Directory -Path (Split-Path -Parent $settingsPath) -Force | Out-Null
         $newSettings = Join-Path $transaction 'settings.new.json'
         Write-Json $newSettings $settings
@@ -250,9 +294,10 @@ function Invoke-UpgradeTransaction([string]$Stage, [object]$Catalog, [string]$Ro
         if ($Fixture) {
             $observedSettings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
             $fixtureProfileApplied = $observedSettings.preserveSpokenWords -and !$observedSettings.formatWithQwen -and
-                !$observedSettings.startLocalQwen -and !$observedSettings.mixedLanguageMode -and $observedSettings.directGigaamFastMode
+                !$observedSettings.startLocalQwen -and !$observedSettings.mixedLanguageMode -and $observedSettings.directGigaamFastMode -and $observedSettings.formatSpeechPunctuation -eq $speechPunctuationEnabled
             $fixtureUserChoicesPreserved = $observedSettings.theme -eq 'Dark' -and $observedSettings.captureDeviceId -eq 'fixture-device' -and
                 !$observedSettings.saveRecentRecordings -and $observedSettings.custom -eq 'preserve'
+            $fixtureSpeechPreferencePreserved = $observedSettings.formatSpeechPunctuation -eq $speechPunctuationEnabled
             throw 'Injected failure after all real payload and settings replacements.'
         }
         if ($journal.wasRunning) {
@@ -262,18 +307,18 @@ function Invoke-UpgradeTransaction([string]$Stage, [object]$Catalog, [string]$Ro
             do {
                 if ($newProcess.HasExited) { throw 'Updated Voice exited during startup.' }
                 if (Test-Path -LiteralPath $log) {
-                    $ready = [bool](Get-Content -LiteralPath $log -Tail 150 | Where-Object {
-                        $_ -match ('\[' + $newProcess.Id + '\] Russian ASR ready: engine=GigaAM v3 RNNT') -and
-                        [DateTimeOffset]::Parse(($_ -split ' ', 2)[0]).UtcDateTime -ge $newProcess.StartTime.ToUniversalTime()
-                    })
+                    $readiness = Get-ReadinessState -Lines @(Get-Content -LiteralPath $log -Tail 150) -ProcessId $newProcess.Id -StartedUtc $newProcess.StartTime.ToUniversalTime() -RequireFormatter $requireFormatter
+                    $asrReady = $readiness.AsrReady
+                    $formatterReady = $readiness.FormatterReady
+                    $ready = $readiness.Ready
                 }
                 if (!$ready) { Start-Sleep -Milliseconds 250 }
             } while (!$ready -and [DateTime]::UtcNow -lt $deadline)
-            if (!$ready) { throw 'Russian ASR readiness was not confirmed within its startup budget.' }
+            if (!$ready) { throw 'Required Russian ASR and enabled audio formatter readiness were not confirmed within the startup budget.' }
         }
         $journal.state = 'committed'
         Write-Json $journalPath $journal
-        $receipt = [ordered]@{passed=$true;version=$Catalog.version;sourceRevision=$Catalog.sourceRevision;manifestSha256=$ManifestSha256.ToLowerInvariant();fileCount=$records.Count;modelAssetCount=4;settingsProfile='literal-russian-rnnt';userChoicesPreserved=$true;asrReady=$ready;wasRunning=$journal.wasRunning;appPid=$(if($newProcess){$newProcess.Id}else{$null});transactionRoot=$transaction;installerExecuted=$false;generatedAt=[DateTime]::UtcNow.ToString('o')}
+        $receipt = [ordered]@{passed=$true;version=$Catalog.version;sourceRevision=$Catalog.sourceRevision;manifestSha256=$ManifestSha256.ToLowerInvariant();fileCount=$records.Count;modelAssetCount=$Catalog.modelAssetCount;settingsProfile=$(if($Catalog.modelAssetCount -eq 8){'russian-quality-rnnt'}else{'literal-russian-rnnt'});speechPunctuationEnabled=$speechPunctuationEnabled;formatterRequired=$requireFormatter;formatterReady=$formatterReady;userChoicesPreserved=$true;asrReady=$asrReady;wasRunning=$journal.wasRunning;appPid=$(if($newProcess){$newProcess.Id}else{$null});transactionRoot=$transaction;installerExecuted=$false;generatedAt=[DateTime]::UtcNow.ToString('o')}
         Write-Json (Join-Path $Receipts 'compact-workstation-upgrade.json') $receipt
         return $receipt
     } catch {
@@ -285,7 +330,7 @@ function Invoke-UpgradeTransaction([string]$Stage, [object]$Catalog, [string]$Ro
             if ($restored.WaitForExit(2000)) { throw 'Previous application exited after rollback.' }
         }
         if ($Fixture -and $failure.Exception.Message -eq 'Injected failure after all real payload and settings replacements.' -and $journal.state -eq 'rolled-back') {
-            return [ordered]@{passed=$true;rollbackVerified=$true;transactionRoot=$transaction;applicationRestored=$true;settingsRestored=$true;russianProfileApplied=$fixtureProfileApplied;userChoicesPreserved=$fixtureUserChoicesPreserved;userProcessesTouched=$false;installerExecuted=$false}
+            return [ordered]@{passed=$true;rollbackVerified=$true;transactionRoot=$transaction;applicationRestored=$true;settingsRestored=$true;russianProfileApplied=$fixtureProfileApplied;userChoicesPreserved=$fixtureUserChoicesPreserved;modelAssetCount=$Catalog.modelAssetCount;speechPunctuationEnabled=$speechPunctuationEnabled;speechPreferencePreserved=$fixtureSpeechPreferencePreserved;formatterRequired=$requireFormatter;userProcessesTouched=$false;installerExecuted=$false}
         }
         throw $failure
     }
@@ -304,8 +349,8 @@ if ($VerifyRollback) {
         [IO.File]::WriteAllText((Join-Path $fixtureInstall $name), ('old synthetic bytes: ' + $name), $utf8)
     }
     $models = @()
-    foreach ($part in @('encoder','decoder','joiner','tokens')) {
-        $id = 'gigaam-' + $part
+    foreach ($id in @(Get-ExpectedModelId -Version $RollbackFixtureVersion)) {
+        $part = $id
         $relative = 'Models/Speech/' + $id + '/fixture.bin'
         $source = Get-PayloadPath $fixtureStage $relative
         New-Item -ItemType Directory -Path (Split-Path -Parent $source) -Force | Out-Null
@@ -315,18 +360,20 @@ if ($VerifyRollback) {
     Write-Json (Join-Path $fixtureStage 'compact-models.json') $models
     $data = Join-Path $fixtureInstall 'Data'
     New-Item -ItemType Directory -Path $data | Out-Null
-    [IO.File]::WriteAllText((Join-Path $data 'dictation.json'), '{"theme":"Dark","captureDeviceId":"fixture-device","saveRecentRecordings":false,"formatWithQwen":true,"custom":"preserve"}', $utf8)
+    $fixtureSettings = [ordered]@{theme='Dark';captureDeviceId='fixture-device';saveRecentRecordings=$false;formatWithQwen=$true;custom='preserve'}
+    if ($RollbackSpeechPunctuation -ne 'Missing') { $fixtureSettings.formatSpeechPunctuation = $RollbackSpeechPunctuation -eq 'Enabled' }
+    Write-Json (Join-Path $data 'dictation.json') $fixtureSettings
     $sentinel = Join-Path $fixtureInstall 'unknown [keep].txt'
     [IO.File]::WriteAllText($sentinel, 'unrelated file remains', $utf8)
     $sentinelHash = Get-Hash $sentinel
     $files = @(Get-ChildItem -LiteralPath $fixtureStage -File -Recurse | ForEach-Object {
         [ordered]@{path=[IO.Path]::GetRelativePath($fixtureStage,$_.FullName).Replace('\','/');bytes=$_.Length;sha256=(Get-Hash $_.FullName)}
     })
-    $fixtureCatalog = [pscustomobject]@{schemaVersion=1;version='2.3.0';sourceRevision=('0' * 40);sourceDirty=$false;fileCount=$files.Count;files=$files}
+    $fixtureCatalog = [pscustomobject]@{schemaVersion=1;version=$RollbackFixtureVersion;sourceRevision=('0' * 40);sourceDirty=$false;fileCount=$files.Count;files=$files}
     $fixtureManifest = Join-Path $fixture 'fixture.manifest.json'
     Write-Json $fixtureManifest $fixtureCatalog
-    $fixtureCatalog = Read-VerifiedPayload $fixtureStage $fixtureManifest (Get-Hash $fixtureManifest)
-    $result = Invoke-UpgradeTransaction $fixtureStage $fixtureCatalog $fixtureInstall (Join-Path $fixture 'transactions') $receipts $true
+    $fixtureCatalog = Read-VerifiedPayload -Stage $fixtureStage -Manifest $fixtureManifest -ExpectedHash (Get-Hash $fixtureManifest)
+    $result = Invoke-UpgradeTransaction -Stage $fixtureStage -Catalog $fixtureCatalog -Root $fixtureInstall -Work (Join-Path $fixture 'transactions') -Receipts $receipts -Fixture $true
     if ((Get-Hash $sentinel) -ne $sentinelHash) { throw 'Rollback changed an unrelated file.' }
     $result.unknownFilePreserved = $true
     $result.fixtureRoot = $fixture
@@ -364,7 +411,7 @@ foreach ($directory in @($work,$receipts)) {
     if ($directory -ieq $stage -or (Test-Under $directory $stage)) { throw 'Work/receipt directories cannot be inside staging.' }
 }
 $manifest = Get-FullPath $ManifestPath
-$catalog = Read-VerifiedPayload $stage $manifest $ManifestSha256
+$catalog = Read-VerifiedPayload -Stage $stage -Manifest $manifest -ExpectedHash $ManifestSha256
 foreach ($file in @($catalog.files)) { $null = Get-PayloadPath $install $file.path }
 if (Test-Path -LiteralPath $work) {
     foreach ($candidate in @(Get-ChildItem -LiteralPath $work -Filter 'compact-upgrade-*' -Directory)) {
@@ -377,7 +424,7 @@ if (Test-Path -LiteralPath $work) {
     }
 }
 if ($PlanOnly -or !$PSCmdlet.ShouldProcess($install, ('Upgrade exact Compact payload to ' + $catalog.version + ' and select literal Russian RNNT'))) {
-    [ordered]@{passed=$true;planOnly=$true;version=$catalog.version;fileCount=$catalog.fileCount;modelAssetCount=4;manifestSha256=$ManifestSha256.ToLowerInvariant();unknownFilesPreserved=$true;userChoicesPreserved=$true;installerExecuted=$false} | ConvertTo-Json
+    [ordered]@{passed=$true;planOnly=$true;version=$catalog.version;fileCount=$catalog.fileCount;modelAssetCount=$catalog.modelAssetCount;manifestSha256=$ManifestSha256.ToLowerInvariant();unknownFilesPreserved=$true;userChoicesPreserved=$true;installerExecuted=$false} | ConvertTo-Json
     return
 }
-Invoke-UpgradeTransaction $stage $catalog $install $work $receipts $false $ReadyTimeoutSeconds | ConvertTo-Json -Depth 5
+Invoke-UpgradeTransaction -Stage $stage -Catalog $catalog -Root $install -Work $work -Receipts $receipts -Fixture $false -ReadySeconds $ReadyTimeoutSeconds | ConvertTo-Json -Depth 5

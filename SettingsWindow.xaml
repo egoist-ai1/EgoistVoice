@@ -510,7 +510,7 @@
                                         <ComboBoxItem Content="Словарь и голосовые команды" Tag="fast" />
                                         <ComboBoxItem x:Name="QwenFormattingOption" Content="Qwen · пунктуация и абзацы" Tag="qwen" />
                                     </ComboBox>
-                                    <TextBlock Text="«Дословно» сохраняет результат распознавания и исправляет написание известных названий Egoist. Команды, перевод и Qwen выключены. Ошибки самой модели возможны. Другие режимы включают общий словарь и команды."
+                                    <TextBlock Text="«Дословно» сохраняет распознанные слова. Автоматическая пунктуация и заглавные буквы управляются отдельно; известные названия Egoist получают правильное написание. Команды, перевод и Qwen выключены."
                                                Style="{StaticResource Hint}" Margin="0,10,0,0" />
                                     <TextBlock x:Name="LastTimingText" Style="{StaticResource Hint}" Margin="0,10,0,0" />
                                 </StackPanel>
@@ -519,6 +519,7 @@
                             <Border Style="{StaticResource Card}">
                                 <StackPanel>
                                     <TextBlock Text="Распознавание и вставка" Style="{StaticResource SectionTitle}" />
+                                    <CheckBox x:Name="SpeechPunctuationCheck" Content="Пунктуация и написание известных названий" Checked="GeneralSetting_OnChanged" Unchecked="GeneralSetting_OnChanged" AutomationProperties.Name="Пунктуация по аудио" />
                                     <CheckBox x:Name="DirectFastModeCheck" Content="Быстрый режим: прямое распознавание без задержек Whisper" Checked="GeneralSetting_OnChanged" Unchecked="GeneralSetting_OnChanged" />
                                     <TextBlock x:Name="DirectFastModeHint" Text="Распознавание русской речи через GigaAM v3 RNNT. Отключает повторную сверку Whisper для ускорения вставки."
                                                Style="{StaticResource Hint}" Margin="26,2,0,8" />

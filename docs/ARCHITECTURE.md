@@ -11,7 +11,7 @@
   keeps a 350 ms tail. Capture downmixes/resamples incrementally to 16 kHz mono in memory;
   ordinary dictation never writes WAV. Only explicit private-corpus recording
   may persist a completed take.
-- Russian 2.3.0 uses one plain GigaAM v3 RNNT INT8, CPU greedy with at most eight default threads. Historical Full code retains conditional Whisper fallback,
+- Russian 2.4.0 uses plain GigaAM v3 RNNT INT8 for words plus E2E RNNT INT8 for audio punctuation/case, four CPU threads per engine, sequential greedy decoding. Bounded projection preserves primary words; conservative known-name spelling requires exact secondary audio confirmation. A serialized service owns initialization, cancellation, formatter fallback and 30-second retry backoff. Unicode native paths use pinned source UTF-8 bindings. Native CAPI is the official no-TTS x64 MT v1.13.4 build with the unmodified stock frontend; ONNX Runtime is unchanged. Historical Full code retains conditional Whisper fallback,
   profile-aware deterministic entity repair, normalization and commands.
 - GigaAM keeps batches of up to six comparable chunks, but decodes the final tail
   separately when it is shorter than half the longest member. A one-item batch uses

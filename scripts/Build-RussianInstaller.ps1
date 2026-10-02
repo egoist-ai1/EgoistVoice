@@ -1,8 +1,8 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [Parameter(Mandatory)][string]$WorkDirectory,
-    [Parameter(Mandatory)][string]$SpeechModelsRoot,
+    [string]$SpeechModelsRoot = (Join-Path $PSScriptRoot '..\artifacts\quality-2.4.0\models\Models'),
     [string]$TextModelPath,
     [string]$TextRuntimeZip,
     [string]$VcRuntimeDirectory,
@@ -37,7 +37,7 @@ foreach ($toolPath in @($compiler, $bootstrapCompiler)) {
     if (!(Test-Path -LiteralPath $toolPath -PathType Leaf)) { throw 'Pinned installer compiler is missing.' }
 }
 if (!$Build) {
-    [ordered]@{ planOnly=$true; version=$version; output=$output; work=$work; includeTextEditor=[bool]$IncludeTextEditor; scope='Offline Russian GigaAM; optional Qwen; package only, no installation or downloads' } | ConvertTo-Json
+    [ordered]@{ planOnly=$true; version=$version; output=$output; work=$work; includeTextEditor=[bool]$IncludeTextEditor; modelAssetCount=8; modelAssetBytes=650090519; formatSpeechPunctuation=$true; scope='Offline Russian quality GigaAM; optional Qwen; package only, no installation or downloads' } | ConvertTo-Json
     return
 }
 function Assert-FileHash([string]$Path, [string]$Sha256, [long]$Bytes = -1) {
@@ -48,14 +48,14 @@ function Assert-FileHash([string]$Path, [string]$Sha256, [long]$Bytes = -1) {
     }
 }
 if ($IncludeTextEditor) {
-Assert-FileHash $TextModelPath '7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5' 2497280256
-Assert-FileHash $TextRuntimeZip 'a63bd0ceab781483a7fde174f1676d86c9724d7376d721fab026fa2df1393997'
+Assert-FileHash -Path $TextModelPath -Sha256 '7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5' -Bytes 2497280256
+Assert-FileHash -Path $TextRuntimeZip -Sha256 'a63bd0ceab781483a7fde174f1676d86c9724d7376d721fab026fa2df1393997'
 $vcHashes = [ordered]@{
     'msvcp140.dll' = '0f885b509a685d2bbfa652fed26b5fb31d88fbdab0a978c641d1c7b8aa460aa9'
     'vcruntime140.dll' = 'd5e4d9a3e835fa679450145d6a7d94e36573a509317111904d9b3712c30d9066'
     'vcruntime140_1.dll' = '1f2d41c4aa5db0bc33ebf7b66d72943a817d7ce6cbe880502a9403823633093f'
 }
-foreach ($entry in $vcHashes.GetEnumerator()) { Assert-FileHash (Join-Path $VcRuntimeDirectory $entry.Key) $entry.Value }
+foreach ($entry in $vcHashes.GetEnumerator()) { Assert-FileHash -Path (Join-Path $VcRuntimeDirectory $entry.Key) -Sha256 $entry.Value }
 }
 New-Item -ItemType Directory -Path $output, $work -Force | Out-Null
 $stage = Join-Path $output 'portable'
@@ -67,7 +67,7 @@ $textModels = Join-Path $stage 'TextModels'
 $textRuntime = Join-Path $stage 'TextRuntime'
 New-Item -ItemType Directory -Path $textModels, $textRuntime -Force | Out-Null
 Copy-Item -LiteralPath $TextModelPath -Destination (Join-Path $textModels 'Qwen3-4B-Q4_K_M.gguf')
-Assert-FileHash (Join-Path $textModels 'Qwen3-4B-Q4_K_M.gguf') '7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5' 2497280256
+Assert-FileHash -Path (Join-Path $textModels 'Qwen3-4B-Q4_K_M.gguf') -Sha256 '7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5' -Bytes 2497280256
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip = [IO.Compression.ZipFile]::OpenRead($TextRuntimeZip)
 try {
@@ -85,19 +85,27 @@ foreach ($entry in $vcHashes.GetEnumerator()) { Copy-Item -LiteralPath (Join-Pat
 }
 Copy-Item -LiteralPath (Join-Path $project 'licenses') -Destination (Join-Path $stage 'licenses') -Recurse
 $utf8 = [Text.UTF8Encoding]::new($false)
-$defaults = '{"preserveSpokenWords":true,"formatWithQwen":false,"startLocalQwen":false,"textModelEndpoint":"http://127.0.0.1:47823/v1","textModelId":"egoist-qwen3-4b","formatBudgetSeconds":2,"applyDictionary":true,"saveRecentRecordings":false}'
+function Get-RussianInstallerConfiguration {
+    return [ordered]@{
+        preserveSpokenWords=$true; formatSpeechPunctuation=$true; formatWithQwen=$false; startLocalQwen=$false
+        textModelEndpoint='http://127.0.0.1:47823/v1'; textModelId='egoist-qwen3-4b'; formatBudgetSeconds=2
+        applyDictionary=$true; saveRecentRecordings=$false
+    }
+}
+$defaults = Get-RussianInstallerConfiguration | ConvertTo-Json -Compress
 $defaultsPath = Join-Path $work 'dictation-defaults.json'
 [IO.File]::WriteAllText($defaultsPath, $defaults, $utf8)
 [IO.File]::WriteAllText((Join-Path $stage 'START-HERE.txt'), @'
 Egoist Voice — русская диктовка, офлайн
 
 Закройте прежний Voice через трей. Запустите Egoist.Voice.exe.
-GigaAM v3 RNNT INT8 и .NET включены. Настройки находятся в Data рядом с приложением.
+GigaAM v3: 8 модельных файлов (plain RNNT INT8 + E2E RNNT INT8) и .NET включены. Настройки находятся в Data рядом с приложением.
 Обычная сборка не включает Qwen; её можно добавить отдельным параметром сборки.
-По умолчанию выбран режим «Дословно»: без замены слов словарём, голосовых команд
-и автооформления. Ошибки самого распознавателя возможны.
-При обновлении сохраняются существующие настройки. Если раньше выбора режима
-«Дословно» не было, он включится. История аудио в новой установке выключена.
+По умолчанию сохраняются произнесённые слова; пунктуация и регистр определяются по аудио.
+Известные английские названия уточняются только при подтверждении аудиораспознавателем.
+Ошибки распознавания возможны. Перефразирование не применяется.
+При обновлении сохраняется явный выбор выключить оформление по голосу.
+Если раньше этого поля не было, оформление включится. История в новой установке выключена.
 В переносимой папке настройте историю во вкладке «Общие» перед записью.
 Распознаватель остаётся в памяти. Пятиминутного таймера выгрузки нет.
 Длительность аудиофайла не ограничена таймером; обработка идёт фрагментами.
@@ -114,7 +122,7 @@ $sourceRevision = (& git -C $project rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Could not bind source revision.' }
 $sourceDirty = [bool](@(& git -C $project status --porcelain).Count)
 if ($sourceDirty) { throw 'Freeze and commit the reviewed release source before packaging.' }
-$manifest = [ordered]@{ schemaVersion=1; version=$version; sourceDirty=$sourceDirty; fileVersion=$fileVersion; sourceRevision=$sourceRevision; fileCount=$files.Count; unpackedBytes=($files | Measure-Object bytes -Sum).Sum; files=$files; defaults=[ordered]@{ path='Data/dictation.json'; sha256=(Get-FileHash -LiteralPath $defaultsPath).Hash.ToLowerInvariant(); preserveOnUpgrade=$true; preserveOnUninstall=$true } }
+$manifest = [ordered]@{ schemaVersion=1; version=$version; sourceDirty=$sourceDirty; fileVersion=$fileVersion; sourceRevision=$sourceRevision; modelAssetCount=8; modelAssetBytes=650090519; formatSpeechPunctuation=$true; fileCount=$files.Count; unpackedBytes=($files | Measure-Object bytes -Sum).Sum; files=$files; defaults=[ordered]@{ path='Data/dictation.json'; sha256=(Get-FileHash -LiteralPath $defaultsPath).Hash.ToLowerInvariant(); preserveOnUpgrade=$true; preserveOnUninstall=$true } }
 [IO.File]::WriteAllText((Join-Path $output 'russian-payload.manifest.json'), ($manifest | ConvertTo-Json -Depth 6), $utf8)
 [IO.File]::WriteAllText((Join-Path $output 'portable-stage.manifest.json'), ($manifest | ConvertTo-Json -Depth 6), $utf8)
 $include = Join-Path $work 'russian-payload.iss'

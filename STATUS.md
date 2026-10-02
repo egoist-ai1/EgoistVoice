@@ -1,9 +1,11 @@
 # Egoist Voice — current status
 
-Updated: 2026-10-02. Active: EV-2230 / **2.3.0 Russian RNNT**.
+Updated: 2026-10-02. **EV-2231 / 2.4.0 candidate implementation verified; packaging/release/update pending.** Installed and public latest remain [2.3.0](https://github.com/egoist-ai1/EgoistVoice/releases/tag/v2.3.0).
 
-The owner authorized new model/settings/UI changes, publication and replacement of the installed Compact. Canonical source: egoist-ai1/EgoistVoice; branch codex/russian-rnnt-2.3. Existing installation remains 2.2.1-rc.3 / 997e134 until verified replacement.
+Owner-authorized quality profile: stock plain GigaAMv3RNNTINT8 words + E2ERNNTINT8 audio punctuation/case + conservative audio-confirmed names, sequential CPU greedy4threads/engine. Eight models650090519B; Unicode source-only bindings plus official stock-frontend no-TTS CAPI; ONNX Runtime remains pinned unchanged. Bounded compose/protected names, serialized lifecycle/cancel/fallback/backoff and explicit unavailable-formatting UI are implemented. Larger GPU/FLOAT candidates were tested and did not justify replacing the selected lexical decoder. Hard25%resource cap was relaxed;50% remains a measured target.
 
-Source ready for packaging. Full920passed0skipped; Compact913passed7Full-onlyskipped. Quietgate2cases fail-to-pass; updater12scenarios with actual isolatedrollback. Paired public40clips/572words: plainINT8greedy16errors vsE2E25; warmdecodep50/p9591.9/152.4ms. 100repeatnativehashesidentical, silenceempty. Nativevisualstates tested; finalpayloadprofile QA pending.
+Actual final service80public human clips1169words: lexical26→26, punctuationFP+FN277→130(-53.07%), rawchars573→241(-57.94%), surfaceword493→217. Warm p50plain75.98ms/quality162.44ms; p95183.16/323.78ms. Quality ready private746856448B before independent third baseline engine; activeCPU~2.14×. Silence3empty, file-memory parity, PCM unchanged, format-off exactprimary, cancellation/recovery,111.15s chunk handling and actual Unicode native paths pass. [Evaluation](docs/models/EVALUATION-2.4.0.md); accepted receipts artifacts/quality-2.4.0.
 
-Next: build exact offline self-contained release, verify final bytes/profile, update local installation and readback GitHub release. Personal voice/clean-VM lifecycle unverified; no zero-error claim. [EV-2230](docs/tickets/EV-2230-russian-rnnt.md).
+Full1037/1037; Compact1030passed/7Full-onlyskips. New8modelpack/updater/Pester/nativeUI/independentpayload checks in progress. Do not publish/install an unreviewed payload; user authority for publication/replacement already exists. [Ticket](docs/tickets/EV-2231-russian-quality.md), [candidate release](docs/releases/2.4.0.md).
+
+Personal difficult-speech WER, acoustic English-name exactmatch, pure intonation gold and cleanWindows installer lifecycle remain unverified. Original capture/tail/quiet fixes and smooth capsule from2.3remain; Data/settings/history/DNS/unrelated projects must be preserved. Historical FullEV-2210 is separate. 2.3completed receipts artifacts/release-qa-2.3.0; source/tag2df610ed99c141663dbcdb528397aa6c1b0aa9f2.

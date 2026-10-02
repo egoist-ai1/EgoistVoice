@@ -1,0 +1,33 @@
+/// Copyright (c)  2025  Xiaomi Corporation (authors: Fangjun Kuang)
+
+using System.Runtime.InteropServices;
+
+namespace SherpaOnnx
+{
+    [StructLayout(LayoutKind.Sequential)]
+    public struct OfflineTtsKittenModelConfig
+    {
+        public OfflineTtsKittenModelConfig()
+        {
+            Model = "";
+            Voices = "";
+            Tokens = "";
+            DataDir = "";
+
+            LengthScale = 1.0F;
+        }
+        [MarshalAs(UnmanagedType.LPUTF8Str)]
+        public string Model;
+
+        [MarshalAs(UnmanagedType.LPUTF8Str)]
+        public string Voices;
+
+        [MarshalAs(UnmanagedType.LPUTF8Str)]
+        public string Tokens;
+
+        [MarshalAs(UnmanagedType.LPUTF8Str)]
+        public string DataDir;
+
+        public float LengthScale;
+    }
+}

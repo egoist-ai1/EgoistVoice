@@ -135,6 +135,40 @@ public sealed class DictationSettingsTests : IDisposable
         Assert.True(options.ApplyNumberNormalization);
     }
 
+    [Fact]
+    public void Speech_punctuation_is_enabled_by_default()
+    {
+        Assert.True(DictationSettings.Default.FormatSpeechPunctuation);
+        Assert.True(Service.Load().FormatSpeechPunctuation);
+    }
+
+    [Fact]
+    public void Legacy_settings_without_punctuation_field_keep_it_enabled()
+    {
+        var service = Service;
+        Directory.CreateDirectory(_root);
+        File.WriteAllText(service.SettingsPath,
+            """{ "directGigaamFastMode": false, "isPaused": true }""");
+
+        var loaded = service.Load();
+
+        Assert.True(loaded.FormatSpeechPunctuation);
+        Assert.False(loaded.DirectGigaamFastMode);
+        Assert.True(loaded.IsCapturePaused);
+    }
+
+    [Fact]
+    public void Disabled_punctuation_round_trips_with_exact_json_key()
+    {
+        var service = Service;
+        service.Save(DictationSettings.Default with { FormatSpeechPunctuation = false });
+
+        Assert.False(service.Load().FormatSpeechPunctuation);
+        using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(service.SettingsPath));
+        Assert.False(document.RootElement.GetProperty("formatSpeechPunctuation").GetBoolean());
+        Assert.False(document.RootElement.TryGetProperty("FormatSpeechPunctuation", out _));
+    }
+
     public void Dispose()
     {
         try
