@@ -591,4 +591,418 @@ public sealed class AudioCaptureServiceTests(ITestOutputHelper output)
         Assert.Equal(SpeechRejection.None, result.Rejection);
         Assert.Null(AudioCaptureService.DescribeRejection(result.Rejection));
     }
+
+    [Theory]
+    [InlineData("pause")]
+    [InlineData("select")]
+    [InlineData("default-device")]
+    [InlineData("unavailable")]
+    [InlineData("dispose")]
+    public async Task Retirement_does_not_join_a_queued_callback_under_the_capture_lock(string operation)
+    {
+        var first = new ControlledCapture();
+        using var rig = new CaptureRig(first, new ControlledCapture());
+        using var service = rig.CreateService();
+        first.RunOnCaptureThread(first.SnapshotData(SyntheticPcm(0.2f)), waitForDispose: true);
+
+        await Task.Run(() =>
+        {
+            switch (operation)
+            {
+                case "pause": service.PauseMonitoring(); break;
+                case "select": service.SelectCaptureDevice("replacement"); break;
+                case "default-device": rig.Catalog.ChangeDefault("replacement"); break;
+                case "unavailable": rig.Catalog.RemoveAllDevices(); break;
+                case "dispose": service.Dispose(); break;
+            }
+        }).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(first.CallbackFinished.Wait(TimeSpan.FromSeconds(1)));
+        Assert.False(first.JoinTimedOut);
+        Assert.Equal(1, first.DisposeCount);
+        Assert.Equal(1, rig.Handles[0].DisposeCount);
+        if (operation is "select" or "default-device") Assert.True(service.GetState().IsMonitoring);
+        if (operation is "pause" or "unavailable") Assert.True(service.GetState().IsPaused);
+    }
+
+    [Theory]
+    [InlineData("dispose")]
+    [InlineData("pause")]
+    public async Task Stopped_notification_can_reenter_lifecycle_without_indirect_self_join(string operation)
+    {
+        var capture = new ControlledCapture();
+        using var rig = new CaptureRig(capture);
+        var service = rig.CreateService(ownsCatalog: true);
+        var notifications = 0;
+        service.StateChanged += (_, args) =>
+        {
+            if (args.Kind != AudioCaptureChangeKind.DeviceUnavailable) return;
+            Interlocked.Increment(ref notifications);
+            if (operation == "dispose") service.Dispose();
+            else service.PauseMonitoring();
+        };
+        capture.RunOnCaptureThread(capture.SnapshotStopped());
+
+        Assert.True(capture.CallbackFinished.Wait(TimeSpan.FromSeconds(3)));
+        // Ordinary callers drain the deferred retirement, including after a callback set disposed.
+        await Task.Run(service.Dispose).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(1, notifications);
+        Assert.False(capture.JoinTimedOut);
+        Assert.Equal(1, capture.DisposeCount);
+        Assert.Equal(1, rig.Catalog.DisposeCount);
+        Assert.Equal(1, rig.Handles[0].DisposeCount);
+    }
+
+    [Theory]
+    [InlineData("dispose")]
+    [InlineData("pause")]
+    public async Task Level_notification_can_reenter_lifecycle_without_self_join(string operation)
+    {
+        var capture = new ControlledCapture();
+        using var rig = new CaptureRig(capture);
+        var service = rig.CreateService();
+        var notifications = 0;
+        service.LevelChanged += (_, _) =>
+        {
+            Interlocked.Increment(ref notifications);
+            if (operation == "dispose") service.Dispose();
+            else service.PauseMonitoring();
+        };
+        capture.RunOnCaptureThread(capture.SnapshotData(SyntheticPcm(0.2f)));
+
+        Assert.True(capture.CallbackFinished.Wait(TimeSpan.FromSeconds(3)));
+        await Task.Run(service.Dispose).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(1, notifications);
+        Assert.False(capture.JoinTimedOut);
+        Assert.Equal(1, capture.DisposeCount);
+        Assert.Equal(1, rig.Handles[0].DisposeCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Partial_start_failure_retires_outside_callback_locks_and_allows_retry(bool constructorStarts)
+    {
+        var failed = new ControlledCapture { ThrowAfterStartingCallback = true };
+        var replacement = new ControlledCapture();
+        using var rig = new CaptureRig(failed, replacement);
+        using var service = rig.CreateService(startPaused: !constructorStarts);
+        if (!constructorStarts) Assert.Throws<InvalidOperationException>(service.ResumeMonitoring);
+
+        Assert.True(failed.CallbackFinished.Wait(TimeSpan.FromSeconds(1)));
+        Assert.False(failed.JoinTimedOut);
+        Assert.Equal(1, failed.DisposeCount);
+        Assert.Equal(1, rig.Handles[0].DisposeCount);
+        Assert.False(service.GetState().IsMonitoring);
+        Assert.Equal("device-unavailable", service.GetState().ErrorCode);
+        if (!constructorStarts) Assert.True(service.GetState().IsPaused);
+
+        await Task.Run(service.ResumeMonitoring).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(service.GetState().IsMonitoring);
+        Assert.Equal(1, replacement.StartCount);
+    }
+
+    [Fact]
+    public async Task Concurrent_resume_and_terminal_dispose_cannot_resurrect_a_retired_capture()
+    {
+        var first = new ControlledCapture { HoldDispose = true };
+        var second = new ControlledCapture();
+        using var rig = new CaptureRig(first, second);
+        var service = rig.CreateService();
+        var pause = Task.Run(service.PauseMonitoring);
+        Assert.True(first.DisposeEntered.Wait(TimeSpan.FromSeconds(2)));
+        try
+        {
+            // Cleanup of the old endpoint holds neither service lock.
+            await Task.Run(service.ResumeMonitoring).WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.True(service.GetState().IsMonitoring);
+            var terminal = Task.Run(service.Dispose);
+            Assert.True(second.DisposeEntered.Wait(TimeSpan.FromSeconds(2)));
+            Assert.Throws<ObjectDisposedException>(service.ResumeMonitoring);
+            Assert.Throws<ObjectDisposedException>(service.Start);
+            Assert.Throws<ObjectDisposedException>(() => service.SelectCaptureDevice("replacement"));
+            Assert.False(terminal.IsCompleted); // The ordinary disposer drains the older retirement.
+            first.AllowDisposeFinish.Set();
+            await Task.WhenAll(pause, terminal).WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        finally
+        {
+            first.AllowDisposeFinish.Set();
+            await Task.Run(service.Dispose).WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        Assert.Equal(2, rig.OpenCount);
+        Assert.Equal(1, first.DisposeCount);
+        Assert.Equal(1, second.DisposeCount);
+    }
+
+    [Fact]
+    public async Task Stale_endpoint_data_and_stopped_events_cannot_change_the_replacement_session()
+    {
+        var first = new ControlledCapture();
+        var replacement = new ControlledCapture();
+        using var rig = new CaptureRig(first, replacement);
+        using var service = rig.CreateService();
+        var staleData = first.SnapshotData(SyntheticPcm(0.8f));
+        var staleStopped = first.SnapshotStopped();
+        var notifications = 0;
+        service.LevelChanged += (_, _) => notifications++;
+        service.SelectCaptureDevice("replacement");
+        service.Start();
+        staleData();
+        staleStopped();
+        Assert.Equal(0, notifications);
+        Assert.True(service.GetState().IsMonitoring);
+        var expected = SyntheticPcm(0.12f);
+        replacement.SnapshotData(expected)();
+
+        var result = await service.StopAsync(CancellationToken.None);
+
+        Assert.Equal(1, notifications);
+        Assert.Equal(AudioCaptureService.ConvertToMono16Khz(expected, replacement.WaveFormat), result.Samples);
+        Assert.True(service.GetState().IsMonitoring);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Obsolete_release_tail_cannot_complete_or_cancel_a_restarted_take(bool cancelOldStop)
+    {
+        using var rig = new CaptureRig(new ControlledCapture(), new ControlledCapture());
+        using var service = rig.CreateService();
+        using var cancellation = new CancellationTokenSource();
+        service.Start();
+        var obsolete = service.StopAsync(cancellation.Token);
+        service.PauseMonitoring();
+        service.ResumeMonitoring();
+        service.Start();
+        var expected = SyntheticPcm(0.15f);
+        rig.Captures[1].SnapshotData(expected)();
+        if (cancelOldStop) cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => obsolete);
+        var current = await service.StopAsync(CancellationToken.None);
+
+        Assert.Equal(AudioCaptureService.ConvertToMono16Khz(expected, rig.Captures[1].WaveFormat), current.Samples);
+        Assert.True(service.GetState().IsMonitoring);
+        Assert.Equal(2, rig.OpenCount);
+    }
+
+    [Fact]
+    public async Task Warm_capture_preserves_pre_roll_and_delivered_release_tail_without_reopening()
+    {
+        var capture = new ControlledCapture();
+        using var rig = new CaptureRig(capture);
+        using var service = rig.CreateService();
+        var prefix = SyntheticPcm(0.1f);
+        var speech = SyntheticPcm(0.2f);
+        var tail = SyntheticPcm(0.03f);
+        capture.SnapshotData(prefix)();
+        service.Start();
+        capture.SnapshotData(speech)();
+        var stop = service.StopAsync(CancellationToken.None);
+        capture.SnapshotData(tail)();
+
+        var result = await stop;
+
+        Assert.Equal(AudioCaptureService.ConvertToMono16Khz(
+            prefix.Concat(speech).Concat(tail).ToArray(), capture.WaveFormat), result.Samples);
+        service.Start();
+        await service.CancelAsync();
+        Assert.True(service.GetState().IsMonitoring);
+        Assert.Equal(1, rig.OpenCount);
+        Assert.Equal(1, capture.StartCount);
+        Assert.Equal(0, capture.StopCount);
+    }
+
+    [Fact]
+    public async Task Nested_level_notifications_preserve_the_outer_capture_callback_ownership()
+    {
+        var outerCapture = new ControlledCapture();
+        using var outerRig = new CaptureRig(outerCapture);
+        using var innerRig = new CaptureRig(new ControlledCapture());
+        var outer = outerRig.CreateService();
+        using var inner = innerRig.CreateService();
+        inner.LevelChanged += (_, _) => outer.Dispose();
+        outer.LevelChanged += (_, _) => innerRig.Captures[0].SnapshotData(SyntheticPcm(0.1f))();
+
+        outerCapture.RunOnCaptureThread(outerCapture.SnapshotData(SyntheticPcm(0.2f)));
+        Assert.True(outerCapture.CallbackFinished.Wait(TimeSpan.FromSeconds(3)));
+        await Task.Run(outer.Dispose).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.False(outerCapture.JoinTimedOut);
+        Assert.Equal(1, outerCapture.DisposeCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Pause_during_endpoint_retirement_invalidates_an_obsolete_restart(bool topologyChange)
+    {
+        var first = new ControlledCapture { HoldDispose = true };
+        using var rig = new CaptureRig(first, new ControlledCapture());
+        using var service = rig.CreateService();
+        var switchEndpoint = Task.Run(() =>
+        {
+            if (topologyChange) rig.Catalog.ChangeDefault("replacement");
+            else service.SelectCaptureDevice("replacement");
+        });
+        Assert.True(first.DisposeEntered.Wait(TimeSpan.FromSeconds(2)));
+        try
+        {
+            await Task.Run(service.PauseMonitoring).WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.True(service.GetState().IsPaused);
+        }
+        finally { first.AllowDisposeFinish.Set(); }
+        await switchEndpoint.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(service.GetState().IsPaused);
+        Assert.False(service.GetState().IsMonitoring);
+        Assert.Equal(1, rig.OpenCount);
+    }
+
+    [Fact]
+    public async Task A_completed_older_pause_does_not_notify_after_a_newer_resume()
+    {
+        var first = new ControlledCapture { HoldDispose = true };
+        using var rig = new CaptureRig(first, new ControlledCapture());
+        using var service = rig.CreateService();
+        var notifications = new System.Collections.Concurrent.ConcurrentQueue<AudioCaptureChangeKind>();
+        service.StateChanged += (_, change) => notifications.Enqueue(change.Kind);
+        var pause = Task.Run(service.PauseMonitoring);
+        Assert.True(first.DisposeEntered.Wait(TimeSpan.FromSeconds(2)));
+        try { await Task.Run(service.ResumeMonitoring).WaitAsync(TimeSpan.FromSeconds(2)); }
+        finally { first.AllowDisposeFinish.Set(); }
+        await pause.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(new[] { AudioCaptureChangeKind.Resumed }, notifications.ToArray());
+        Assert.True(service.GetState().IsMonitoring);
+    }
+
+    private static byte[] SyntheticPcm(float amplitude)
+    {
+        var bytes = new byte[1600 * sizeof(float)];
+        for (var index = 0; index < 1600; index++)
+            BitConverter.TryWriteBytes(bytes.AsSpan(index * sizeof(float), sizeof(float)),
+                index % 2 == 0 ? amplitude : -amplitude);
+        return bytes;
+    }
+
+    private sealed class CaptureRig(params ControlledCapture[] captures) : IDisposable
+    {
+        internal FakeCatalog Catalog { get; } = new();
+        internal ControlledCapture[] Captures { get; } = captures;
+        internal List<CountedHandle> Handles { get; } = [];
+        internal int OpenCount { get; private set; }
+
+        internal AudioCaptureService CreateService(bool startPaused = false, bool ownsCatalog = false) => new(
+            Catalog, ownsCatalog, persistCompletedTake: false, captureDeviceId: null, startPaused,
+            selected =>
+            {
+                var capture = Captures[OpenCount++];
+                var handle = new CountedHandle();
+                Handles.Add(handle);
+                return new(capture, handle, selected ?? Catalog.GetActiveDevices().Single(d => d.IsDefault).Id);
+            });
+
+        public void Dispose()
+        {
+            foreach (var capture in Captures) capture.AllowDisposeFinish.Set();
+        }
+    }
+
+    private sealed class CountedHandle : IDisposable
+    {
+        private int _disposeCount;
+        internal int DisposeCount => Volatile.Read(ref _disposeCount);
+        public void Dispose() => Interlocked.Increment(ref _disposeCount);
+    }
+
+    private sealed class FakeCatalog : IMicrophoneDeviceCatalog
+    {
+        private MicrophoneDeviceInfo[] _devices =
+            [new("default", "Synthetic default", true), new("replacement", "Synthetic replacement", false)];
+        private int _disposeCount;
+        internal int DisposeCount => Volatile.Read(ref _disposeCount);
+        public event EventHandler? DevicesChanged;
+        public IReadOnlyList<MicrophoneDeviceInfo> GetActiveDevices() => Volatile.Read(ref _devices);
+        public NAudio.CoreAudioApi.MMDevice OpenCaptureDevice(string? deviceId) =>
+            throw new InvalidOperationException("The lifecycle fixture must never open microphone hardware.");
+        internal void ChangeDefault(string id)
+        {
+            Volatile.Write(ref _devices, _devices.Select(d => d with { IsDefault = d.Id == id }).ToArray());
+            DevicesChanged?.Invoke(this, EventArgs.Empty);
+        }
+        internal void RemoveAllDevices()
+        {
+            Volatile.Write(ref _devices, []);
+            DevicesChanged?.Invoke(this, EventArgs.Empty);
+        }
+        public void Dispose() => Interlocked.Increment(ref _disposeCount);
+    }
+
+    private sealed class ControlledCapture : NAudio.Wave.IWaveIn
+    {
+        private Thread? _callbackThread;
+        private readonly ManualResetEventSlim _releaseCallback = new();
+        private int _disposeCount;
+        internal ManualResetEventSlim CallbackFinished { get; } = new();
+        internal ManualResetEventSlim DisposeEntered { get; } = new();
+        internal ManualResetEventSlim AllowDisposeFinish { get; } = new();
+        internal bool HoldDispose { get; init; }
+        internal bool ThrowAfterStartingCallback { get; init; }
+        internal bool JoinTimedOut { get; private set; }
+        internal int StartCount { get; private set; }
+        internal int StopCount { get; private set; }
+        internal int DisposeCount => Volatile.Read(ref _disposeCount);
+        public NAudio.Wave.WaveFormat WaveFormat { get; set; } =
+            NAudio.Wave.WaveFormat.CreateIeeeFloatWaveFormat(16_000, 1);
+        public event EventHandler<NAudio.Wave.WaveInEventArgs>? DataAvailable;
+        public event EventHandler<NAudio.Wave.StoppedEventArgs>? RecordingStopped;
+
+        internal Action SnapshotData(byte[] bytes)
+        {
+            var queued = DataAvailable;
+            return () => queued?.Invoke(this, new(bytes, bytes.Length));
+        }
+        internal Action SnapshotStopped()
+        {
+            var queued = RecordingStopped;
+            return () => queued?.Invoke(this, new(new InvalidOperationException("Synthetic device failure")));
+        }
+        internal void RunOnCaptureThread(Action callback, bool waitForDispose = false)
+        {
+            _callbackThread = new Thread(() =>
+            {
+                try
+                {
+                    if (waitForDispose) _releaseCallback.Wait(TimeSpan.FromSeconds(4));
+                    callback();
+                }
+                finally { CallbackFinished.Set(); }
+            }) { IsBackground = true };
+            _callbackThread.Start();
+        }
+        public void StartRecording()
+        {
+            StartCount++;
+            if (!ThrowAfterStartingCallback) return;
+            RunOnCaptureThread(SnapshotData(SyntheticPcm(0.2f)), waitForDispose: true);
+            throw new InvalidOperationException("Synthetic partial start failure");
+        }
+        public void StopRecording() => StopCount++;
+        public void Dispose()
+        {
+            Interlocked.Increment(ref _disposeCount);
+            DisposeEntered.Set();
+            _releaseCallback.Set();
+            // This reproduces the blocking WasapiCapture.Dispose captureThread.Join boundary.
+            if (_callbackThread is not null && !_callbackThread.Join(TimeSpan.FromSeconds(2))) JoinTimedOut = true;
+            if (HoldDispose && !AllowDisposeFinish.Wait(TimeSpan.FromSeconds(4)))
+                throw new TimeoutException("Lifecycle test did not release the controlled cleanup.");
+        }
+    }
+
 }

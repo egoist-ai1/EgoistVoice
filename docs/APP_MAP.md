@@ -23,7 +23,11 @@ Eight pinned model assets total 650090519 bytes. Source-only sherpa-onnx UTF-8 b
 
 - `Services/AudioCaptureService.cs` owns warm WASAPI, bounded pre-roll/session,
   release tail, level measurement, adaptive noise calibration and the explicit
-  corpus-only WAV boundary. Root WPF files and the remaining `Services/`,
+  corpus-only WAV boundary. Current EV-2232 source adds an internal endpoint
+  factory, native retirement outside callback locks with tracked cleanup and generation checks
+  for stale callbacks, release tails and state notifications. Tests exercise the
+  actual service with fake IWaveIn; no microphone is opened. This delta is not yet
+  installed in2.4.0. Root WPF files and the remaining `Services/`,
   `Core/` paths own UI, hooks, inference and delivery.
 - `Core/BuiltInVocabulary.cs` owns canonical names and exact observed aliases;
   `Services/EntityProfilePolicy.cs` enables only justified technology/gaming

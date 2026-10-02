@@ -4,6 +4,7 @@
 
 ## Recent notes
 
+- [2026-10-02T065625Z-capture-lifecycle-and-full-model-measurements](./2026-10-02T065625Z-capture-lifecycle-and-full-model-measurements.md)
 - [2026-10-02T054800Z-quality-50-measured-stage](./2026-10-02T054800Z-quality-50-measured-stage.md)
 - [2026-10-02T044832Z-quality-50-development-evidence](./2026-10-02T044832Z-quality-50-development-evidence.md)
 - [2026-10-02T041846Z-quality-50-goal-continuation](./2026-10-02T041846Z-quality-50-goal-continuation.md)
@@ -13,12 +14,11 @@
 - [2026-10-02T010524Z-russian-rnnt-230-release](./2026-10-02T010524Z-russian-rnnt-230-release.md)
 - [2026-09-09T113000Z-final-221-publication](./2026-09-09T113000Z-final-221-publication.md)
 - [2026-09-09T111000Z-react-installer-spelling](./2026-09-09T111000Z-react-installer-spelling.md)
-- [2026-09-09T103600Z-literal-streaming-rc2](./2026-09-09T103600Z-literal-streaming-rc2.md)
 
 ## Archive
 
-- [2026/09](./archive/2026/09/) - 3 notes
+- [2026/09](./archive/2026/09/) - 4 notes
 - [2026/08](./archive/2026/08/) - 15 notes
 - [2026/07](./archive/2026/07/) - 1 notes
 
-Hot set: 10. Archived: 19.
+Hot set: 10. Archived: 20.
