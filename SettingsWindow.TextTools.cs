@@ -18,11 +18,13 @@ public partial class SettingsWindow
         try
         {
             RuntimeProfileText.Text = VoiceRuntimeProfile.Label;
+            var advancedTextVisibility = VoiceRuntimeProfile.IsPortable ? Visibility.Collapsed : Visibility.Visible;
+            ConfigureTextModelButton.Visibility = QwenFormattingOption.Visibility = TextEditorModelCard.Visibility = advancedTextVisibility;
             AutoQwenCheck.IsChecked = settings.StartLocalQwen;
             AutoQwenCheck.IsEnabled = StartLocalQwenButton.IsEnabled = _mainWindow.CanStartLocalQwen;
             LocalQwenStatusText.Text = _mainWindow.CanStartLocalQwen ? _mainWindow.LocalQwenStatus
                 : "Для встроенного запуска нужна отдельно установленная Qwen3-4B GGUF. Можно использовать сервер ниже.";
-            FormattingModeCombo.SelectedIndex = settings.PreserveSpokenWords ? 0 : settings.FormatWithQwen ? 2 : 1;
+            FormattingModeCombo.SelectedIndex = settings.PreserveSpokenWords ? 0 : settings.FormatWithQwen && !VoiceRuntimeProfile.IsPortable ? 2 : 1;
             TextEndpointBox.Text = settings.TextModelEndpoint;
             if (!string.IsNullOrWhiteSpace(settings.TextModelId))
             {

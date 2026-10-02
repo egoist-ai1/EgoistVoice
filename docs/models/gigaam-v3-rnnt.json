@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "status": "active-for-release-2.3.0",
+  "model_id": "gigaam-v3-rnnt-int8-v1",
+  "family": "GigaAM v3",
+  "task": "Russian ASR",
+  "source": {
+    "primary": "https://github.com/salute-developers/GigaAM",
+    "primary_revision": "7447938d791c4f3e643386ee22c33777004293a5",
+    "export": "https://huggingface.co/Smirnov75/GigaAM-v3-sherpa-onnx",
+    "export_revision": "6888903da215c7735f51101d939f3bfa679fb2b8",
+    "weights_license": "MIT",
+    "export_license_metadata": "MIT",
+    "runtime_license": "Apache-2.0"
+  },
+  "assets": [
+    {
+      "id": "gigaam-v3-rnnt-int8-v1",
+      "file_name": "gigaam_v3_rnnt_encoder_int8.onnx",
+      "size_bytes": 318995995,
+      "sha256": "53138ee4241c22482a45f3f9f80b787749fa7456f29221c4652afb7a1f84b681",
+      "url": "https://huggingface.co/Smirnov75/GigaAM-v3-sherpa-onnx/resolve/6888903da215c7735f51101d939f3bfa679fb2b8/gigaam_v3_rnnt_encoder_int8.onnx",
+      "logical_path": "Models/Speech/gigaam-v3-rnnt-int8-v1/gigaam_v3_rnnt_encoder_int8.onnx"
+    },
+    {
+      "id": "gigaam-v3-rnnt-decoder-v1",
+      "file_name": "gigaam_v3_rnnt_decoder.onnx",
+      "size_bytes": 3331577,
+      "sha256": "633ef97f2c6c9ca11c91b6c7ee8f6054fc7a964e6b22d7a904fd096b458f0308",
+      "url": "https://huggingface.co/Smirnov75/GigaAM-v3-sherpa-onnx/resolve/6888903da215c7735f51101d939f3bfa679fb2b8/gigaam_v3_rnnt_decoder.onnx",
+      "logical_path": "Models/Speech/gigaam-v3-rnnt-decoder-v1/gigaam_v3_rnnt_decoder.onnx"
+    },
+    {
+      "id": "gigaam-v3-rnnt-joiner-v1",
+      "file_name": "gigaam_v3_rnnt_joint.onnx",
+      "size_bytes": 1440448,
+      "sha256": "fd1d02f45c2ad3d6b67cc149811ad794ab4b020ed49a0a9e2790a8619d1cddd8",
+      "url": "https://huggingface.co/Smirnov75/GigaAM-v3-sherpa-onnx/resolve/6888903da215c7735f51101d939f3bfa679fb2b8/gigaam_v3_rnnt_joint.onnx",
+      "logical_path": "Models/Speech/gigaam-v3-rnnt-joiner-v1/gigaam_v3_rnnt_joint.onnx"
+    },
+    {
+      "id": "gigaam-v3-rnnt-tokens-v1",
+      "file_name": "gigaam_v3_rnnt_tokens.txt",
+      "size_bytes": 195,
+      "sha256": "48c9111eb77c9c42d08ecc71c00c09407ef2cce01195d72b7cc0c3c08ce89213",
+      "url": "https://huggingface.co/Smirnov75/GigaAM-v3-sherpa-onnx/resolve/6888903da215c7735f51101d939f3bfa679fb2b8/gigaam_v3_rnnt_tokens.txt",
+      "logical_path": "Models/Speech/gigaam-v3-rnnt-tokens-v1/gigaam_v3_rnnt_tokens.txt"
+    }
+  ],
+  "runtime": {
+    "package": "org.k2fsa.sherpa.onnx",
+    "version": "1.13.4",
+    "package_source_revision": "142807252687d81b40d6315f23470a1512a00de3",
+    "provider": "cpu",
+    "sample_rate": 16000,
+    "feature_dimension": 64,
+    "decoding_method": "greedy_search",
+    "default_threads": "clamp(logical_processors * 3 / 4, 1, 8)",
+    "measurement_host_threads": 8,
+    "contextual_bias": false,
+    "punctuation": "Plain character RNNT produces lower-case Russian words without E2E punctuation/normalization.",
+    "vocabulary": {
+      "symbols": 34,
+      "space_id": 0,
+      "blank_id": 33,
+      "alphabet": "33 Russian/space symbols excluding ё, plus blank; no Latin or punctuation tokens"
+    },
+    "max_chunk_seconds": 35,
+    "max_batch_streams": 6
+  },
+  "verification": {
+    "download_bytes_sha256_verified": true,
+    "native_model_compatibility": "All four plain files loaded and decoded with sherpa1.13.4; two warmup passes before readiness.",
+    "targeted_tests": "39 passed, no skips",
+    "evidence": "artifacts/models-2.3.0/public-pilot.json",
+    "quality_scope": "40 deterministic public RuLS test clips + official expected-output smoke; no private voice accuracy claim",
+    "stress": "100 deterministic repeated decodes, 1s silence raw empty; no private speech involved"
+  },
+  "download_recipe": {
+    "resolve_url_pinned": true,
+    "network": "Model downloads used per-request --resolve huggingface.co from verified public CDN IP because system DNS returned an unreachable address; no system DNS/VPN settings were changed.",
+    "integrity": "Exact pinned revision + expected size + SHA256 for every production file"
+  },
+  "rollback": "Replace app binaries and Models from the preceding release; retain Data. New model IDs prevent reuse of old E2E verification markers."
+}

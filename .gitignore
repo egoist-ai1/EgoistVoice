@@ -26,4 +26,7 @@ tests/corpus/reference.jsonl
 # Downloaded model payloads and any audio corpus are machine-local/private.
 *.gguf
 *.wav
-Models/
+/Models/
+
+# Downloaded ONNX weights are distributed as release assets only.
+*.onnx

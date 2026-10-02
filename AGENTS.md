@@ -62,6 +62,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installe
 Read-only задачи bookkeeping-файлы не меняют. Параллельные writers используют
 разные worktrees или отдельные копии и согласуют `STATUS.md` при объединении.
 
+## Current authorized work
+
+02.10.2026: EV-2230 is the active Russian RNNT release task. The owner explicitly authorized new ASR downloads, product/settings/UI changes, build, tag/push/publication and replacement of the installed Compact. Earlier no-download/no-release directives below describe the historical 2.2 program. Follow STATUS and EV-2230 for this release; preserve privacy and installer-test boundaries.
+
 ## Project gotchas
 
 - Первым делом выполните [`EV-2200`](./docs/tickets/EV-2200-repository-safety-net.md):

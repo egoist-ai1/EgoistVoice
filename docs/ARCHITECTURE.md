@@ -7,11 +7,11 @@
 ## Verified boundaries
 
 - WPF app owns tray/settings, recording capsule, global input hooks and safe text delivery.
-- Shared-mode WASAPI remains warm with a bounded 200 ms idle pre-roll. Release
+- Shared-mode WASAPI remains warm with a bounded 320 ms idle pre-roll. Release
   keeps a 350 ms tail. Capture downmixes/resamples incrementally to 16 kHz mono in memory;
   ordinary dictation never writes WAV. Only explicit private-corpus recording
   may persist a completed take.
-- Audio pipeline runs local GigaAM with conditional Whisper fallback,
+- Russian 2.3.0 uses one plain GigaAM v3 RNNT INT8, CPU greedy with at most eight default threads. Historical Full code retains conditional Whisper fallback,
   profile-aware deterministic entity repair, normalization and commands.
 - GigaAM keeps batches of up to six comparable chunks, but decodes the final tail
   separately when it is shorter than half the longest member. A one-item batch uses
@@ -23,7 +23,7 @@
   owned blocks. Quiet pre-roll/tail and chunk pauses
   use recording-relative levels. The stop sound plays after capture stops.
 - The scarlet capsule uses eight FFT bands (70–8000 Hz) mapped onto fifteen tapered
-  bars in a 256 × 48 DIP capsule, with an 8 ms attack and 80 ms release. Its frame loop runs only while recording;
+  bars in a 256 × 48 DIP capsule, with an 8 ms attack and 80 ms release. Its waveform loop runs only while recording, budgeted to 60 Hz (10 Hz reduced motion); stable drawings and sub-pixel changes do not invalidate the visual. Timer text changes once a second;
   FFT buffers are reused and display analysis never modifies recognition samples.
 - Literal mode is the default, including older settings without the new field. It
   preserves decoder text except an explicit trusted spelling pass for reported
@@ -46,9 +46,9 @@
 - Entity catalogue v2 is whole-token bounded. Safe names are global; ambiguous
   names require a local target/utterance domain and carry term-specific negative
   contexts. Exact split/join repairs replace no arbitrary edit-distance span.
-- GigaAM contextual bias uses a pinned optional official SentencePiece model to
+- Historical E2E GigaAM contextual bias used a pinned optional official SentencePiece model to
   generate exact Sherpa BPE resources. It is a paired-corpus candidate, not the
-  interactive default; any integrity/native failure returns to baseline.
+  interactive default. Plain RNNT uses 34 character tokens and does not load E2E BPE; hotword diagnostics reject unsupported requests.
 - Translation commands use the hash-pinned shared `net8.0` client over the
   current-user named pipe. Voice may start the installed Host, but never owns,
   kills or logs its source/result payload.

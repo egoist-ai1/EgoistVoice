@@ -5,7 +5,7 @@ Egoist Voice распространяется вместе с речевыми �
 
 Исходный код самого Egoist Voice лицензирован отдельно — см. `LICENSE`.
 
-Установщик 2.2.1 дополнительно включает React/React DOM 19.2.8 (MIT) и Electron
+Архивный установщик 2.2.1 дополнительно включает React/React DOM 19.2.8 (MIT) и Electron
 44.2.0 (MIT и лицензии включённых компонентов Chromium/Node). Лицензия React
 находится в архиве приложения установщика, лицензии Electron/Chromium поставляются
 с его runtime. Эти компоненты не входят в установленный Voice.
@@ -27,8 +27,8 @@ https://huggingface.co/Qwen/Qwen3-4B-GGUF/tree/bc640142c66e1fdd12af0bd68f4044545
 - Веса в формате sherpa-onnx: https://huggingface.co/Smirnov75/GigaAM-v3-sherpa-onnx
 - Лицензия: **MIT**
 
-Установщик кладёт `gigaam_v3_e2e_rnnt_encoder_int8.onnx`, `..._decoder.onnx`, `..._joint.onnx` и
-`..._tokens.txt` в `%LOCALAPPDATA%\EgoistVoice\Models\Speech`. Full Preview 2 сохраняет этот
+Русская поставка 2.3.0 использует plain RNNT: `gigaam_v3_rnnt_encoder_int8.onnx`, `..._decoder.onnx`, `..._joint.onnx` и
+`..._tokens.txt` рядом с EXE в `Models/Speech`; все четыре файла и исходная ревизия закреплены в model manifest. Исторический Full Preview 2 сохраняет свой
 кэш при удалении приложения. Compact хранит модели рядом с EXE.
 
 ### Whisper large-v3-turbo — фолбэк для смешанной русско-английской речи

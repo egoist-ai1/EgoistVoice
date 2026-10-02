@@ -45,7 +45,7 @@ try {
     $env:EGOISTVOICE_LOG_DIRECTORY = $priorLogRoot
 }
 $models = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
-if (@($models).Count -ne 4 -or ($models | Measure-Object SizeBytes -Sum).Sum -ne 326322304) {
+if (@($models).Count -ne 4 -or ($models | Measure-Object SizeBytes -Sum).Sum -ne 323768215) {
     throw 'Unexpected model catalog; review the compact size contract.'
 }
 foreach ($model in $models) {
@@ -61,7 +61,7 @@ foreach ($model in $models) {
     if ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -ne $model.Sha256) { throw 'Copied model hash mismatch.' }
     @{ id=$model.Id; sizeBytes=$model.SizeBytes; sha256=$model.Sha256 } | ConvertTo-Json | Set-Content -LiteralPath ($target + '.verified.json') -Encoding utf8
 }
-[IO.File]::WriteAllText((Join-Path $destination 'egoist-voice.portable'), 'gigaam-russian-cpu-v1')
+[IO.File]::WriteAllText((Join-Path $destination 'egoist-voice.portable'), 'gigaam-v3-rnnt-russian-cpu-v2')
 Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination $destination
 Copy-Item -LiteralPath (Join-Path $projectRoot 'THIRD-PARTY-NOTICES.md') -Destination $destination
 [IO.File]::WriteAllText((Join-Path $destination 'START-HERE.txt'), @'
@@ -70,11 +70,11 @@ Egoist Voice Portable — Windows 10 (1903 и новее) / Windows 11, x64
 Запустите Egoist.Voice.exe из установленной или перенесённой целиком папки.
 .NET и отдельная видеокарта не нужны. Модели уже включены; сеть не требуется.
 Удерживайте настроенную кнопку мыши или выберите сочетание клавиш в меню трея.
-Настройки и журнал пишутся в Data рядом с приложением. История 3 последних записей включена по умолчанию для надёжности.
+Настройки и журнал пишутся в Data рядом с приложением. История 3 последних записей включается отдельно в настройках; ваш выбор сохраняется при обновлении.
 Переносите всю папку. Перед переносом закройте приложение.
 
-Состав: GigaAM v3 INT8, русский язык, CPU. Whisper и переводчик не входят.
-Qwen-оформление требует отдельно установленной текстовой модели и локального сервера.
+Состав: GigaAM v3 RNNT INT8 без E2E, русский язык, CPU. Whisper и переводчик не входят.
+Дословный профиль работает без дополнительной текстовой модели и перефразирования.
 «Текст» позволяет распознать аудиофайл и скопировать результат.
 «История» позволяет слушать, удалять и повторно распознавать три последние записи.
 
@@ -101,6 +101,7 @@ if ($gitExe) {
         $sourceDirty = [bool]($dirty.Count)
     } catch { }
 }
-$receipt = [ordered]@{ schemaVersion=1; generatedAt=[DateTime]::UtcNow.ToString('o'); flavor='Russian CPU Portable'; unpackedBytes=$total; fileCount=$files.Count; sourceRevision=$sourceRev; sourceDirty=$sourceDirty; files=$files }
+[xml]$versionDocument = Get-Content -LiteralPath (Join-Path $projectRoot 'Egoist.Voice.csproj') -Raw
+$receipt = [ordered]@{ schemaVersion=1; version=[string]$versionDocument.Project.PropertyGroup.Version; fileVersion=[string]$versionDocument.Project.PropertyGroup.FileVersion; generatedAt=[DateTime]::UtcNow.ToString('o'); flavor='Russian CPU Portable'; unpackedBytes=$total; fileCount=$files.Count; sourceRevision=$sourceRev; sourceDirty=$sourceDirty; files=$files }
 $receipt | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path (Split-Path -Parent $destination) 'portable-stage.manifest.json') -Encoding utf8
 [pscustomobject]@{ Staging=$destination; Files=$files.Count; Bytes=$total; MB=[math]::Round($total / 1000000, 2) } | ConvertTo-Json

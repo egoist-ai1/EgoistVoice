@@ -18,7 +18,7 @@ internal sealed class SpeechActivityDetector
     private double _speechPeakThresholdDb = -38;
 
     /// <summary>Below this the microphone is effectively delivering nothing at all.</summary>
-    internal const double SilentSessionPeakDb = -60;
+    internal const double SilentSessionPeakDb = -66;
 
     private double _durationMilliseconds;
     private double _speechMilliseconds;
@@ -27,6 +27,8 @@ internal sealed class SpeechActivityDetector
     private double _peakDecibels = -120;
     private double _quietestRmsDecibels = double.PositiveInfinity;
 
+    // Low-gain speech can sit below -56 dBFS. Keep the 8 dB separation from
+    // measured background; do not boost, denoise or trim the samples sent to ASR.
     internal void Reset(double? noiseFloorDb = null)
     {
         _durationMilliseconds = 0;
@@ -36,9 +38,9 @@ internal sealed class SpeechActivityDetector
         _peakDecibels = -120;
         _quietestRmsDecibels = double.PositiveInfinity;
         _speechRmsThresholdDb = noiseFloorDb is { } finite && double.IsFinite(finite)
-            ? Math.Clamp(finite + 8, -56, -42)
+            ? Math.Clamp(finite + 8, -62, -42)
             : DefaultSpeechRmsThresholdDb;
-        _speechPeakThresholdDb = Math.Clamp(_speechRmsThresholdDb + 8, -48, -34);
+        _speechPeakThresholdDb = Math.Clamp(_speechRmsThresholdDb + 8, -54, -34);
     }
 
     internal void Process(double rmsAmplitude, double peakAmplitude, double durationMilliseconds)

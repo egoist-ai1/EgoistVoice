@@ -304,7 +304,7 @@ public partial class SettingsWindow : Window
             DirectFastModeCheck.IsChecked = settings.DirectGigaamFastMode;
             DirectFastModeCheck.Visibility = VoiceRuntimeProfile.IsPortable ? Visibility.Collapsed : Visibility.Visible;
             DirectFastModeHint.Text = VoiceRuntimeProfile.IsPortable
-                ? "Compact распознаёт русскую речь локально через GigaAM. Whisper в эту сборку не входит. Смешанная русско-английская речь доступна в полной версии."
+                ? "Один русский распознаватель GigaAM v3 RNNT работает на компьютере. Тихие звуки и окончания сохраняются в аудио; ошибка распознавания всё ещё возможна."
                 : "GigaAM распознаёт русскую речь. Дополнительная сверка Whisper может помочь смешанной речи, но увеличивает ожидание.";
             MixedLanguageCheck.IsChecked = settings.MixedLanguageMode && !VoiceRuntimeProfile.IsPortable;
             MixedLanguageCheck.IsEnabled = !VoiceRuntimeProfile.IsPortable && !settings.PreserveSpokenWords;
@@ -897,7 +897,7 @@ public partial class SettingsWindow : Window
         var presentation = ModelProgressFormatter.ControlCenter(allModelsReady, progress);
         RecognitionModelStatusText.Text = presentation.StatusText;
         if (VoiceRuntimeProfile.IsPortable && allModelsReady)
-            RecognitionModelStatusText.Text = "GigaAM v3 · русский · CPU · готово без сети";
+            RecognitionModelStatusText.Text = "GigaAM v3 RNNT · русский · CPU · готово без сети";
         RecognitionModelStatusText.Foreground = presentation.IsFailure ? LoudBrush : MutedBrush;
         ShowModelDownloadsButton.Visibility = presentation.ShowProgress
             ? Visibility.Visible
