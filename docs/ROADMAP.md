@@ -1,5 +1,11 @@
 # Egoist Voice — roadmap
 
+## Active quality goal — 2026-10-02
+
+EV-2233 now focuses on user-selected GigaAMv3 tuning (5–10% desired relative quality gain), Windows/background/default microphone, settings/animation/resources and unused trial-model cleanup. EV-2232 is superseded by the user, not achieved. [Acceptance](tickets/EV-2233-gigaam-windows-tuning.md).
+
+The latest explicit instruction authorizes verified2.4.1 installation/publication. Current source Full1148/Compact1141+7 and exact native UI-after pass; resource gains are scoped to matched synthetic cases. General secondary switching and adaptive-b05 are rejected. Versioned package/readback remain pending; no5–10% acoustic promise.
+
 ## Current quality release — 2026-10-02
 
 EV-2231 / [2.4.0](https://github.com/egoist-ai1/EgoistVoice/releases/tag/v2.4.0) is published and installed: plain words + audio punctuation/case and conservative known names. Full/CI1037, Compact1030/7skip, Pester34 and exact shipped public80 pass.545 installed files match; both engines ready, punctuation on, existing user settings/Data preserved, actual installed CLI smoke passed. Public punctuation errors−53.07%/raw character errors−57.94%, lexical26/1169 unchanged. Personal acoustic/English-name/prosody gold and clean-Windows installer lifecycle remain future checks. [Evaluation](models/EVALUATION-2.4.0.md).

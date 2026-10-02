@@ -114,6 +114,69 @@ public sealed class CapsuleAnimationCadenceTests
         Assert.Equal(0, profile.StrokeDip);
     }
 
+    [Fact]
+    public void Hidden_request_is_suspended_and_resumes_once_without_duplicate_handlers()
+    {
+        var attached = 0;
+        var detached = 0;
+        var lifetime = new CapsuleAnimationSubscription(() => attached++, () => detached++);
+        lifetime.Start(eligible: false);
+        Assert.True(lifetime.IsRequested);
+        Assert.False(lifetime.IsAttached);
+        lifetime.Refresh(eligible: true);
+        lifetime.Start(eligible: true);
+        lifetime.Refresh(eligible: true);
+        Assert.Equal(1, attached);
+        lifetime.Refresh(eligible: false);
+        lifetime.Refresh(eligible: false);
+        Assert.Equal(1, detached);
+        Assert.True(lifetime.IsRequested);
+        lifetime.Refresh(eligible: true);
+        Assert.Equal(2, attached);
+        Assert.True(lifetime.IsAttached);
+    }
+
+    [Fact]
+    public void Stopping_a_hidden_or_minimized_request_prevents_resubscription_after_restore()
+    {
+        var attached = 0;
+        var detached = 0;
+        var lifetime = new CapsuleAnimationSubscription(() => attached++, () => detached++);
+        lifetime.Start(eligible: true);
+        lifetime.Refresh(eligible: false);
+        lifetime.Stop();
+        lifetime.Stop();
+        lifetime.Refresh(eligible: true);
+        Assert.Equal(1, attached);
+        Assert.Equal(1, detached);
+        Assert.False(lifetime.IsRequested);
+        Assert.False(lifetime.IsAttached);
+    }
+
+    [Fact]
+    public void A_new_take_after_stop_has_one_subscription_and_a_fresh_frame_clock()
+    {
+        var cadence = new CapsuleAnimationCadence();
+        var attached = 0;
+        var detached = 0;
+        var lifetime = new CapsuleAnimationSubscription(
+            () => { cadence.Reset(); attached++; },
+            () => { cadence.Reset(); detached++; });
+        lifetime.Start(eligible: true);
+        Assert.True(cadence.TryAdvance(TimeSpan.Zero, false, out _));
+        lifetime.Refresh(eligible: false);
+        lifetime.Refresh(eligible: true);
+        Assert.True(cadence.TryAdvance(TimeSpan.FromSeconds(30), false, out var resumedDelta));
+        Assert.Equal(1d / 60d, resumedDelta, precision: 6);
+        Assert.False(cadence.TryAdvance(TimeSpan.FromSeconds(30), false, out _));
+        lifetime.Stop();
+        lifetime.Start(eligible: true);
+        Assert.True(cadence.TryAdvance(TimeSpan.FromSeconds(60), true, out var newDelta));
+        Assert.Equal(0.1, newDelta);
+        Assert.Equal(3, attached);
+        Assert.Equal(2, detached);
+    }
+
     private static void RunSta(Action action)
     {
         Exception? failure = null;

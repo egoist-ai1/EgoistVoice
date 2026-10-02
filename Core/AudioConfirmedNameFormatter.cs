@@ -3,9 +3,9 @@ using System.Text;
 namespace Egoist.Voice.Core;
 
 /// <summary>
-/// Changes only known name spans corroborated by exact Latin spelling in a second recognition.
+/// Changes known name spans or explicit abbreviations corroborated by a second recognition.
 /// Call after punctuation composition, with both hypotheses from the same immutable audio chunk.
-/// Whole-chunk lexical agreement is required; this helper does not prove acoustic spelling.
+/// Whole-chunk agreement is required outside one bounded repair; this helper does not prove acoustic spelling.
 /// </summary>
 internal static class AudioConfirmedNameFormatter
 {
@@ -49,6 +49,15 @@ internal static class AudioConfirmedNameFormatter
             return primaryComposed;
         }
 
+        var repaired = RepairCorroboratedSpan(primaryComposed, primaryTokens,
+            secondaryAudioTranscript, secondaryTokens);
+        if (!ReferenceEquals(repaired, primaryComposed))
+        {
+            primaryComposed = repaired;
+            if (!TryTokenize(primaryComposed, out primaryTokens))
+                return primaryComposed;
+        }
+
         var primary = Collapse(primaryComposed, primaryTokens);
         var secondary = Collapse(secondaryAudioTranscript, secondaryTokens);
         if (primary.Count != secondary.Count)
@@ -85,6 +94,120 @@ internal static class AudioConfirmedNameFormatter
             return primaryComposed;
         }
         result.Append(primaryComposed.AsSpan(copiedUntil));
+        return result.ToString();
+    }
+
+    private static readonly HashSet<string> NamePrepositions = new(StringComparer.Ordinal)
+        { "с", "из", "в", "на", "к", "от", "о", "об", "по", "для", "без", "до", "у" };
+    private static readonly string[] NameCaseEndings = ["", "а", "у", "ом", "е"];
+
+    private static string RepairCorroboratedSpan(string primary, IReadOnlyList<Token> tokens,
+        string secondary, IReadOnlyList<Token> otherTokens)
+    {
+        // One catalogue-backed repair per chunk, plus two unchanged lexical anchors.
+        // No edit-distance guesses, arbitrary suffix changes, grammar or secondary-only words.
+        var index = 0;
+        var otherIndex = 0;
+        var anchors = 0;
+        Token? repair = null;
+        string? replacement = null;
+        while (index < tokens.Count && otherIndex < otherTokens.Count)
+        {
+            var token = tokens[index];
+            var other = otherTokens[otherIndex];
+            var otherSpan = secondary.Substring(other.Start, other.Length);
+            if (TryRussianNameForm(otherSpan, out var nameAliases) &&
+                nameAliases.Contains(token.Key, StringComparer.Ordinal))
+            {
+                if (!primary.AsSpan(token.Start, token.Length).SequenceEqual(otherSpan.AsSpan()))
+                {
+                    if (repair is not null) return primary;
+                    repair = token;
+                    replacement = otherSpan;
+                }
+                index++;
+                otherIndex++;
+                continue;
+            }
+            if (BuiltInVocabulary.AudioConfirmedAbbreviations.Contains(otherSpan, StringComparer.Ordinal) &&
+                token.Key.Length <= other.Key.Length &&
+                CollapseRepeatedLetters(other.Key) == CollapseRepeatedLetters(token.Key))
+            {
+                // Only repeated letters may be restored; every distinct letter must already exist.
+                if (!primary.AsSpan(token.Start, token.Length).SequenceEqual(otherSpan.AsSpan()))
+                {
+                    if (repair is not null) return primary;
+                    repair = token;
+                    replacement = otherSpan;
+                }
+                index++;
+                otherIndex++;
+                continue;
+            }
+            if (token.Key == other.Key)
+            {
+                if (token.Key.Length >= 2 && token.Key.All(char.IsLetter)) anchors++;
+                index++;
+                otherIndex++;
+                continue;
+            }
+            if (repair is null && NamePrepositions.Contains(other.Key) &&
+                otherIndex + 1 < otherTokens.Count)
+            {
+                var name = otherTokens[otherIndex + 1];
+                var nameSpan = secondary.Substring(name.Start, name.Length);
+                var between = secondary.AsSpan(other.Start + other.Length,
+                    name.Start - other.Start - other.Length);
+                if (between.Length > 0 && IsOnlyWhitespace(between) &&
+                    TryRussianNameForm(nameSpan, out var aliases) &&
+                    aliases.Any(alias => token.Key == other.Key + alias))
+                {
+                    repair = token;
+                    replacement = otherSpan + " " + nameSpan;
+                    index++;
+                    otherIndex += 2;
+                    continue;
+                }
+            }
+            return primary;
+        }
+        if (index != tokens.Count || otherIndex != otherTokens.Count || repair is null || anchors < 2)
+            return primary;
+        var span = repair.Value;
+        return string.Concat(primary.AsSpan(0, span.Start), replacement,
+            primary.AsSpan(span.Start + span.Length));
+    }
+
+    private static bool TryRussianNameForm(string text, out string[] aliases)
+    {
+        foreach (var (stem, spoken) in BuiltInVocabulary.AudioConfirmedRussianNames)
+        {
+            foreach (var ending in NameCaseEndings)
+            {
+                // Exact proper-name case in the secondary; retain the same suffix in the primary.
+                if (text == stem + ending)
+                {
+                    aliases = spoken.Select(alias => alias + ending).ToArray();
+                    return true;
+                }
+            }
+        }
+        aliases = [];
+        return false;
+    }
+
+    private static bool IsOnlyWhitespace(ReadOnlySpan<char> text)
+    {
+        foreach (var rune in text.EnumerateRunes())
+            if (!Rune.IsWhiteSpace(rune)) return false;
+        return true;
+    }
+
+    private static string CollapseRepeatedLetters(string text)
+    {
+        var result = new StringBuilder(text.Length);
+        foreach (var character in text)
+            if (result.Length == 0 || result[^1] != character) result.Append(character);
         return result.ToString();
     }
 

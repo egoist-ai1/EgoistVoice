@@ -13,6 +13,8 @@ public partial class MainWindow
     private readonly object _spectrumFrameGate = new();
     private VoiceSpectrum _spectrumFrame;
     private readonly CapsuleAnimationCadence _waveCadence = new();
+    private CapsuleAnimationSubscription? _waveSubscription;
+    private bool _capsuleMotionVisible;
     private int _lastDisplayedRecordingSecond = -1;
     private CapsuleVisualState? _lastVisualLayout;
     private bool _processingIsIndeterminate;
@@ -20,6 +22,78 @@ public partial class MainWindow
     private void BuildWaveform()
     {
         Waveform.HighContrast = EffectiveTheme == EffectiveAppTheme.HighContrast;
+        if (_waveSubscription is not null) return;
+        _waveSubscription = new CapsuleAnimationSubscription(
+            () =>
+            {
+                _waveCadence.Reset();
+                CompositionTarget.Rendering += OnWaveformRendering;
+                _waveRendering = true;
+            },
+            () =>
+            {
+                CompositionTarget.Rendering -= OnWaveformRendering;
+                _waveRendering = false;
+                _waveCadence.Reset();
+            });
+        Loaded += OnWaveformLoadedOrUnloaded;
+        Unloaded += OnWaveformLoadedOrUnloaded;
+        IsVisibleChanged += OnWaveformVisibilityChanged;
+        StateChanged += OnWaveformWindowStateChanged;
+        Waveform.IsVisibleChanged += OnWaveformVisibilityChanged;
+        Closed += (_, _) => _waveSubscription?.Stop();
+    }
+
+    private bool CanRenderWaveform => !_disposed && _isRecording && IsLoaded && IsVisible &&
+        WindowState != WindowState.Minimized && Waveform.IsVisible;
+
+    private bool CanRenderCapsuleMotion => !_disposed && IsLoaded && IsVisible &&
+        WindowState != WindowState.Minimized;
+
+    private void OnWaveformLoadedOrUnloaded(object sender, RoutedEventArgs args) =>
+        RefreshCapsuleAnimationEligibility();
+
+    private void OnWaveformVisibilityChanged(object sender, DependencyPropertyChangedEventArgs args) =>
+        RefreshCapsuleAnimationEligibility();
+
+    private void OnWaveformWindowStateChanged(object? sender, EventArgs args) =>
+        RefreshCapsuleAnimationEligibility();
+
+    private void RefreshCapsuleAnimationEligibility()
+    {
+        _waveSubscription?.Refresh(CanRenderWaveform);
+        var visible = CanRenderCapsuleMotion;
+        if (_capsuleMotionVisible == visible) return;
+        _capsuleMotionVisible = visible;
+        if (!visible)
+        {
+            StopStateAnimations();
+            ((Storyboard)Resources["StateTransitionStoryboard"]).Stop(this);
+            ((Storyboard)Resources["EnterStoryboard"]).Stop(this);
+            CenterContent.Opacity = 1;
+            StateContentTranslate.X = 0;
+            // A pending finite exit still completes its existing hide contract.
+            return;
+        }
+        switch (_lastVisualStateKind)
+        {
+            case CapsuleVisualStateKind.Recognizing when _processingIsIndeterminate:
+                BeginStateStoryboard("ProcessingStoryboard");
+                break;
+            case CapsuleVisualStateKind.Downloading when _lastTransferStage == ModelTransferStage.Downloading:
+                BeginStateStoryboard("DownloadStoryboard");
+                break;
+            case CapsuleVisualStateKind.Downloading when _lastTransferStage is ModelTransferStage.Verifying or ModelTransferStage.Loading:
+                BeginStateStoryboard("SpinStoryboard");
+                break;
+            case CapsuleVisualStateKind.Success:
+            case CapsuleVisualStateKind.Clipboard:
+                BeginStateStoryboard("SuccessStoryboard");
+                break;
+            case CapsuleVisualStateKind.Error:
+                BeginStateStoryboard("ErrorStoryboard");
+                break;
+        }
     }
 
     private void OnAudioLevelChanged(object? sender, float level)
@@ -266,7 +340,7 @@ public partial class MainWindow
 
     private void BeginStateStoryboard(string resourceKey)
     {
-        if (!IsReducedMotion)
+        if (!IsReducedMotion && CanRenderCapsuleMotion)
         {
             ((Storyboard)Resources[resourceKey]).Begin(this, true);
         }
@@ -274,6 +348,8 @@ public partial class MainWindow
 
     private void PlayFeedback(FeedbackSound sound, bool preview = false)
     {
+        // An acoustic cue during capture suppresses the beginning of the recorded PCM.
+        if (sound == FeedbackSound.RecordingStarted && !preview && _isRecording) return;
         if (preview)
         {
             _sounds.Preview(sound);
@@ -363,7 +439,7 @@ public partial class MainWindow
 
         if (stateChanged) ApplyThemeToCapsule();
 
-        if (stateChanged && IsVisible && !IsReducedMotion)
+        if (stateChanged && CanRenderCapsuleMotion && !IsReducedMotion)
         {
             ((Storyboard)Resources["StateTransitionStoryboard"]).Begin(this, true);
         }
@@ -570,10 +646,15 @@ public partial class MainWindow
 
     private void StartWaveformAnimation()
     {
-        if (_waveRendering) return;
-        _waveCadence.Reset();
-        CompositionTarget.Rendering += OnWaveformRendering;
-        _waveRendering = true;
+        BuildWaveform();
+        _waveSubscription!.Start(CanRenderWaveform);
+    }
+
+    private void StopWaveformAnimation()
+    {
+        _waveSubscription?.Stop();
+        _audioLevelTarget = 0;
+        _audioLevelCurrent = 0;
     }
 
     private void OnWaveformRendering(object? sender, EventArgs args)
@@ -583,10 +664,107 @@ public partial class MainWindow
             return;
         }
 
-        if (!_isRecording || !IsVisible) return;
+        if (!CanRenderWaveform)
+        {
+            // A defensive detach also covers visibility changes during event dispatch.
+            _waveSubscription?.Refresh(eligible: false);
+            return;
+        }
         if (_waveCadence.TryAdvance(rendering.RenderingTime, IsReducedMotion, out var deltaSeconds))
         {
             AnimateWaveformFrame(deltaSeconds);
         }
+    }
+
+    /// <summary>Isolated CLI fixture; exercises only visual state, never capture or transcription.</summary>
+    public async Task RenderWaveformLifecycleDiagnosticsAsync(string outputPath)
+    {
+        if (!_audioCapture.GetState().IsPaused)
+            throw new InvalidOperationException("Visual diagnostics require paused capture.");
+        var foreground = NativeMethods.GetForegroundWindow();
+        var originalTheme = EffectiveTheme;
+        var originalReducedMotion = IsReducedMotion;
+        var observations = new List<object>();
+        bool ProcessingMotionActive()
+        {
+            try
+            {
+                return ((Storyboard)Resources["ProcessingStoryboard"]).GetCurrentState(this) == ClockState.Active;
+            }
+            catch (InvalidOperationException) { return false; }
+        }
+        void Capture(string state) => observations.Add(new
+        {
+            state,
+            requested = _waveSubscription?.IsRequested ?? false,
+            subscribed = _waveRendering,
+            visible = IsVisible,
+            loaded = IsLoaded,
+            minimized = WindowState == WindowState.Minimized,
+            waveformVisible = Waveform.IsVisible,
+            processingAnimationActive = ProcessingMotionActive(),
+            reducedMotion = IsReducedMotion,
+            foregroundUnchanged = NativeMethods.GetForegroundWindow() == foreground
+        });
+        Capture("constructed");
+        try
+        {
+            foreach (var theme in new[] { EffectiveAppTheme.Dark, EffectiveAppTheme.HighContrast })
+            {
+                var label = theme == EffectiveAppTheme.Dark ? "dark" : "contrast";
+                _themeService.ApplyDiagnostic(theme, reducedMotion: theme == EffectiveAppTheme.HighContrast);
+                ShowListeningPreview();
+                await Task.Delay(80);
+                Capture(label + "-listening");
+                Waveform.Visibility = Visibility.Collapsed;
+                await Task.Delay(80);
+                Capture(label + "-waveform-collapsed");
+                Waveform.Visibility = Visibility.Visible;
+                await Task.Delay(80);
+                Capture(label + "-waveform-restored");
+                Hide();
+                await Task.Delay(80);
+                Capture(label + "-hidden");
+                Show();
+                await Task.Delay(80);
+                Capture(label + "-restored");
+                WindowState = WindowState.Minimized;
+                await Task.Delay(80);
+                Capture(label + "-minimized");
+                WindowState = WindowState.Normal;
+                await Task.Delay(80);
+                Capture(label + "-unminimized");
+                _isRecording = false;
+                ShowStatePreview("processing");
+                await Task.Delay(80);
+                Capture(label + "-processing");
+                Hide();
+                await Task.Delay(80);
+                Capture(label + "-processing-hidden");
+                Show();
+                await Task.Delay(80);
+                Capture(label + "-processing-restored");
+                _isProcessing = false;
+                SetReadyState();
+                Hide();
+                Show();
+                await Task.Delay(80);
+                Capture(label + "-stopped-restored");
+            }
+        }
+        finally
+        {
+            _isRecording = false;
+            _isProcessing = false;
+            StopWaveformAnimation();
+            _themeService.ApplyDiagnostic(originalTheme, originalReducedMotion);
+        }
+        Dispose();
+        Capture("disposed");
+        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(outputPath))!);
+        await System.IO.File.WriteAllTextAsync(outputPath, System.Text.Json.JsonSerializer.Serialize(
+            new { schema = "egoist.voice.capsule-animation-lifecycle/v1", observations,
+                noCaptureOrTranscription = true, diagnosticDelayMs = 80 },
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
     }
 }

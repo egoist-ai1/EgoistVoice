@@ -1,4 +1,4 @@
-﻿using System.Threading;
+using System.Threading;
 using System.IO;
 using System.Net.Http;
 using System.Diagnostics;
@@ -22,8 +22,13 @@ public partial class App : System.Windows.Application
     private RegisteredWaitHandle? _shutdownRegistration;
     private TrayService? _tray;
     private AppThemeService? _themeService;
+    private Task<IAudioCaptureService>? _captureConstructionTask;
+    private Task? _shutdownTask;
+    private bool _shutdownRequested;
+    private IModelManager? _startupModelManager;
+    private RecentRecordingHistoryService? _startupRecentRecordings;
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
@@ -41,13 +46,13 @@ public partial class App : System.Windows.Application
         if (e.Args.Length == 2 && e.Args[0] == "--export-russian-quality-models")
         {
             File.WriteAllText(e.Args[1], System.Text.Json.JsonSerializer.Serialize(ModelCatalog.CreateRussianQualityModels()));
-            Shutdown();
+            RequestShutdown();
             return;
         }
         if (e.Args.Length == 2 && e.Args[0] == "--export-compact-models")
         {
             File.WriteAllText(e.Args[1], System.Text.Json.JsonSerializer.Serialize(ModelCatalog.CreateCompactModels()));
-            Shutdown();
+            RequestShutdown();
             return;
         }
         if (e.Args.Length == 4 && e.Args[0] == "--local-entity-asr-check")
@@ -93,7 +98,7 @@ public partial class App : System.Windows.Application
             {
                 Environment.ExitCode = 2;
             }
-            Shutdown();
+            RequestShutdown();
             return;
         }
 
@@ -214,7 +219,7 @@ public partial class App : System.Windows.Application
                 AppLog.Write("Tray preview failed", exception);
                 Environment.ExitCode = 1;
             }
-            Shutdown();
+            RequestShutdown();
             return;
         }
 
@@ -235,11 +240,11 @@ public partial class App : System.Windows.Application
                 HotkeyModifiers.Control | HotkeyModifiers.Shift,
                 0x56));
             dialog.Show();
-            Dispatcher.InvokeAsync(() =>
+            _ = Dispatcher.InvokeAsync(() =>
             {
                 dialog.RenderPreview(e.Args[1]);
                 dialog.Close();
-                Shutdown();
+                RequestShutdown();
             }, DispatcherPriority.ContextIdle);
             return;
         }
@@ -254,14 +259,14 @@ public partial class App : System.Windows.Application
             _singleInstance = new Mutex(true, MutexName, out var isFirstInstance);
             if (!isFirstInstance)
             {
-                Shutdown();
+                RequestShutdown();
                 return;
             }
 
             _shutdownEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShutdownEventName);
             _shutdownRegistration = ThreadPool.RegisterWaitForSingleObject(
                 _shutdownEvent,
-                (_, _) => Dispatcher.BeginInvoke(Shutdown),
+                (_, _) => Dispatcher.BeginInvoke(RequestShutdown),
                 null,
                 Timeout.Infinite,
                 executeOnlyOnce: true);
@@ -269,6 +274,7 @@ public partial class App : System.Windows.Application
 
         var requiredModels = VoiceRuntimeProfile.Models;
         var modelManager = new ModelManager(requiredModels);
+        _startupModelManager = modelManager;
         var delivery = new DictationDeliveryService(
             new ClipboardService(),
             new TextInsertionService());
@@ -277,10 +283,22 @@ public partial class App : System.Windows.Application
         _themeService = new AppThemeService();
         _themeService.Apply(settings.Theme);
         var recentRecordings = new RecentRecordingHistoryService();
+        _startupRecentRecordings = recentRecordings;
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        _captureConstructionTask = CreateCaptureForStartupAsync(() => new AudioCaptureService(
+            captureDeviceId: settings.CaptureDeviceId,
+            startPaused: settings.IsCapturePaused || isolatedVisualPreview));
+        IAudioCaptureService capture;
+        try { capture = await _captureConstructionTask; }
+        catch (Exception exception)
+        {
+            AppLog.Write("Microphone startup construction failed", exception);
+            RequestShutdown();
+            return;
+        }
+        if (_shutdownRequested) return;
         var window = new MainWindow(
-            new AudioCaptureService(
-                captureDeviceId: settings.CaptureDeviceId,
-                startPaused: settings.IsCapturePaused || isolatedVisualPreview),
+            capture,
             VoiceRuntimeProfile.CreateTranscription(modelManager),
             delivery,
             modelManager,
@@ -289,6 +307,8 @@ public partial class App : System.Windows.Application
             _themeService);
 
         MainWindow = window;
+        _startupModelManager = null;
+        _startupRecentRecordings = null;
         if (e.Args.Length >= 2 && e.Args[0].Equals("--render-settings-preview", StringComparison.OrdinalIgnoreCase))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -398,7 +418,7 @@ public partial class App : System.Windows.Application
                     settingsWindow.RenderPreview(e.Args[1]);
                 }
                 settingsWindow.CloseForExit();
-                Shutdown();
+                RequestShutdown();
             }, DispatcherPriority.ContextIdle);
             return;
         }
@@ -431,11 +451,11 @@ public partial class App : System.Windows.Application
                 window.Show();
             }
             window.ShowListeningPreview();
-            Dispatcher.InvokeAsync(() =>
+            _ = Dispatcher.InvokeAsync(() =>
             {
                 window.RenderPreview(e.Args[1]);
                 window.Close();
-                Shutdown();
+                RequestShutdown();
             }, DispatcherPriority.ApplicationIdle);
             return;
         }
@@ -445,10 +465,10 @@ public partial class App : System.Windows.Application
         // have returned. The operation never frames recognized text and cannot block dictation.
         window.BeginTranslationEngineWarmup();
         window.BeginTextModelWarmup();
-        _tray = new TrayService(window, modelManager, settingsService, _themeService, Shutdown);
+        _tray = new TrayService(window, modelManager, settingsService, _themeService, RequestShutdown);
         window.RequestOpenSettings = () => _tray?.ShowSettingsWindowPublic();
         window.RequestOpenHistory = () => _tray?.ShowHistoryWindowPublic();
-        window.RequestExit = Shutdown;
+        window.RequestExit = RequestShutdown;
         window.InitializeHotkey();
         var background = e.Args.Contains("--background", StringComparer.OrdinalIgnoreCase);
         if (!background)
@@ -457,6 +477,51 @@ public partial class App : System.Windows.Application
         }
         window.BeginWarmUp(showProgress: !background, announceModelDownloads: !modelManager.AreAllModelsReady);
         AppLog.Write($"Startup complete, background={background}");
+    }
+
+    internal static Task<IAudioCaptureService> CreateCaptureForStartupAsync(Func<IAudioCaptureService> factory) =>
+        Task.Run(factory);
+
+    internal static async Task DisposeCaptureForStartupAsync(Task<IAudioCaptureService> constructing)
+    {
+        var capture = await constructing;
+        await Task.Run(capture.Dispose);
+    }
+
+    private static void DisposeStartupOwned(IDisposable? owned)
+    {
+        try { owned?.Dispose(); }
+        catch (Exception exception) { AppLog.Write("Startup service disposal failed", exception); }
+    }
+
+    private void RequestShutdown()
+    {
+        if (!Dispatcher.CheckAccess()) { _ = Dispatcher.BeginInvoke(RequestShutdown); return; }
+        _shutdownTask ??= ShutdownOwnedServicesAsync();
+    }
+
+    private async Task ShutdownOwnedServicesAsync()
+    {
+        _shutdownRequested = true;
+        try
+        {
+            if (MainWindow is MainWindow window) await window.ShutdownAsync();
+            else
+            {
+                if (_captureConstructionTask is { } constructing)
+                {
+                    try { await DisposeCaptureForStartupAsync(constructing); }
+                    catch (Exception exception) { AppLog.Write("Capture constructor ended during shutdown", exception); }
+                }
+                await Task.Run(() =>
+                {
+                    DisposeStartupOwned(_startupRecentRecordings);
+                    DisposeStartupOwned(_startupModelManager);
+                });
+            }
+        }
+        catch (Exception exception) { AppLog.Write("Application shutdown cleanup failed", exception); }
+        base.Shutdown();
     }
 
     private static void SignalRunningInstanceToShutdown()
@@ -477,7 +542,7 @@ public partial class App : System.Windows.Application
         await Task.Delay(320);
         window.RenderPreview(outputPath);
         window.Close();
-        Shutdown();
+        RequestShutdown();
     }
 
     private static bool WaitForRunningInstanceToExit(TimeSpan timeout)
@@ -522,7 +587,7 @@ public partial class App : System.Windows.Application
         }
         finally
         {
-            Shutdown();
+            RequestShutdown();
         }
     }
 
@@ -548,7 +613,7 @@ public partial class App : System.Windows.Application
         }
         finally
         {
-            Shutdown();
+            RequestShutdown();
         }
     }
 
@@ -596,7 +661,7 @@ public partial class App : System.Windows.Application
                 Directory.CreateDirectory(directory);
             }
             await File.WriteAllLinesAsync(outputPath, lines);
-            Shutdown();
+            RequestShutdown();
         }
     }
 
@@ -628,7 +693,7 @@ public partial class App : System.Windows.Application
         }
         finally
         {
-            Shutdown();
+            RequestShutdown();
         }
     }
 
@@ -689,7 +754,7 @@ public partial class App : System.Windows.Application
         }
         finally
         {
-            Shutdown();
+            RequestShutdown();
         }
     }
 
@@ -745,7 +810,7 @@ public partial class App : System.Windows.Application
         }
         finally
         {
-            Shutdown();
+            RequestShutdown();
         }
     }
 
@@ -999,7 +1064,7 @@ public partial class App : System.Windows.Application
         }
         finally
         {
-            Shutdown();
+            RequestShutdown();
         }
     }
 
@@ -1022,7 +1087,7 @@ public partial class App : System.Windows.Application
         }
         finally
         {
-            Shutdown();
+            RequestShutdown();
         }
     }
 
@@ -1083,7 +1148,7 @@ public partial class App : System.Windows.Application
         }
         finally
         {
-            Shutdown();
+            RequestShutdown();
         }
     }
 
@@ -1107,7 +1172,7 @@ public partial class App : System.Windows.Application
         }
         finally
         {
-            Shutdown();
+            RequestShutdown();
         }
     }
 
@@ -1131,7 +1196,7 @@ public partial class App : System.Windows.Application
         }
         finally
         {
-            Shutdown();
+            RequestShutdown();
         }
     }
 
@@ -1221,7 +1286,7 @@ public partial class App : System.Windows.Application
         finally
         {
             testWindow?.Close();
-            Shutdown();
+            RequestShutdown();
         }
     }
 

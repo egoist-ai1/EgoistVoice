@@ -2,7 +2,7 @@
 
 ## Current route — 2026-10-02
 
-Start with STATUS → completed EV-2231 → docs/releases/2.4.0.md and artifacts/quality-2.4.0/release-qa. Russian quality2.4 is published and installed; all545 installed hashes/readiness/settings/Data and actual installed CLI smoke are verified. The owner authorized model/settings/UI changes, publication and workstation replacement. Source/tag61611 remains immutable; later main commits may contain post-deployment documentation only. Instructions below describe the historical2.2 program, not the current kickoff or authority. Personal acoustic/English-name/prosody and clean-VM limits remain explicit.
+Start with STATUS → active EV-2233 → artifacts/quality-next/gigaam-tuning-windows. The user chose currentGigaAMv3 tuning (5–10% desired quality gain), Windows/default-mic/resource/animation improvements and removal of unused trial models. EV-2232's50% search is superseded, not achieved.2.4 remains the immutable installed baseline; validate the new scope before final packaging. Historical2.2 instructions below do not define this task.
 
 Дата подготовки: `2026-08-02T16:37:11Z`.
 

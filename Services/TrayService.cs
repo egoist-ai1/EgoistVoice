@@ -326,7 +326,7 @@ public sealed class TrayService : IDisposable
         try
         {
             var state = _window.CurrentAudioCaptureState;
-            await _window.SetMicrophonePausedAsync(!state.IsPaused);
+            await _window.SetMicrophonePausedAsync(!state.IsUserPaused);
             RefreshAudioControls();
         }
         catch (Exception exception)
@@ -354,13 +354,13 @@ public sealed class TrayService : IDisposable
         try
         {
             var state = _window.CurrentAudioCaptureState;
-            var presentation = TrayAudioPresentation.From(state);
-            _notifyIcon.Icon = state.IsPaused ? _pausedIcon : _icon;
+            var presentation = TrayAudioPresentation.From(state, _window.CanStartRecording, _window.IsRecording);
+            _notifyIcon.Icon = state.IsUserPaused ? _pausedIcon : _icon;
             _startStopItem.Enabled = presentation.StartEnabled;
             _startStopItem.Text = presentation.StartText;
             _pauseItem.Text = presentation.PauseText;
-            _pauseItem.Checked = state.IsPaused;
-            _pauseItem.Enabled = presentation.PauseEnabled;
+            _pauseItem.Checked = state.IsUserPaused;
+            _pauseItem.Enabled = presentation.PauseEnabled && !_window.IsCaptureOperationPending;
             _microphoneMenu.Text = $"Микрофон · {ShortDeviceName(state.DeviceName)}";
             UpdateTrayTooltip(state);
         }
@@ -565,7 +565,7 @@ public sealed class TrayService : IDisposable
             _notifyIcon.Text = ModelProgressFormatter.TrayTooltip(progress);
             return;
         }
-        var status = state.IsPaused ? "пауза" : state.IsAvailable ? "готов" : "нет микрофона";
+        var status = state.IsUserPaused ? "пауза" : state.IsTransientlyUnavailable ? "микрофон недоступен" : state.IsAvailable ? "готов" : "нет микрофона";
         _notifyIcon.Text = TruncateTooltip($"Egoist Voice — {status} · {ShortDeviceName(state.DeviceName)}");
     }
 
@@ -787,9 +787,11 @@ internal sealed record TrayAudioPresentation(
     bool PauseEnabled,
     string PauseText)
 {
-    internal static TrayAudioPresentation From(AudioCaptureState state) => new(
-        StartEnabled: !state.IsPaused && state.IsAvailable,
-        StartText: state.IsPaused ? "Начать диктовку · пауза" : "Начать / остановить",
-        PauseEnabled: state.IsAvailable || !state.IsPaused,
-        PauseText: state.IsPaused ? "Возобновить микрофон" : "Приостановить микрофон");
+    internal static TrayAudioPresentation From(AudioCaptureState state, bool? canStartRecording = null,
+        bool isRecording = false) => new(
+        StartEnabled: isRecording || (canStartRecording ??
+            (!state.IsUserPaused && (state.IsAvailable || state.IsTransientlyUnavailable))),
+        StartText: isRecording ? "Остановить диктовку" : state.IsUserPaused ? "Начать диктовку · пауза" : "Начать / остановить",
+        PauseEnabled: true,
+        PauseText: state.IsUserPaused ? "Возобновить микрофон" : "Приостановить микрофон");
 }

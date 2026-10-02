@@ -20,15 +20,22 @@ internal sealed class MicrophoneDeviceCatalog : IMicrophoneDeviceCatalog, IMMNot
 {
     private readonly object _sync = new();
     private readonly MMDeviceEnumerator _enumerator = new();
-    private int _notificationQueued;
+    private readonly DeviceNotificationDispatcher _notifications;
     private volatile bool _disposed;
 
     internal MicrophoneDeviceCatalog()
     {
-        var result = _enumerator.RegisterEndpointNotificationCallback(this);
-        if (result < 0)
+        _notifications = new(() => { if (!_disposed) DevicesChanged?.Invoke(this, EventArgs.Empty); });
+        try
         {
-            Marshal.ThrowExceptionForHR(result);
+            var result = _enumerator.RegisterEndpointNotificationCallback(this);
+            if (result < 0) Marshal.ThrowExceptionForHR(result);
+        }
+        catch
+        {
+            _notifications.Dispose();
+            _enumerator.Dispose();
+            throw;
         }
     }
 
@@ -58,24 +65,9 @@ internal sealed class MicrophoneDeviceCatalog : IMicrophoneDeviceCatalog, IMMNot
             var devices = _enumerator.EnumerateAudioEndPoints(
                 DataFlow.Capture,
                 DeviceState.Active);
-            try
-            {
-                return devices
-                    .Select(device => new MicrophoneDeviceInfo(
-                        device.ID,
-                        NormalizeName(device.FriendlyName),
-                        string.Equals(device.ID, defaultId, StringComparison.Ordinal)))
-                    .OrderByDescending(device => device.IsDefault)
-                    .ThenBy(device => device.Name, StringComparer.CurrentCultureIgnoreCase)
-                    .ToArray();
-            }
-            finally
-            {
-                foreach (var device in devices)
-                {
-                    device.Dispose();
-                }
-            }
+            return MicrophoneInventoryReader.Read(devices, device => new MicrophoneDeviceInfo(
+                device.ID, NormalizeName(device.FriendlyName),
+                string.Equals(device.ID, defaultId, StringComparison.Ordinal)));
         }
     }
 
@@ -127,21 +119,7 @@ internal sealed class MicrophoneDeviceCatalog : IMicrophoneDeviceCatalog, IMMNot
 
     private void RaiseDevicesChanged()
     {
-        if (_disposed || Interlocked.Exchange(ref _notificationQueued, 1) != 0)
-        {
-            return;
-        }
-
-        // Core Audio explicitly calls these methods from its notification thread. Endpoint
-        // enumeration and WASAPI restarts happen on the pool instead of blocking that callback.
-        ThreadPool.QueueUserWorkItem(_ =>
-        {
-            Interlocked.Exchange(ref _notificationQueued, 0);
-            if (!_disposed)
-            {
-                DevicesChanged?.Invoke(this, EventArgs.Empty);
-            }
-        });
+        if (!_disposed) _notifications.Request();
     }
 
     public void Dispose()
@@ -153,6 +131,7 @@ internal sealed class MicrophoneDeviceCatalog : IMicrophoneDeviceCatalog, IMMNot
                 return;
             }
             _disposed = true;
+            _notifications.Dispose();
             try
             {
                 _enumerator.UnregisterEndpointNotificationCallback(this);
@@ -167,6 +146,76 @@ internal sealed class MicrophoneDeviceCatalog : IMicrophoneDeviceCatalog, IMMNot
 
     private static string NormalizeName(string? value) =>
         string.IsNullOrWhiteSpace(value) ? "Микрофон без имени" : value.Trim();
+}
+
+// MMDeviceCollection creates new wrappers on every enumeration. Read/dispose each owned
+// wrapper in one pass; a second foreach would dispose different objects and double the work.
+internal static class MicrophoneInventoryReader
+{
+    internal static IReadOnlyList<MicrophoneDeviceInfo> Read<TDevice>(
+        IEnumerable<TDevice> devices, Func<TDevice, MicrophoneDeviceInfo> read) where TDevice : IDisposable
+    {
+        var result = new List<MicrophoneDeviceInfo>();
+        foreach (var device in devices)
+        {
+            using (device) result.Add(read(device));
+        }
+        return result.OrderByDescending(device => device.IsDefault)
+            .ThenBy(device => device.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+    }
+}
+
+// One outstanding worker, with one dirty bit for notifications arriving during enumeration.
+// No timer, idle polling, or waits on the Core Audio notification thread.
+internal sealed class DeviceNotificationDispatcher : IDisposable
+{
+    private readonly Action _notify;
+    private readonly Action<Action> _schedule;
+    private int _queued;
+    private int _pending;
+    private int _disposed;
+
+    internal DeviceNotificationDispatcher(Action notify, Action<Action>? schedule = null)
+    {
+        _notify = notify;
+        _schedule = schedule ?? (work => ThreadPool.QueueUserWorkItem(_ => work()));
+    }
+
+    internal void Request()
+    {
+        if (Volatile.Read(ref _disposed) != 0) return;
+        Interlocked.Exchange(ref _pending, 1);
+        ScheduleIfNeeded();
+    }
+
+    private void ScheduleIfNeeded()
+    {
+        if (Volatile.Read(ref _disposed) != 0 || Interlocked.CompareExchange(ref _queued, 1, 0) != 0) return;
+        _schedule(Drain);
+    }
+
+    private void Drain()
+    {
+        try
+        {
+            while (Volatile.Read(ref _disposed) == 0 && Interlocked.Exchange(ref _pending, 0) != 0)
+            {
+                try { _notify(); }
+                catch (Exception exception) { AppLog.Write("Microphone inventory subscriber threw", exception); }
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _queued, 0);
+            if (Volatile.Read(ref _pending) != 0) ScheduleIfNeeded();
+        }
+    }
+
+    public void Dispose()
+    {
+        Volatile.Write(ref _disposed, 1);
+        Interlocked.Exchange(ref _pending, 0);
+    }
 }
 
 internal static class MicrophoneSelectionPolicy

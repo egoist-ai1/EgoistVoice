@@ -4,20 +4,22 @@
 
 ## Recent notes
 
-- [2026-10-02T040433Z-russian-quality-240-deployed](./2026-10-02T040433Z-russian-quality-240-deployed.md)
-- [2026-10-02T031603Z-stock-native-no-tts-240](./2026-10-02T031603Z-stock-native-no-tts-240.md)
-- [2026-10-02T023121Z-russian-quality-240-candidate](./2026-10-02T023121Z-russian-quality-240-candidate.md)
-- [2026-10-02T010524Z-russian-rnnt-230-release](./2026-10-02T010524Z-russian-rnnt-230-release.md)
-- [2026-09-09T113000Z-final-221-publication](./2026-09-09T113000Z-final-221-publication.md)
-- [2026-09-09T111000Z-react-installer-spelling](./2026-09-09T111000Z-react-installer-spelling.md)
-- [2026-09-09T103600Z-literal-streaming-rc2](./2026-09-09T103600Z-literal-streaming-rc2.md)
-- [2026-09-09T014000Z-russian-offline-rc](./2026-09-09T014000Z-russian-offline-rc.md)
-- [2026-09-09T005852Z-scarlet-capsule-russian-quality](./2026-09-09T005852Z-scarlet-capsule-russian-quality.md)
-- [2026-09-05T025650Z-preview2-compact-full-publication](./2026-09-05T025650Z-preview2-compact-full-publication.md)
+- [2026-10-02T144800Z-reduced-motion-startup-241](./2026-10-02T144800Z-reduced-motion-startup-241.md)
+- [2026-10-02T140514Z-gigaam-windows-integration-241-candidate](./2026-10-02T140514Z-gigaam-windows-integration-241-candidate.md)
+- [2026-10-02T123444Z-gigaam-heldout-reject-and-cleanup](./2026-10-02T123444Z-gigaam-heldout-reject-and-cleanup.md)
+- [2026-10-02T111552Z-gigaam-windows-user-scope](./2026-10-02T111552Z-gigaam-windows-user-scope.md)
+- [2026-10-02T102705Z-tone-lm-results-and-vibevoice-feasibility](./2026-10-02T102705Z-tone-lm-results-and-vibevoice-feasibility.md)
+- [2026-10-02T082318Z-gigachat-bounded-load-and-tone-plan](./2026-10-02T082318Z-gigachat-bounded-load-and-tone-plan.md)
+- [2026-10-02T073138Z-quality-measurements-v2-report](./2026-10-02T073138Z-quality-measurements-v2-report.md)
+- [2026-10-02T065625Z-capture-lifecycle-and-full-model-measurements](./2026-10-02T065625Z-capture-lifecycle-and-full-model-measurements.md)
+- [2026-10-02T054800Z-quality-50-measured-stage](./2026-10-02T054800Z-quality-50-measured-stage.md)
+- [2026-10-02T044832Z-quality-50-development-evidence](./2026-10-02T044832Z-quality-50-development-evidence.md)
 
 ## Archive
 
+- [2026/10](./archive/2026/10/) - 5 notes
+- [2026/09](./archive/2026/09/) - 6 notes
 - [2026/08](./archive/2026/08/) - 15 notes
 - [2026/07](./archive/2026/07/) - 1 notes
 
-Hot set: 10. Archived: 16.
+Hot set: 10. Archived: 27.
