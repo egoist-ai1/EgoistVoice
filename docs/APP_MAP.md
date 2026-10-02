@@ -6,7 +6,7 @@ Warm WASAPI pre-roll 320 ms → complete session + release tail 350 ms → 16 kH
 
 `RussianSpeechQualityService` serializes warm-up/decode, runs chunk planning and file reads off the WPF dispatcher and reports formatting availability. A formatter failure retains recognized words, announces delivery without formatting and allows retry on a later transcription after a 30-second backoff. `AudioTranscriptComposer` changes punctuation/initial case; `AudioConfirmedNameFormatter` replaces only catalogued unambiguous names with an exact Latin spelling confirmed by the secondary audio decoder and agreement of the whole chunk. Structured syntax and unknown names are protected. This is not arbitrary spelling/grammar rewriting.
 
-Eight pinned model assets total 650090519 bytes. Source-only sherpa-onnx UTF-8 bindings fix Unicode model paths; native CAPI and ONNX Runtime stay unchanged. Build-RussianInstaller produces the native self-contained offline package; Update-CompactInstallation applies a verified transactional payload and preserves user Data. Full/translation flows below remain separate.
+Eight pinned model assets total 650090519 bytes. Source-only sherpa-onnx UTF-8 bindings fix Unicode model paths; official no-TTS native CAPI retains the stock frontend; ONNX Runtime stays unchanged. Build-RussianInstaller produces the native self-contained offline package; Update-CompactInstallation applies a verified transactional payload and preserves user Data. Full/translation flows below remain separate.
 
 ## Actors and flows
 

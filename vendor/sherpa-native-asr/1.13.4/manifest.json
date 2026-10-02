@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "component": "sherpa-onnx Windows x64 CPU no-TTS shared MT Release",
+  "version": "1.13.4",
+  "sourceRevision": "142807252687d81b40d6315f23470a1512a00de3",
+  "sourceUrl": "https://github.com/k2-fsa/sherpa-onnx/tree/142807252687d81b40d6315f23470a1512a00de3",
+  "archiveUrl": "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.4/sherpa-onnx-v1.13.4-win-x64-shared-MT-Release-no-tts-lib.tar.bz2",
+  "archiveBytes": 7360530,
+  "archiveSha256": "9fd2bdb7fca85120e1e2099acb775c0079bdc1cd4c8d3de9a9eaee86394eb83e",
+  "capi": {
+    "file": "sherpa-onnx-c-api.dll",
+    "bytes": 3219968,
+    "sha256": "dcfc89cf50fbd0fb77c115a6b53ee9b2739e57d6d1f4158a3aeab31dd7139676",
+    "sherpaExports": 176,
+    "espeakExports": 0
+  },
+  "onnxRuntime": {
+    "version": "1.27.0",
+    "sourcePackage": "org.k2fsa.sherpa.onnx.runtime.win-x64/1.13.4",
+    "sha256": "daa77083a45bf525da0dde9e87f85d8eb146f58f9c9aa7124ca84545e1c0f148"
+  },
+  "frontend": "unmodified upstream stock GigaAM frontend; experimental correction not included",
+  "ttsEnabled": false,
+  "staticCrt": true,
+  "provider": "CPU",
+  "qualityVerification": "All80 complete quality output strings match prior stock baseline; lexical26/1169, punctuation130, rawchars241. Silence/file/cancel/recovery passed. See local accepted artifacts/quality-2.4.0/official-no-tts-quality80.",
+  "notices": [
+    {
+      "file": "licenses/dotnet-core-8.0.30-LICENSE.txt",
+      "bytes": 1139,
+      "sha256": "d7a68596ab69b06f51ca278a6545148e4269a9381c26d597c13df5d88e08cf5b"
+    },
+    {
+      "file": "licenses/dotnet-core-8.0.30-THIRD-PARTY-NOTICES.txt",
+      "bytes": 68910,
+      "sha256": "b60b2912da28eaa6518593c9e2efb5334ee062d3c42e80d8fdfa806b3dc52977"
+    },
+    {
+      "file": "licenses/dotnet-desktop-8.0.30-LICENSE.txt",
+      "bytes": 1137,
+      "sha256": "a89886665765362eb77e0f8e26602c924520041d1711b2eedc136434fe4d01ab"
+    },
+    {
+      "file": "licenses/eigen-src-COPYING.APACHE",
+      "bytes": 11362,
+      "sha256": "03379001a7b12a2ec997a25554247d985270b353c10d5bafee9ac8d6519820b7"
+    },
+    {
+      "file": "licenses/eigen-src-COPYING.BSD",
+      "bytes": 1517,
+      "sha256": "51928dce36213c5333ba3172e847d735d4c6e9b7ff2722a326c49067155b82eb"
+    },
+    {
+      "file": "licenses/eigen-src-COPYING.MINPACK",
+      "bytes": 2193,
+      "sha256": "c87b7f8ee88f6195e91743820c00354833583aef091b72e2d4a49c8e28e798a0"
+    },
+    {
+      "file": "licenses/eigen-src-COPYING.MPL2",
+      "bytes": 16726,
+      "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85"
+    },
+    {
+      "file": "licenses/eigen-src-COPYING.README",
+      "bytes": 779,
+      "sha256": "c83230b770f17ef1386ea1fd3681271dd98aa93646bdbfb5bff3a1b7050fff9d"
+    },
+    {
+      "file": "licenses/hclust_cpp-src-LICENSE",
+      "bytes": 1483,
+      "sha256": "e361d842da1d290351860ad6dcce2673a1e42e4f873a3ae1ff4eb92c6adaa882"
+    },
+    {
+      "file": "licenses/json-src-LICENSE.MIT",
+      "bytes": 1076,
+      "sha256": "46a65cffd1ea955132d95a8dd921640714a8d6b537d2e4e482d31145ae95b603"
+    },
+    {
+      "file": "licenses/kaldi_decoder-src-LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "file": "licenses/kaldi_native_fbank-src-LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "file": "licenses/kaldifst-src-LICENSE",
+      "bytes": 11728,
+      "sha256": "a682d6efd1ee5dee08a8e405c233c2c198ea70ae0718129daa83ab58cfe31c5d"
+    },
+    {
+      "file": "licenses/kissfft-src-BSD-3-Clause",
+      "bytes": 1830,
+      "sha256": "4d6bcab46f27d6d0c878e8305d4bdcfe040d52bf6656b9771f04c9fb9902c0ed"
+    },
+    {
+      "file": "licenses/kissfft-src-COPYING",
+      "bytes": 246,
+      "sha256": "a2840585f8411be8e6826a31ef15ae65c950bd74a2437a73b013398a934ad0c6"
+    },
+    {
+      "file": "licenses/MPL-SOURCE-AVAILABILITY.txt",
+      "bytes": 1017,
+      "sha256": "fa7f64090fc066f1cbdc32e6c5156bacdb3be090496169053a721ceda5e02966"
+    },
+    {
+      "file": "licenses/NAudio-MIT-LICENSE.txt",
+      "bytes": 1059,
+      "sha256": "303e01786b271eb464b3f43d18a375f2f17d37bc708a37c2fdf45b289fb5bfaa"
+    },
+    {
+      "file": "licenses/onnxruntime-src-LICENSE",
+      "bytes": 1094,
+      "sha256": "c250d6278f0b47a6439fb7592b08b58a55eb9f535aa49a1db63211c3f982b674"
+    },
+    {
+      "file": "licenses/onnxruntime-src-ThirdPartyNotices.txt",
+      "bytes": 331175,
+      "sha256": "fb0af774b4d7cffc5b9d046f2aaeade2f37df2f80abf8033c95dfffcc77a8866"
+    },
+    {
+      "file": "licenses/openfst-src-COPYING",
+      "bytes": 559,
+      "sha256": "4300529197035fd3452350718a0b8cee984e9412c9932d7f35fcde849fc97a4b"
+    },
+    {
+      "file": "licenses/simple-sentencepiece-src-LICENSE",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "file": "licenses/source-license-manifest.json",
+      "bytes": 15049,
+      "sha256": "75715d5926024e16aba01184f2e5fa6bcdc38b9e10959036ac617348c538b65e"
+    },
+    {
+      "file": "licenses/src-LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "file": "licenses/Whisper.net-1.9.1-LICENSE.txt",
+      "bytes": 1089,
+      "sha256": "d9ca846bbb028d80a87027b886dc7db63ba22dfc6a5e17c4aace03f62ab644ec"
+    }
+  ],
+  "sourceLicenseCoverage": "Official no-TTS source recipe with22 full notices plus MPL source availability; no byte-identical upstream rebuild claim."
+}

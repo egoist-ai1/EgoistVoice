@@ -3,3 +3,6 @@ tests/Egoist.Voice.Tests/Fixtures/plain-rnnt-tokens.txt -text
 
 # Source-pinned UTF-8 bindings retain exact upstream/patch bytes on Windows.
 vendor/sherpa-managed-utf8/1.13.4/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+# Official native DLL and full notices retain pinned source bytes.
+vendor/sherpa-native-asr/1.13.4/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol

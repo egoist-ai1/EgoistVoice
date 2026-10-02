@@ -12,3 +12,6 @@ Choose one user-facing optimized quality profile after actual comparisons. Integ
 ## Accepted implementation — source candidate
 
 Stock plainINT8 + E2EINT8 audio formatting selected after paired80 tests; corrected native and larger GPU candidates not promoted. Actual service reproduces lexical26/1169, punctuation130 and rawchar241 with protected words and known names. Full1037, Compact1030/7skip and native cancellation/recovery/silence/Unicode/longaudio pass. Packaging, independent review, publication and installed readback remain pending; see STATUS and Evaluation2.4.
+
+
+Native dependency correction: official no-TTS MT v1.13.4 CAPI retains all176 Sherpa exports and the unmodified stock frontend; all80 complete quality outputs are exact equal. ONNX Runtime unchanged. Product output/test bins load dcfc89 native. Build verifies both native SHA256 values; full transitive notices are included. Full1037 and Compact1030/7skip pass after this dependency correction. Final publication/install still require fresh source-bound payload verification.

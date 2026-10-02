@@ -1,0 +1,392 @@
+{
+  "schemaVersion": 1,
+  "status": "source-license-coverage-complete-for-inspected-off-recipe",
+  "sourceRevision": "142807252687d81b40d6315f23470a1512a00de3",
+  "nativeArchiveSha256": "9fd2bdb7fca85120e1e2099acb775c0079bdc1cd4c8d3de9a9eaee86394eb83e",
+  "officialWorkflowProvenanceOnly": true,
+  "byteIdenticalUpstreamRebuildProven": false,
+  "frontendPatched": false,
+  "ttsEnabled": false,
+  "speakerDiarizationDefault": true,
+  "sourceArchives": [
+    {
+      "name": "sherpa-onnx",
+      "file": "sherpa-onnx-142807252687d81b40d6315f23470a1512a00de3.zip",
+      "hash": "3e5584a6a41cdcad45072e2a62b6147f74cc61433c9a0f31ad22ae9e28efdba6",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/archive/142807252687d81b40d6315f23470a1512a00de3.zip",
+      "version": "142807252687d81b40d6315f23470a1512a00de3",
+      "bytes": 13479500
+    },
+    {
+      "name": "kaldi-native-fbank",
+      "file": "kaldi-native-fbank-1.22.3.tar.gz",
+      "hash": "9176cc66fc7ce1edf85cf355b06e320c57db6297df74277f575183468893cf61",
+      "url": "https://github.com/csukuangfj/kaldi-native-fbank/archive/refs/tags/v1.22.3.tar.gz",
+      "version": "1.22.3",
+      "bytes": 71144
+    },
+    {
+      "name": "kaldi-decoder",
+      "file": "kaldi-decoder-0.3.0.tar.gz",
+      "hash": "b9f34cfb4fd3b1344100eead79ef4d37aa15962274b9e3056de345021f76a1b0",
+      "url": "https://github.com/k2-fsa/kaldi-decoder/archive/refs/tags/v0.3.0.tar.gz",
+      "version": "0.3.0",
+      "bytes": 51199
+    },
+    {
+      "name": "kaldifst",
+      "file": "kaldifst-1.8.0.tar.gz",
+      "hash": "3f247b7e5a2409071202f5e2bc6200060f66728c0a3443c03923ad2723e040b3",
+      "url": "https://github.com/k2-fsa/kaldifst/archive/refs/tags/v1.8.0.tar.gz",
+      "version": "1.8.0",
+      "bytes": 172147
+    },
+    {
+      "name": "openfst",
+      "file": "openfst-1.8.5-2026-04-10.tar.gz",
+      "hash": "c3549940384cbe4fa9f18c2bcfb1bfbd0a80492fd1b0bfa27433cee395a6a199",
+      "url": "https://github.com/csukuangfj/openfst/archive/refs/tags/v1.8.5-2026-04-10.tar.gz",
+      "version": "1.8.5-2026-04-10",
+      "bytes": 1500835
+    },
+    {
+      "name": "eigen",
+      "file": "eigen-3.4.0.tar.gz",
+      "hash": "8586084f71f9bde545ee7fa6d00288b264a2b7ac3607b974e54d13e7162c1c72",
+      "url": "https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz",
+      "version": "3.4.0",
+      "bytes": 2705005
+    },
+    {
+      "name": "kissfft",
+      "file": "kissfft-febd4caeed32e33ad8b2e0bb5ea77542c40f18ec.zip",
+      "hash": "497103e664168ebe39580b757adbe616f6cf85a16572af581ca7bc42d0ab13fd",
+      "url": "https://github.com/mborgerding/kissfft/archive/febd4caeed32e33ad8b2e0bb5ea77542c40f18ec.zip",
+      "version": "febd4caeed32e33ad8b2e0bb5ea77542c40f18ec",
+      "bytes": 74252
+    },
+    {
+      "name": "onnxruntime",
+      "file": "onnxruntime-win-x64-MT-Release-1.27.0.tar.bz2",
+      "hash": "5181118cb49c60cef82a5c23eae088ffa58b8d22a9acdef53d562e84dd304441",
+      "url": "https://github.com/csukuangfj/onnxruntime-libs/releases/download/v1.27.0/onnxruntime-win-x64-MT-Release-1.27.0.tar.bz2",
+      "version": "1.27.0 MT Release",
+      "bytes": 6130070
+    },
+    {
+      "name": "simple-sentencepiece",
+      "file": "simple-sentencepiece-0.7.tar.gz",
+      "hash": "1748a822060a35baa9f6609f84efc8eb54dc0e74b9ece3d82367b7119fdc75af",
+      "url": "https://github.com/pkufool/simple-sentencepiece/archive/refs/tags/v0.7.tar.gz",
+      "version": "0.7",
+      "bytes": 355335
+    },
+    {
+      "name": "json",
+      "file": "json-3.12.0.tar.gz",
+      "hash": "4b92eb0c06d10683f7447ce9406cb97cd4b453be18d7279320f7b2f025c10187",
+      "url": "https://github.com/nlohmann/json/archive/refs/tags/v3.12.0.tar.gz",
+      "version": "3.12.0",
+      "bytes": 9678593
+    },
+    {
+      "name": "hclust-cpp",
+      "file": "hclust-cpp-2026-02-25.tar.gz",
+      "hash": "8f14e024c709d73afb40ae69cb22de4b73dba67cbce40f2e518813da8139ab56",
+      "url": "https://github.com/csukuangfj/hclust-cpp/archive/refs/tags/2026-02-25.tar.gz",
+      "version": "2026-02-25",
+      "bytes": 22523
+    }
+  ],
+  "sourceFiles": [
+    {
+      "component": "sherpa-onnx",
+      "upstreamPath": ".github/workflows/windows-x64.yaml",
+      "path": "source/sherpa-onnx/.github/workflows/windows-x64.yaml",
+      "sha256": "0b2eab436ff71acc45a7b9b6b1b7f5f96841b82b29696e489bd92f5f6603f4c0"
+    },
+    {
+      "component": "sherpa-onnx",
+      "upstreamPath": "CMakeLists.txt",
+      "path": "source/sherpa-onnx/CMakeLists.txt",
+      "sha256": "9f75d36e8f19358b5d23368a5f59ecdfec507f5f2ff47c84ea9296f14399a8e3"
+    },
+    {
+      "component": "sherpa-onnx",
+      "upstreamPath": "cmake/kaldi-native-fbank.cmake",
+      "path": "source/sherpa-onnx/cmake/kaldi-native-fbank.cmake",
+      "sha256": "619f0046f568e85790f4180899e666053f246f5c0fc36c951421441f3e992e38"
+    },
+    {
+      "component": "sherpa-onnx",
+      "upstreamPath": "cmake/kaldi-decoder.cmake",
+      "path": "source/sherpa-onnx/cmake/kaldi-decoder.cmake",
+      "sha256": "af34b17974474a70b12978d49ac0831276839082924e5ac93bd9bb194a7fd310"
+    },
+    {
+      "component": "sherpa-onnx",
+      "upstreamPath": "cmake/json.cmake",
+      "path": "source/sherpa-onnx/cmake/json.cmake",
+      "sha256": "e318b4065954cb479318d191c91e32d5a0cae94a53fff70987791b6f9828b1de"
+    },
+    {
+      "component": "sherpa-onnx",
+      "upstreamPath": "cmake/hclust-cpp.cmake",
+      "path": "source/sherpa-onnx/cmake/hclust-cpp.cmake",
+      "sha256": "093ae7b3712119d140df2629b5d20b71bafb3d49ba0124dd7a391f278f4db357"
+    },
+    {
+      "component": "sherpa-onnx",
+      "upstreamPath": "cmake/onnxruntime-win-x64.cmake",
+      "path": "source/sherpa-onnx/cmake/onnxruntime-win-x64.cmake",
+      "sha256": "6f39c897ac6625064ed9164632e95ef8bf350faec82a56352d0dcacc0d8b59aa"
+    },
+    {
+      "component": "sherpa-onnx",
+      "upstreamPath": "cmake/simple-sentencepiece.cmake",
+      "path": "source/sherpa-onnx/cmake/simple-sentencepiece.cmake",
+      "sha256": "a67b170dd0aaa441a7c096bde75764bb437933bbe0bdf2d3d567026fe81f072e"
+    },
+    {
+      "component": "sherpa-onnx",
+      "upstreamPath": "sherpa-onnx/csrc/offline-stream.cc",
+      "path": "source/sherpa-onnx/sherpa-onnx/csrc/offline-stream.cc",
+      "sha256": "b8ff2b3f90eb3a2c3c14c4bd2853bea63de1a27338f29c34ec64e0c9b1f3c895"
+    },
+    {
+      "component": "sherpa-onnx",
+      "upstreamPath": "sherpa-onnx/csrc/offline-recognizer-transducer-nemo-impl.h",
+      "path": "source/sherpa-onnx/sherpa-onnx/csrc/offline-recognizer-transducer-nemo-impl.h",
+      "sha256": "561b99f9ad872be403c0839ee05eee59d87808fd5623d2e0ef0e6e61e31d0109"
+    },
+    {
+      "component": "kaldi-decoder",
+      "upstreamPath": "cmake/eigen.cmake",
+      "path": "source/kaldi-decoder/cmake/eigen.cmake",
+      "sha256": "679d4c5f617ba736c05d512ef26212cf699fe15eaac9a6375c9c624727a555a0"
+    },
+    {
+      "component": "kaldi-decoder",
+      "upstreamPath": "cmake/kaldifst.cmake",
+      "path": "source/kaldi-decoder/cmake/kaldifst.cmake",
+      "sha256": "3fc84cb97584d944ad23cccacfcb958f163873ffae62a0764d8e75930f9a8bb3"
+    },
+    {
+      "component": "kaldifst",
+      "upstreamPath": "cmake/openfst.cmake",
+      "path": "source/kaldifst/cmake/openfst.cmake",
+      "sha256": "06e4638e2f056cd53e3178fce83e73f68978b9c1f77a60d518067970c03f4211"
+    },
+    {
+      "component": "kaldi-native-fbank",
+      "upstreamPath": "cmake/kissfft.cmake",
+      "path": "source/kaldi-native-fbank/cmake/kissfft.cmake",
+      "sha256": "f6038500a227a48df0e309b9490bd9c8cec8ee376008d7211e3fc96f0c689580"
+    },
+    {
+      "component": "eigen",
+      "upstreamPath": "Eigen/Dense",
+      "path": "source/eigen/Eigen/Dense",
+      "sha256": "5325c9d4d693e504ee012c5275ad4b10b135a701cbd87c14466d2ea21ea22ee5"
+    },
+    {
+      "component": "eigen",
+      "upstreamPath": "Eigen/src/Core/util/NonMPL2.h",
+      "path": "source/eigen/Eigen/src/Core/util/NonMPL2.h",
+      "sha256": "45e90a0556a27623a911bf6c9bc81cb3dfcbc9ec82dce28e4af7f8255ea5dad7"
+    },
+    {
+      "component": "eigen",
+      "upstreamPath": "COPYING.GPL",
+      "path": "source/eigen/COPYING.GPL",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "compiledIntoOfficialBinaryClaim": false
+    },
+    {
+      "component": "eigen",
+      "upstreamPath": "COPYING.LGPL",
+      "path": "source/eigen/COPYING.LGPL",
+      "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+      "compiledIntoOfficialBinaryClaim": false
+    }
+  ],
+  "licenseFiles": [
+    {
+      "file": "src-LICENSE",
+      "component": "sherpa-onnx",
+      "sourcePath": "LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358
+    },
+    {
+      "file": "kaldi_native_fbank-src-LICENSE",
+      "component": "kaldi-native-fbank",
+      "sourcePath": "LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358
+    },
+    {
+      "file": "kaldi_decoder-src-LICENSE",
+      "component": "kaldi-decoder",
+      "sourcePath": "LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358
+    },
+    {
+      "file": "kaldifst-src-LICENSE",
+      "component": "kaldifst",
+      "sourcePath": "LICENSE",
+      "sha256": "a682d6efd1ee5dee08a8e405c233c2c198ea70ae0718129daa83ab58cfe31c5d",
+      "bytes": 11728
+    },
+    {
+      "file": "openfst-src-COPYING",
+      "component": "openfst",
+      "sourcePath": "COPYING",
+      "sha256": "4300529197035fd3452350718a0b8cee984e9412c9932d7f35fcde849fc97a4b",
+      "bytes": 559
+    },
+    {
+      "file": "kissfft-src-COPYING",
+      "component": "kissfft",
+      "sourcePath": "COPYING",
+      "sha256": "a2840585f8411be8e6826a31ef15ae65c950bd74a2437a73b013398a934ad0c6",
+      "bytes": 246
+    },
+    {
+      "file": "kissfft-src-BSD-3-Clause",
+      "component": "kissfft",
+      "sourcePath": "LICENSES/BSD-3-Clause",
+      "sha256": "4d6bcab46f27d6d0c878e8305d4bdcfe040d52bf6656b9771f04c9fb9902c0ed",
+      "bytes": 1830
+    },
+    {
+      "file": "onnxruntime-src-LICENSE",
+      "component": "onnxruntime",
+      "sourcePath": "LICENSE",
+      "sha256": "c250d6278f0b47a6439fb7592b08b58a55eb9f535aa49a1db63211c3f982b674",
+      "bytes": 1094
+    },
+    {
+      "file": "onnxruntime-src-ThirdPartyNotices.txt",
+      "component": "onnxruntime",
+      "sourcePath": "ThirdPartyNotices.txt",
+      "sha256": "fb0af774b4d7cffc5b9d046f2aaeade2f37df2f80abf8033c95dfffcc77a8866",
+      "bytes": 331175
+    },
+    {
+      "file": "simple-sentencepiece-src-LICENSE",
+      "component": "simple-sentencepiece",
+      "sourcePath": "LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357
+    },
+    {
+      "file": "json-src-LICENSE.MIT",
+      "component": "json",
+      "sourcePath": "LICENSE.MIT",
+      "sha256": "46a65cffd1ea955132d95a8dd921640714a8d6b537d2e4e482d31145ae95b603",
+      "bytes": 1076
+    },
+    {
+      "file": "hclust_cpp-src-LICENSE",
+      "component": "hclust-cpp",
+      "sourcePath": "LICENSE",
+      "sha256": "e361d842da1d290351860ad6dcce2673a1e42e4f873a3ae1ff4eb92c6adaa882",
+      "bytes": 1483
+    },
+    {
+      "file": "eigen-src-COPYING.APACHE",
+      "component": "eigen",
+      "sourcePath": "COPYING.APACHE",
+      "sha256": "03379001a7b12a2ec997a25554247d985270b353c10d5bafee9ac8d6519820b7",
+      "bytes": 11362
+    },
+    {
+      "file": "eigen-src-COPYING.BSD",
+      "component": "eigen",
+      "sourcePath": "COPYING.BSD",
+      "sha256": "51928dce36213c5333ba3172e847d735d4c6e9b7ff2722a326c49067155b82eb",
+      "bytes": 1517
+    },
+    {
+      "file": "eigen-src-COPYING.MINPACK",
+      "component": "eigen",
+      "sourcePath": "COPYING.MINPACK",
+      "sha256": "c87b7f8ee88f6195e91743820c00354833583aef091b72e2d4a49c8e28e798a0",
+      "bytes": 2193
+    },
+    {
+      "file": "eigen-src-COPYING.MPL2",
+      "component": "eigen",
+      "sourcePath": "COPYING.MPL2",
+      "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85",
+      "bytes": 16726
+    },
+    {
+      "file": "eigen-src-COPYING.README",
+      "component": "eigen",
+      "sourcePath": "COPYING.README",
+      "sha256": "c83230b770f17ef1386ea1fd3681271dd98aa93646bdbfb5bff3a1b7050fff9d",
+      "bytes": 779
+    },
+    {
+      "file": "dotnet-core-8.0.30-LICENSE.txt",
+      "component": "microsoft.netcore.app.runtime.win-x64",
+      "version": "8.0.30",
+      "sourcePath": "LICENSE.TXT",
+      "sha256": "d7a68596ab69b06f51ca278a6545148e4269a9381c26d597c13df5d88e08cf5b",
+      "bytes": 1139,
+      "sourcePackageSha256": "47235c8046fd788fe1fdab5ef83d54e56ce0114b6fcd1197a7b6fc0d1656eb40"
+    },
+    {
+      "file": "dotnet-core-8.0.30-THIRD-PARTY-NOTICES.txt",
+      "component": "microsoft.netcore.app.runtime.win-x64",
+      "version": "8.0.30",
+      "sourcePath": "THIRD-PARTY-NOTICES.TXT",
+      "sha256": "b60b2912da28eaa6518593c9e2efb5334ee062d3c42e80d8fdfa806b3dc52977",
+      "bytes": 68910,
+      "sourcePackageSha256": "47235c8046fd788fe1fdab5ef83d54e56ce0114b6fcd1197a7b6fc0d1656eb40"
+    },
+    {
+      "file": "dotnet-desktop-8.0.30-LICENSE.txt",
+      "component": "microsoft.windowsdesktop.app.runtime.win-x64",
+      "version": "8.0.30",
+      "sourcePath": "LICENSE",
+      "sha256": "a89886665765362eb77e0f8e26602c924520041d1711b2eedc136434fe4d01ab",
+      "bytes": 1137,
+      "sourcePackageSha256": "658a37a76de73790c9ad06dda9e3aac84841f2f88813bbe3fc549ceae786e8b2"
+    },
+    {
+      "file": "Whisper.net-1.9.1-LICENSE.txt",
+      "component": "whisper.net",
+      "version": "1.9.1",
+      "sourcePath": "LICENSE",
+      "sha256": "d9ca846bbb028d80a87027b886dc7db63ba22dfc6a5e17c4aace03f62ab644ec",
+      "bytes": 1089,
+      "sourcePackageSha256": "b501cb8743e6c67b504cf194ec0bdbcaf21a1c0951a0f28cc82516d743ba1ecb"
+    },
+    {
+      "file": "NAudio-MIT-LICENSE.txt",
+      "component": "NAudio",
+      "version": "2.3.0",
+      "sourceUrl": "https://raw.githubusercontent.com/naudio/NAudio/v2.3.0/license.txt",
+      "sha256": "303e01786b271eb464b3f43d18a375f2f17d37bc708a37c2fdf45b289fb5bfaa",
+      "bytes": 1059
+    }
+  ],
+  "licenseFileCount": 22,
+  "previousFileCount": 21,
+  "newNotices": [
+    "hclust_cpp-src-LICENSE",
+    "kissfft-src-BSD-3-Clause"
+  ],
+  "missingNoticesAfterBundle": [],
+  "originalEigen": "3.4.0",
+  "originalOpenFst": "1.8.5-2026-04-10",
+  "mplSourceAvailabilityFile": "MPL-SOURCE-AVAILABILITY.txt",
+  "mplInterpretationSource": "https://www.mozilla.org/en-US/MPL/2.0/FAQ/",
+  "productSourceModified": false,
+  "installerExecuted": false,
+  "userDataRead": false
+}
