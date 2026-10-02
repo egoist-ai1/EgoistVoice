@@ -28,7 +28,11 @@ public partial class SettingsWindow : Window
     private readonly DispatcherTimer _volumeSaveTimer = new() { Interval = TimeSpan.FromMilliseconds(180) };
     private bool _loading;
     private bool _allowClose;
+    private bool _closed;
+    private Task? _microphoneRefreshTask;
     private bool _recognitionModelPreviewActive;
+    private FrameworkElement? _pageTransitionElement;
+    private TranslateTransform? _pageTransitionOffset;
     public bool DiagnosticPreview { get; set; }
 
     public SettingsWindow(MainWindow mainWindow, DictationSettingsService settingsService, Action? quit = null)
@@ -71,31 +75,40 @@ public partial class SettingsWindow : Window
             RefreshHistory();
             UpdateControlCenterState();
             UpdateTranslationEngineState(_mainWindow.CurrentTranslationEngineHealth);
-            _levelTimer.Start();
-            _stateTimer.Start();
+            UpdateActivityTimers();
+            RequestMicrophoneInventoryRefresh();
         };
         IsVisibleChanged += (_, _) =>
         {
             if (IsVisible)
             {
+                FlushPendingVolumeSettings();
                 LoadGeneralSettings();
                 RefreshMicrophones();
                 RefreshHistory();
                 UpdateControlCenterState();
                 UpdateTranslationEngineState(_mainWindow.CurrentTranslationEngineHealth);
-                _levelTimer.Start();
-                _stateTimer.Start();
+                UpdateActivityTimers();
+                RequestMicrophoneInventoryRefresh();
             }
             else
             {
-                _levelTimer.Stop();
-                _stateTimer.Stop();
+                FlushPendingVolumeSettings();
+                UpdateActivityTimers();
+                StopPageTransition();
                 _textOperation?.Cancel();
                 _recentRecordings.StopPlayback();
             }
         };
+        StateChanged += (_, _) =>
+        {
+            UpdateActivityTimers();
+            if (WindowState == WindowState.Minimized)
+                StopPageTransition();
+        };
         Closing += (_, args) =>
         {
+            FlushPendingVolumeSettings();
             if (!_allowClose)
             {
                 args.Cancel = true;
@@ -104,9 +117,11 @@ public partial class SettingsWindow : Window
         };
         Closed += (_, _) =>
         {
+            _closed = true;
             _levelTimer.Stop();
             _stateTimer.Stop();
             _textOperation?.Cancel();
+            StopPageTransition();
             _volumeSaveTimer.Stop();
             _mainWindow.AudioCaptureStateChanged -= OnAudioCaptureStateChanged;
             _mainWindow.ThemeChanged -= OnThemeChanged;
@@ -341,6 +356,27 @@ public partial class SettingsWindow : Window
         }
     }
 
+    private void RequestMicrophoneInventoryRefresh()
+    {
+        if (_closed || _microphoneRefreshTask is { IsCompleted: false }) return;
+        _microphoneRefreshTask = RefreshMicrophoneInventoryAsync();
+    }
+
+    private async Task RefreshMicrophoneInventoryAsync()
+    {
+        try
+        {
+            await _mainWindow.RefreshCaptureDevicesAsync();
+            if (_closed || !IsVisible) return;
+            RefreshMicrophones();
+            UpdateControlCenterState();
+        }
+        catch (Exception exception)
+        {
+            if (!_closed) AppLog.Write("Settings microphone inventory refresh failed", exception);
+        }
+    }
+
     private void RefreshMicrophones()
     {
         _loading = true;
@@ -414,7 +450,7 @@ public partial class SettingsWindow : Window
             PauseButton.IsEnabled = false;
             GeneralPauseButton.IsEnabled = false;
             var state = _mainWindow.CurrentAudioCaptureState;
-            await _mainWindow.SetMicrophonePausedAsync(!state.IsPaused);
+            await _mainWindow.SetMicrophonePausedAsync(!state.IsUserPaused);
             RefreshMicrophones();
         }
         catch (Exception exception)
@@ -423,8 +459,8 @@ public partial class SettingsWindow : Window
         }
         finally
         {
-            PauseButton.IsEnabled = _mainWindow.CurrentAudioCaptureState.IsAvailable;
-            GeneralPauseButton.IsEnabled = _mainWindow.CurrentAudioCaptureState.IsAvailable;
+            PauseButton.IsEnabled = !_mainWindow.IsCaptureOperationPending;
+            GeneralPauseButton.IsEnabled = !_mainWindow.IsCaptureOperationPending;
             UpdateControlCenterState();
         }
     }
@@ -604,23 +640,49 @@ public partial class SettingsWindow : Window
         _mainWindow.PreviewFeedbackSound();
     }
 
+    private void UpdateActivityTimers()
+    {
+        var visible = IsLoaded && IsVisible && WindowState != WindowState.Minimized;
+        if (visible && AudioTab.IsSelected) _levelTimer.Start();
+        else _levelTimer.Stop();
+        if (visible) _stateTimer.Start();
+        else _stateTimer.Stop();
+    }
+
+    private void FlushPendingVolumeSettings()
+    {
+        if (!_volumeSaveTimer.IsEnabled) return;
+        _volumeSaveTimer.Stop();
+        SaveGeneralSettings();
+    }
+
+    private void StopPageTransition()
+    {
+        if (_pageTransitionElement is not { } content) return;
+        content.BeginAnimation(OpacityProperty, null);
+        _pageTransitionOffset?.BeginAnimation(TranslateTransform.YProperty, null);
+        content.Opacity = 1;
+        content.RenderTransform = Transform.Identity;
+        _pageTransitionElement = null;
+        _pageTransitionOffset = null;
+    }
+
     private void SettingsTabs_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!IsLoaded || !ReferenceEquals(e.Source, SettingsTabs) ||
-            SettingsTabs.SelectedItem is not TabItem { Content: FrameworkElement content })
-        {
+        if (!ReferenceEquals(e.Source, SettingsTabs)) return;
+        UpdateActivityTimers();
+        StopPageTransition();
+        if (!IsLoaded || SettingsTabs.SelectedItem is not TabItem { Content: FrameworkElement content })
             return;
-        }
 
-        if (_mainWindow.ReducedMotion)
-        {
-            content.BeginAnimation(OpacityProperty, null);
-            content.Opacity = 1;
-            content.RenderTransform = Transform.Identity;
+        content.Opacity = 1;
+        content.RenderTransform = Transform.Identity;
+        if (_mainWindow.ReducedMotion || !IsVisible || WindowState == WindowState.Minimized)
             return;
-        }
 
         var offset = new TranslateTransform(0, 6);
+        _pageTransitionElement = content;
+        _pageTransitionOffset = offset;
         content.RenderTransform = offset;
         content.Opacity = 0;
         var easing = new QuadraticEase { EasingMode = EasingMode.EaseOut };
@@ -809,6 +871,7 @@ public partial class SettingsWindow : Window
             _ = Dispatcher.BeginInvoke(() => OnThemeChanged(sender, change));
             return;
         }
+        if (_mainWindow.ReducedMotion) StopPageTransition();
         UpdateAppearanceStatus();
         // These status brushes are selected in code according to the current microphone state.
         // Re-evaluate them after the palette swap so an already-open Audio page never keeps a
@@ -880,18 +943,18 @@ public partial class SettingsWindow : Window
         VoiceStatusText.Text = title;
         VoiceStatusDot.Fill = statusBrush;
 
-        var canStart = state.IsAvailable && !state.IsPaused && !_mainWindow.IsProcessing;
+        var canStart = _mainWindow.IsRecording || _mainWindow.CanStartRecording;
         StartStopButton.IsEnabled = canStart;
         StartStopButton.Content = _mainWindow.IsRecording ? "Остановить" : "Начать";
         StartStopButton.SetValue(
             System.Windows.Automation.AutomationProperties.NameProperty,
             _mainWindow.IsRecording ? "Остановить диктовку и распознать" : "Начать диктовку");
 
-        GeneralPauseButton.Content = state.IsPaused ? "Возобновить" : "Приостановить";
-        GeneralPauseButton.IsEnabled = state.IsAvailable;
+        GeneralPauseButton.Content = state.IsUserPaused ? "Возобновить" : "Приостановить";
+        GeneralPauseButton.IsEnabled = !_mainWindow.IsCaptureOperationPending;
         GeneralPauseButton.SetValue(
             System.Windows.Automation.AutomationProperties.NameProperty,
-            state.IsPaused ? "Возобновить микрофон" : "Приостановить микрофон");
+            state.IsUserPaused ? "Возобновить микрофон" : "Приостановить микрофон");
 
         if (!_recognitionModelPreviewActive)
         {
@@ -938,19 +1001,21 @@ public partial class SettingsWindow : Window
 
     private void UpdateAudioState(AudioCaptureState state)
     {
-        PauseButton.Content = state.IsPaused ? "Возобновить" : "Приостановить";
+        PauseButton.Content = state.IsUserPaused ? "Возобновить" : "Приостановить";
         PauseButton.SetValue(System.Windows.Automation.AutomationProperties.NameProperty,
-            state.IsPaused ? "Возобновить микрофон" : "Приостановить микрофон");
-        GeneralPauseButton.Content = state.IsPaused ? "Возобновить" : "Приостановить";
+            state.IsUserPaused ? "Возобновить микрофон" : "Приостановить микрофон");
+        GeneralPauseButton.Content = state.IsUserPaused ? "Возобновить" : "Приостановить";
         GeneralPauseButton.SetValue(System.Windows.Automation.AutomationProperties.NameProperty,
-            state.IsPaused ? "Возобновить микрофон" : "Приостановить микрофон");
-        MicrophoneCombo.IsEnabled = state.IsAvailable || state.SelectedDeviceId is not null;
+            state.IsUserPaused ? "Возобновить микрофон" : "Приостановить микрофон");
+        MicrophoneCombo.IsEnabled = state.IsAvailable || state.SelectedDeviceId is not null || MicrophoneCombo.Items.Count > 1;
         if (!state.IsAvailable)
         {
-            MicrophoneStatus.Text = "Устройство недоступно · запись приостановлена";
+            MicrophoneStatus.Text = state.IsTransientlyUnavailable
+                ? "Устройство недоступно · ожидаю восстановления"
+                : "Устройство недоступно · запись приостановлена";
             MicrophoneStatus.Foreground = LoudBrush;
-            PauseButton.IsEnabled = false;
-            GeneralPauseButton.IsEnabled = false;
+            PauseButton.IsEnabled = !_mainWindow.IsCaptureOperationPending;
+            GeneralPauseButton.IsEnabled = !_mainWindow.IsCaptureOperationPending;
         }
         else if (state.IsPaused)
         {

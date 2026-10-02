@@ -4,6 +4,9 @@
 
 ## Recent notes
 
+- [2026-10-02T140514Z-gigaam-windows-integration-241-candidate](./2026-10-02T140514Z-gigaam-windows-integration-241-candidate.md)
+- [2026-10-02T123444Z-gigaam-heldout-reject-and-cleanup](./2026-10-02T123444Z-gigaam-heldout-reject-and-cleanup.md)
+- [2026-10-02T111552Z-gigaam-windows-user-scope](./2026-10-02T111552Z-gigaam-windows-user-scope.md)
 - [2026-10-02T102705Z-tone-lm-results-and-vibevoice-feasibility](./2026-10-02T102705Z-tone-lm-results-and-vibevoice-feasibility.md)
 - [2026-10-02T082318Z-gigachat-bounded-load-and-tone-plan](./2026-10-02T082318Z-gigachat-bounded-load-and-tone-plan.md)
 - [2026-10-02T073138Z-quality-measurements-v2-report](./2026-10-02T073138Z-quality-measurements-v2-report.md)
@@ -11,15 +14,12 @@
 - [2026-10-02T054800Z-quality-50-measured-stage](./2026-10-02T054800Z-quality-50-measured-stage.md)
 - [2026-10-02T044832Z-quality-50-development-evidence](./2026-10-02T044832Z-quality-50-development-evidence.md)
 - [2026-10-02T041846Z-quality-50-goal-continuation](./2026-10-02T041846Z-quality-50-goal-continuation.md)
-- [2026-10-02T040433Z-russian-quality-240-deployed](./2026-10-02T040433Z-russian-quality-240-deployed.md)
-- [2026-10-02T031603Z-stock-native-no-tts-240](./2026-10-02T031603Z-stock-native-no-tts-240.md)
-- [2026-10-02T023121Z-russian-quality-240-candidate](./2026-10-02T023121Z-russian-quality-240-candidate.md)
 
 ## Archive
 
-- [2026/10](./archive/2026/10/) - 1 notes
+- [2026/10](./archive/2026/10/) - 4 notes
 - [2026/09](./archive/2026/09/) - 6 notes
 - [2026/08](./archive/2026/08/) - 15 notes
 - [2026/07](./archive/2026/07/) - 1 notes
 
-Hot set: 10. Archived: 23.
+Hot set: 10. Archived: 26.

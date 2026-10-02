@@ -2,7 +2,9 @@
 
 ## Active quality goal — 2026-10-02
 
-EV-2232 continues toward≥50% fewer word/spelling/punctuation errors, independent human control tests and then verified cold-start/resource/stability/UI improvements before the next final build.2.4 remains the intermediate installed baseline. [Acceptance](tickets/EV-2232-quality-50.md).
+EV-2233 now focuses on user-selected GigaAMv3 tuning (5–10% desired relative quality gain), Windows/background/default microphone, settings/animation/resources and unused trial-model cleanup. EV-2232 is superseded by the user, not achieved. [Acceptance](tickets/EV-2233-gigaam-windows-tuning.md).
+
+The latest explicit instruction authorizes verified2.4.1 installation/publication. Current source Full1148/Compact1141+7 and exact native UI-after pass; resource gains are scoped to matched synthetic cases. General secondary switching and adaptive-b05 are rejected. Versioned package/readback remain pending; no5–10% acoustic promise.
 
 ## Current quality release — 2026-10-02
 

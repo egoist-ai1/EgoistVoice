@@ -166,7 +166,6 @@ public sealed class TranslatorClientTests
 
         var mainWindow = File.ReadAllText(Path.Combine(root, "MainWindow.xaml.cs"));
         Assert.Contains("_translationWarmupTask ??= WarmTranslationEngineAsync();", mainWindow, StringComparison.Ordinal);
-        Assert.Contains("_translationWarmupTask?.Wait", mainWindow, StringComparison.Ordinal);
 
         Assert.Contains(
             "Do not dispose it while a cancelled readiness",

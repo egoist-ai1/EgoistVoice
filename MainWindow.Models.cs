@@ -5,17 +5,19 @@ namespace Egoist.Voice;
 
 public partial class MainWindow
 {
+    private Task? _modelWarmupTask;
     public void BeginWarmUp(bool showProgress = true, bool announceModelDownloads = false)
     {
         _announceModelDownloads = announceModelDownloads;
-        _ = WarmUpAsync(showProgress);
+        if (_disposed || _modelWarmupTask is { IsCompleted: false }) return;
+        _modelWarmupTask = WarmUpAsync(showProgress);
     }
 
     private async Task WarmUpAsync(bool showProgress)
     {
         var progress = new Progress<ModelProgress>(value =>
         {
-            if (showProgress && !_isRecording && !_isProcessing)
+            if (!_disposed && showProgress && !_isRecording && !_isProcessing)
             {
                 SetProcessingState(value.Label, value.Percentage);
             }
@@ -24,7 +26,7 @@ public partial class MainWindow
         try
         {
             await _transcription.WarmUpAsync(progress, _lifetimeCancellation.Token);
-            if (showProgress && !_isRecording && !_isProcessing)
+            if (!_disposed && showProgress && !_isRecording && !_isProcessing)
             {
                 SetReadyState();
                 ShowCapsule();
@@ -38,7 +40,7 @@ public partial class MainWindow
         catch (Exception exception)
         {
             AppLog.Write("Model warm-up failed", exception);
-            if (showProgress && !_isRecording && !_isProcessing)
+            if (!_disposed && showProgress && !_isRecording && !_isProcessing)
             {
                 ShowError("Модель не готова");
             }
@@ -58,6 +60,7 @@ public partial class MainWindow
 
     private void HandleModelProgress(ModelTransferProgress progress)
     {
+        if (_disposed) return;
         _lastModelProgress = progress;
         if (_isRecording || _isProcessing)
         {
@@ -122,6 +125,7 @@ public partial class MainWindow
     {
         _displayingBackgroundModelProgress = true;
         ShowModelDownloadStatus();
-        _ = WarmUpAsync(showProgress: true);
+        if (!_disposed && _modelWarmupTask is not { IsCompleted: false })
+            _modelWarmupTask = WarmUpAsync(showProgress: true);
     }
 }

@@ -164,6 +164,137 @@ public sealed class MicrophoneControlTests
         Assert.DoesNotContain("Откройте меню и выберите", tray, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Device_notification_bursts_keep_one_worker_and_one_followup_for_midflight_changes()
+    {
+        var work = new Queue<Action>();
+        var notifications = 0;
+        DeviceNotificationDispatcher? dispatcher = null;
+        dispatcher = new(() =>
+        {
+            notifications++;
+            if (notifications == 1)
+                for (var index = 0; index < 100; index++) dispatcher!.Request();
+        }, scheduled => work.Enqueue(scheduled));
+        using (dispatcher)
+        {
+            for (var index = 0; index < 100; index++) dispatcher.Request();
+            Assert.Single(work);
+            work.Dequeue()();
+            Assert.Equal(2, notifications);
+            Assert.Empty(work);
+            // Idle does no additional work; a later real event queues just one new worker.
+            dispatcher.Request();
+            Assert.Single(work);
+            work.Dequeue()();
+            Assert.Equal(3, notifications);
+            Assert.Empty(work);
+        }
+    }
+
+    [Fact]
+    public async Task Device_notifications_never_overlap_a_blocked_inventory_observer()
+    {
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        using var finished = new CountdownEvent(2);
+        var calls = 0;
+        var active = 0;
+        var maximum = 0;
+        using var dispatcher = new DeviceNotificationDispatcher(() =>
+        {
+            var concurrency = Interlocked.Increment(ref active);
+            if (concurrency > maximum) maximum = concurrency;
+            if (Interlocked.Increment(ref calls) == 1)
+            {
+                entered.Set();
+                release.Wait(TimeSpan.FromSeconds(3));
+            }
+            Interlocked.Decrement(ref active);
+            finished.Signal();
+        });
+        dispatcher.Request();
+        Assert.True(entered.Wait(TimeSpan.FromSeconds(2)));
+        try { for (var index = 0; index < 100; index++) dispatcher.Request(); }
+        finally { release.Set(); }
+        await Task.Run(() => Assert.True(finished.Wait(TimeSpan.FromSeconds(3))));
+        Assert.Equal(1, maximum);
+        Assert.Equal(2, calls);
+    }
+
+    [Fact]
+    public void Disposing_a_notification_dispatcher_suppresses_queued_and_later_callbacks()
+    {
+        var work = new Queue<Action>();
+        var calls = 0;
+        var dispatcher = new DeviceNotificationDispatcher(() => calls++, scheduled => work.Enqueue(scheduled));
+        dispatcher.Request();
+        dispatcher.Dispose();
+        work.Dequeue()();
+        dispatcher.Request();
+        Assert.Equal(0, calls);
+        Assert.Empty(work);
+    }
+
+    [Fact]
+    public void A_throwing_inventory_observer_does_not_poison_later_notification_dispatch()
+    {
+        var work = new Queue<Action>();
+        var calls = 0;
+        using var dispatcher = new DeviceNotificationDispatcher(() =>
+        {
+            if (++calls == 1) throw new InvalidOperationException("Synthetic observer failure");
+        }, scheduled => work.Enqueue(scheduled));
+        dispatcher.Request();
+        work.Dequeue()();
+        dispatcher.Request();
+        work.Dequeue()();
+        Assert.Equal(2, calls);
+        Assert.Empty(work);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Inventory_read_disposes_the_exact_lazy_wrappers_once_even_if_reading_fails(bool throwOnSecond)
+    {
+        var created = new List<SyntheticEndpoint>();
+        var enumerations = 0;
+        IEnumerable<SyntheticEndpoint> Enumerate()
+        {
+            enumerations++;
+            for (var index = 0; index < 3; index++)
+            {
+                var device = new SyntheticEndpoint(index);
+                created.Add(device);
+                yield return device;
+            }
+        }
+        MicrophoneDeviceInfo Read(SyntheticEndpoint endpoint)
+        {
+            if (throwOnSecond && endpoint.Index == 1) throw new InvalidOperationException("Synthetic metadata failure");
+            return new(endpoint.Index.ToString(), "Synthetic "+endpoint.Index, endpoint.Index == 2);
+        }
+        if (throwOnSecond)
+            Assert.Throws<InvalidOperationException>(() => MicrophoneInventoryReader.Read(Enumerate(), Read));
+        else
+        {
+            var result = MicrophoneInventoryReader.Read(Enumerate(), Read);
+            Assert.Equal("2", result[0].Id);
+            Assert.Equal(3, result.Count);
+        }
+        Assert.Equal(1, enumerations);
+        Assert.Equal(throwOnSecond ? 2 : 3, created.Count);
+        Assert.All(created, endpoint => Assert.Equal(1, endpoint.DisposeCount));
+    }
+
+    private sealed class SyntheticEndpoint(int index) : IDisposable
+    {
+        internal int Index { get; } = index;
+        internal int DisposeCount { get; private set; }
+        public void Dispose() => DisposeCount++;
+    }
+
     private static string RepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

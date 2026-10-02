@@ -9,8 +9,9 @@ param(
     [Parameter(Mandatory)][string]$WorkDirectory,
     [Parameter(Mandatory)][string]$ReceiptDirectory,
     [Parameter(ParameterSetName='Upgrade')][switch]$PlanOnly,
+    [Parameter(ParameterSetName='Upgrade')][Parameter(ParameterSetName='RollbackCheck')][switch]$UseWindowsDefaultMicrophone,
     [Parameter(Mandatory, ParameterSetName='RollbackCheck')][switch]$VerifyRollback,
-    [Parameter(ParameterSetName='RollbackCheck')][ValidateSet('2.3.0','2.4.0')][string]$RollbackFixtureVersion = '2.4.0',
+    [Parameter(ParameterSetName='RollbackCheck')][ValidateSet('2.3.0','2.4.0','2.4.1')][string]$RollbackFixtureVersion = '2.4.0',
     [Parameter(ParameterSetName='RollbackCheck')][ValidateSet('Missing','Disabled','Enabled')][string]$RollbackSpeechPunctuation = 'Missing',
     [Parameter(Mandatory, ParameterSetName='Recover')][string]$RecoverTransaction,
     [ValidateRange(5,120)][int]$ReadyTimeoutSeconds = 45
@@ -235,7 +236,7 @@ function Restore-Transaction([object]$Journal, [string]$TransactionRoot) {
     $Journal.state = 'rolled-back'
     Write-Json (Join-Path $TransactionRoot 'transaction.json') $Journal
 }
-function Invoke-UpgradeTransaction([string]$Stage, [object]$Catalog, [string]$Root, [string]$Work, [string]$Receipts, [bool]$Fixture = $false, [int]$ReadySeconds = 45) {
+function Invoke-UpgradeTransaction([string]$Stage, [object]$Catalog, [string]$Root, [string]$Work, [string]$Receipts, [bool]$Fixture = $false, [int]$ReadySeconds = 45, [bool]$FollowWindowsDefault = $false) {
     Assert-CompactInstallation $Root
     foreach ($file in @($Catalog.files)) { $null = Get-PayloadPath $Root $file.path }
     $settingsPath = Join-Path $Root 'Data\dictation.json'
@@ -286,6 +287,11 @@ function Invoke-UpgradeTransaction([string]$Stage, [object]$Catalog, [string]$Ro
             $settings | Add-Member -MemberType NoteProperty -Name $setting.Key -Value $setting.Value -Force
         }
         $settings | Add-Member -MemberType NoteProperty -Name formatSpeechPunctuation -Value $speechPunctuationEnabled -Force
+        if ($FollowWindowsDefault) {
+            # Explicit owner-requested migration only; null resolves the fresh Windows default.
+            # The original settings were snapshotted above and are restored on any failure.
+            $settings | Add-Member -MemberType NoteProperty -Name captureDeviceId -Value $null -Force
+        }
         New-Item -ItemType Directory -Path (Split-Path -Parent $settingsPath) -Force | Out-Null
         $newSettings = Join-Path $transaction 'settings.new.json'
         Write-Json $newSettings $settings
@@ -295,8 +301,25 @@ function Invoke-UpgradeTransaction([string]$Stage, [object]$Catalog, [string]$Ro
             $observedSettings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
             $fixtureProfileApplied = $observedSettings.preserveSpokenWords -and !$observedSettings.formatWithQwen -and
                 !$observedSettings.startLocalQwen -and !$observedSettings.mixedLanguageMode -and $observedSettings.directGigaamFastMode -and $observedSettings.formatSpeechPunctuation -eq $speechPunctuationEnabled
-            $fixtureUserChoicesPreserved = $observedSettings.theme -eq 'Dark' -and $observedSettings.captureDeviceId -eq 'fixture-device' -and
-                !$observedSettings.saveRecentRecordings -and $observedSettings.custom -eq 'preserve'
+            $originalSettings = if ($settingsExisted) {
+                Get-Content -LiteralPath (Join-Path $transaction 'settings.previous.json') -Raw | ConvertFrom-Json
+            } else { [pscustomobject]@{} }
+            $fixtureUserChoicesPreserved = $true
+            foreach ($property in $originalSettings.PSObject.Properties) {
+                if ($property.Name -in @('preserveSpokenWords','formatWithQwen','startLocalQwen','mixedLanguageMode','directGigaamFastMode') -or
+                    ($FollowWindowsDefault -and $property.Name -eq 'captureDeviceId')) { continue }
+                $observed = $observedSettings.PSObject.Properties[$property.Name]
+                if (!$observed -or (ConvertTo-Json -InputObject $observed.Value -Depth 12 -Compress) -cne
+                    (ConvertTo-Json -InputObject $property.Value -Depth 12 -Compress)) { $fixtureUserChoicesPreserved = $false }
+            }
+            $originalDevice = $originalSettings.PSObject.Properties['captureDeviceId']
+            $observedDevice = $observedSettings.PSObject.Properties['captureDeviceId']
+            $fixtureMicrophoneSelectionApplied = if ($FollowWindowsDefault) {
+                $null -ne $observedDevice -and $null -eq $observedDevice.Value
+            } elseif ($originalDevice) {
+                $null -ne $observedDevice -and (ConvertTo-Json -InputObject $originalDevice.Value -Depth 12 -Compress) -ceq
+                    (ConvertTo-Json -InputObject $observedDevice.Value -Depth 12 -Compress)
+            } else { $null -eq $observedDevice }
             $fixtureSpeechPreferencePreserved = $observedSettings.formatSpeechPunctuation -eq $speechPunctuationEnabled
             throw 'Injected failure after all real payload and settings replacements.'
         }
@@ -318,7 +341,7 @@ function Invoke-UpgradeTransaction([string]$Stage, [object]$Catalog, [string]$Ro
         }
         $journal.state = 'committed'
         Write-Json $journalPath $journal
-        $receipt = [ordered]@{passed=$true;version=$Catalog.version;sourceRevision=$Catalog.sourceRevision;manifestSha256=$ManifestSha256.ToLowerInvariant();fileCount=$records.Count;modelAssetCount=$Catalog.modelAssetCount;settingsProfile=$(if($Catalog.modelAssetCount -eq 8){'russian-quality-rnnt'}else{'literal-russian-rnnt'});speechPunctuationEnabled=$speechPunctuationEnabled;formatterRequired=$requireFormatter;formatterReady=$formatterReady;userChoicesPreserved=$true;asrReady=$asrReady;wasRunning=$journal.wasRunning;appPid=$(if($newProcess){$newProcess.Id}else{$null});transactionRoot=$transaction;installerExecuted=$false;generatedAt=[DateTime]::UtcNow.ToString('o')}
+        $receipt = [ordered]@{passed=$true;version=$Catalog.version;sourceRevision=$Catalog.sourceRevision;manifestSha256=$ManifestSha256.ToLowerInvariant();fileCount=$records.Count;modelAssetCount=$Catalog.modelAssetCount;settingsProfile=$(if($Catalog.modelAssetCount -eq 8){'russian-quality-rnnt'}else{'literal-russian-rnnt'});speechPunctuationEnabled=$speechPunctuationEnabled;formatterRequired=$requireFormatter;formatterReady=$formatterReady;windowsDefaultMicrophoneRequested=$FollowWindowsDefault;userChoicesPreserved=$true;asrReady=$asrReady;wasRunning=$journal.wasRunning;appPid=$(if($newProcess){$newProcess.Id}else{$null});transactionRoot=$transaction;installerExecuted=$false;generatedAt=[DateTime]::UtcNow.ToString('o')}
         Write-Json (Join-Path $Receipts 'compact-workstation-upgrade.json') $receipt
         return $receipt
     } catch {
@@ -330,7 +353,7 @@ function Invoke-UpgradeTransaction([string]$Stage, [object]$Catalog, [string]$Ro
             if ($restored.WaitForExit(2000)) { throw 'Previous application exited after rollback.' }
         }
         if ($Fixture -and $failure.Exception.Message -eq 'Injected failure after all real payload and settings replacements.' -and $journal.state -eq 'rolled-back') {
-            return [ordered]@{passed=$true;rollbackVerified=$true;transactionRoot=$transaction;applicationRestored=$true;settingsRestored=$true;russianProfileApplied=$fixtureProfileApplied;userChoicesPreserved=$fixtureUserChoicesPreserved;modelAssetCount=$Catalog.modelAssetCount;speechPunctuationEnabled=$speechPunctuationEnabled;speechPreferencePreserved=$fixtureSpeechPreferencePreserved;formatterRequired=$requireFormatter;userProcessesTouched=$false;installerExecuted=$false}
+            return [ordered]@{passed=$true;rollbackVerified=$true;transactionRoot=$transaction;applicationRestored=$true;settingsRestored=$true;russianProfileApplied=$fixtureProfileApplied;userChoicesPreserved=$fixtureUserChoicesPreserved;modelAssetCount=$Catalog.modelAssetCount;speechPunctuationEnabled=$speechPunctuationEnabled;speechPreferencePreserved=$fixtureSpeechPreferencePreserved;formatterRequired=$requireFormatter;windowsDefaultMicrophoneRequested=$FollowWindowsDefault;microphoneSelectionApplied=$fixtureMicrophoneSelectionApplied;userProcessesTouched=$false;installerExecuted=$false}
         }
         throw $failure
     }
@@ -373,7 +396,7 @@ if ($VerifyRollback) {
     $fixtureManifest = Join-Path $fixture 'fixture.manifest.json'
     Write-Json $fixtureManifest $fixtureCatalog
     $fixtureCatalog = Read-VerifiedPayload -Stage $fixtureStage -Manifest $fixtureManifest -ExpectedHash (Get-Hash $fixtureManifest)
-    $result = Invoke-UpgradeTransaction -Stage $fixtureStage -Catalog $fixtureCatalog -Root $fixtureInstall -Work (Join-Path $fixture 'transactions') -Receipts $receipts -Fixture $true
+    $result = Invoke-UpgradeTransaction -Stage $fixtureStage -Catalog $fixtureCatalog -Root $fixtureInstall -Work (Join-Path $fixture 'transactions') -Receipts $receipts -Fixture $true -FollowWindowsDefault ([bool]$UseWindowsDefaultMicrophone)
     if ((Get-Hash $sentinel) -ne $sentinelHash) { throw 'Rollback changed an unrelated file.' }
     $result.unknownFilePreserved = $true
     $result.fixtureRoot = $fixture
@@ -424,7 +447,7 @@ if (Test-Path -LiteralPath $work) {
     }
 }
 if ($PlanOnly -or !$PSCmdlet.ShouldProcess($install, ('Upgrade exact Compact payload to ' + $catalog.version + ' and select literal Russian RNNT'))) {
-    [ordered]@{passed=$true;planOnly=$true;version=$catalog.version;fileCount=$catalog.fileCount;modelAssetCount=$catalog.modelAssetCount;manifestSha256=$ManifestSha256.ToLowerInvariant();unknownFilesPreserved=$true;userChoicesPreserved=$true;installerExecuted=$false} | ConvertTo-Json
+    [ordered]@{passed=$true;planOnly=$true;version=$catalog.version;fileCount=$catalog.fileCount;modelAssetCount=$catalog.modelAssetCount;manifestSha256=$ManifestSha256.ToLowerInvariant();useWindowsDefaultMicrophone=[bool]$UseWindowsDefaultMicrophone;captureDeviceIdAction=$(if($UseWindowsDefaultMicrophone){'set-null'}else{'preserve-existing'});unknownFilesPreserved=$true;userChoicesPreserved=$true;installerExecuted=$false} | ConvertTo-Json
     return
 }
-Invoke-UpgradeTransaction -Stage $stage -Catalog $catalog -Root $install -Work $work -Receipts $receipts -Fixture $false -ReadySeconds $ReadyTimeoutSeconds | ConvertTo-Json -Depth 5
+Invoke-UpgradeTransaction -Stage $stage -Catalog $catalog -Root $install -Work $work -Receipts $receipts -Fixture $false -ReadySeconds $ReadyTimeoutSeconds -FollowWindowsDefault ([bool]$UseWindowsDefaultMicrophone) | ConvertTo-Json -Depth 5

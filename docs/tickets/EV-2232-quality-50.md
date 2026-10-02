@@ -1,6 +1,6 @@
 # EV-2232 — measured ≥50% quality improvement
 
-Status: active,2026-10-02. Continuation of the original quality objective;2.4 is a verified intermediate deployment. No next final build until this objective is verified. Do not redefine successful formatting as successful lexical ASR.
+Status: superseded by explicit user instruction,2026-10-02; not achieved. See [EV-2233](EV-2233-gigaam-windows-tuning.md). Historical scope follows. Continuation of the original quality objective;2.4 is a verified intermediate deployment. No next final build until this objective is verified. Do not redefine successful formatting as successful lexical ASR.
 
 ## Full acceptance
 

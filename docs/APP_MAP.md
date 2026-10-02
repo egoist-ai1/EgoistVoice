@@ -8,6 +8,12 @@ Warm WASAPI pre-roll 320 ms → complete session + release tail 350 ms → 16 kH
 
 Eight pinned model assets total 650090519 bytes. Source-only sherpa-onnx UTF-8 bindings fix Unicode model paths; official no-TTS native CAPI retains the stock frontend; ONNX Runtime stays unchanged. Build-RussianInstaller produces the native self-contained offline package; Update-CompactInstallation applies a verified transactional payload and preserves user Data. Full/translation flows below remain separate.
 
+## Current Windows patch candidate2.4.1
+
+`CaptureOperationQueue` owns FIFO native work outside the dispatcher and drains shutdown. `App` awaits background capture construction; `MainWindow` tracks init/start/release/cancel/model/translation work and exposes cached microphone state. `AudioCaptureService` resolves a fresh Windows default on Start and distinguishes transient unavailability from user pause; `MicrophoneDeviceCatalog` serializes topology observers. `SettingsWindow` refreshes inventory asynchronously, gates timers to visible pages and flushes volume before hiding. Capsule render/clock eligibility follows window visibility and reduced motion.
+
+Bounded text repairs support catalogue-backed Russian-name/preposition joins and exact uppercase abbreviation repetition only with secondary audio confirmation and two unchanged anchors. Unknown words/endings are preserved. No general secondary lexical switching, gain/decoder parameter change or new model is selected. Source integration Full1148/Compact1141+7 and exact source-bound native UI checks pass; final versioned package/installed readback remains pending.
+
 ## Actors and flows
 
 - Warm WASAPI pre-roll → user presses configured trigger → in-memory session +
@@ -23,7 +29,7 @@ Eight pinned model assets total 650090519 bytes. Source-only sherpa-onnx UTF-8 b
 
 - `Services/AudioCaptureService.cs` owns warm WASAPI, bounded pre-roll/session,
   release tail, level measurement, adaptive noise calibration and the explicit
-  corpus-only WAV boundary. Current EV-2232 source adds an internal endpoint
+  corpus-only WAV boundary. Current EV-2233 source adds an internal endpoint
   factory, native retirement outside callback locks with tracked cleanup and generation checks
   for stale callbacks, release tails and state notifications. Tests exercise the
   actual service with fake IWaveIn; no microphone is opened. This delta is not yet

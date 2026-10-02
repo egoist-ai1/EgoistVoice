@@ -19,6 +19,22 @@ public static class BuiltInVocabulary
 {
     public const string Version = "6";
 
+    // Audio-confirmed formatting only, never added to the unconditional user dictionary.
+    // These consonant-stem names keep the exact Russian case ending supplied by both ASRs.
+    internal static IReadOnlyDictionary<string, string[]> AudioConfirmedRussianNames { get; } =
+        new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["Телеграм"] = ["телеграм", "тилеграм"],
+            ["Дискорд"] = ["дискорд"],
+            ["Гитхаб"] = ["гитхаб"],
+            ["Гитлаб"] = ["гитлаб"],
+            ["Ютуб"] = ["ютуб"]
+        };
+
+    // Exact uppercase corroboration is required. Ordinary lower/title-case words never activate it.
+    internal static IReadOnlyList<string> AudioConfirmedAbbreviations { get; } =
+        ["ИИ", "СССР", "РФ", "США", "МЧС"];
+
     /// <summary>
     /// The dictionary sorts aliases by length, so a longer entity always wins over a contained one.
     /// Canonical Latin aliases also repair casing without changing already-correct text.

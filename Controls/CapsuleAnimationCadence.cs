@@ -35,3 +35,31 @@ internal sealed class CapsuleAnimationCadence
         return true;
     }
 }
+
+/// <summary>Owns one render-event subscription; hiding suspends a request, stopping cancels it.</summary>
+internal sealed class CapsuleAnimationSubscription(Action attach, Action detach)
+{
+    internal bool IsRequested { get; private set; }
+    internal bool IsAttached { get; private set; }
+
+    internal void Start(bool eligible)
+    {
+        IsRequested = true;
+        Refresh(eligible);
+    }
+
+    internal void Refresh(bool eligible)
+    {
+        var shouldAttach = IsRequested && eligible;
+        if (shouldAttach == IsAttached) return;
+        if (shouldAttach) attach();
+        else detach();
+        IsAttached = shouldAttach;
+    }
+
+    internal void Stop()
+    {
+        IsRequested = false;
+        Refresh(eligible: false);
+    }
+}

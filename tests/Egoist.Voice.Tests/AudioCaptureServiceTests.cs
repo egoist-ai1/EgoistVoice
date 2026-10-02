@@ -881,6 +881,237 @@ public sealed class AudioCaptureServiceTests(ITestOutputHelper output)
         Assert.True(service.GetState().IsMonitoring);
     }
 
+    [Fact]
+    public async Task Default_Start_refreshes_the_endpoint_before_a_delayed_topology_notification()
+    {
+        using var rig = new CaptureRig(new ControlledCapture(), new ControlledCapture());
+        using var service = rig.CreateService();
+        rig.Catalog.ChangeDefault("replacement", notify: false);
+
+        service.Start();
+        var expected = SyntheticPcm(0.1f);
+        rig.Captures[1].SnapshotData(expected)();
+        var result = await service.StopAsync(CancellationToken.None);
+
+        Assert.Equal(2, rig.OpenCount);
+        Assert.Equal(1, rig.Captures[0].DisposeCount);
+        Assert.Equal(AudioCaptureService.ConvertToMono16Khz(expected, rig.Captures[1].WaveFormat), result.Samples);
+        Assert.Null(service.GetState().SelectedDeviceId);
+    }
+
+    [Fact]
+    public async Task Explicit_selection_survives_a_silent_Windows_default_change()
+    {
+        using var rig = new CaptureRig(new ControlledCapture());
+        using var service = rig.CreateService(captureDeviceId: "default");
+        rig.Catalog.ChangeDefault("replacement", notify: false);
+        service.Start();
+        rig.Captures[0].SnapshotData(SyntheticPcm(0.1f))();
+        await service.StopAsync(CancellationToken.None);
+
+        Assert.Equal(1, rig.OpenCount);
+        Assert.Equal("default", service.GetState().SelectedDeviceId);
+    }
+
+    [Fact]
+    public void Missing_default_at_Start_cannot_begin_the_stale_warm_capture()
+    {
+        using var rig = new CaptureRig(new ControlledCapture());
+        using var service = rig.CreateService();
+        rig.Catalog.RemoveAllDevices(notify: false);
+
+        Assert.Throws<MicrophoneUnavailableException>(service.Start);
+
+        Assert.False(service.GetState().IsMonitoring);
+        Assert.Equal(1, rig.Captures[0].DisposeCount);
+    }
+
+    [Fact]
+    public void A_returned_default_recovers_monitoring_from_device_loss_without_polling()
+    {
+        using var rig = new CaptureRig(new ControlledCapture(), new ControlledCapture());
+        using var service = rig.CreateService();
+        rig.Catalog.RemoveAllDevices();
+        Assert.True(service.GetState().IsPaused);
+        rig.Catalog.RestoreDevices("replacement");
+
+        Assert.True(service.GetState().IsMonitoring);
+        Assert.False(service.GetState().IsPaused);
+        for (var index = 0; index < 100; index++) rig.Catalog.Notify();
+        Assert.Equal(2, rig.OpenCount);
+        Assert.Null(service.GetState().SelectedDeviceId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_user_pause_is_not_undone_by_hotplug_even_when_already_unavailable(bool storedPause)
+    {
+        using var rig = new CaptureRig(new ControlledCapture(), new ControlledCapture());
+        using var service = rig.CreateService(startPaused: storedPause);
+        rig.Catalog.RemoveAllDevices();
+        if (!storedPause) service.PauseMonitoring();
+        rig.Catalog.RestoreDevices("replacement");
+
+        Assert.True(service.GetState().IsPaused);
+        Assert.False(service.GetState().IsMonitoring);
+        Assert.Equal(storedPause ? 0 : 1, rig.OpenCount);
+    }
+
+    [Fact]
+    public void Explicit_device_loss_recovers_only_that_same_selection()
+    {
+        using var rig = new CaptureRig(new ControlledCapture(), new ControlledCapture());
+        using var service = rig.CreateService(captureDeviceId: "default");
+        rig.Catalog.RemoveAllDevices();
+        rig.Catalog.SetDevices([new("replacement", "Synthetic replacement", true)]);
+        Assert.False(service.GetState().IsMonitoring);
+        Assert.Equal(1, rig.OpenCount);
+        rig.Catalog.RestoreDevices("replacement");
+
+        Assert.True(service.GetState().IsMonitoring);
+        Assert.Equal("default", service.GetState().SelectedDeviceId);
+        Assert.Equal(2, rig.OpenCount);
+    }
+
+    [Fact]
+    public async Task An_explicit_Start_retries_a_stopped_default_capture()
+    {
+        var first = new ControlledCapture();
+        using var rig = new CaptureRig(first, new ControlledCapture());
+        using var service = rig.CreateService();
+        first.SnapshotStopped()();
+
+        await Task.Run(service.Start).WaitAsync(TimeSpan.FromSeconds(3));
+        rig.Captures[1].SnapshotData(SyntheticPcm(0.1f))();
+        await service.StopAsync(CancellationToken.None);
+
+        Assert.True(service.GetState().IsMonitoring);
+        Assert.Equal(2, rig.OpenCount);
+    }
+
+    [Fact]
+    public void Failed_hotplug_recovery_does_not_retry_on_unchanged_inventory_events()
+    {
+        using var rig = new CaptureRig(new ControlledCapture(),
+            new ControlledCapture { ThrowAfterStartingCallback = true }, new ControlledCapture());
+        using var service = rig.CreateService();
+        rig.Catalog.RemoveAllDevices();
+        rig.Catalog.RestoreDevices("replacement");
+        Assert.False(service.GetState().IsMonitoring);
+        for (var index = 0; index < 100; index++) rig.Catalog.Notify();
+
+        Assert.Equal(2, rig.OpenCount);
+        service.ResumeMonitoring();
+        Assert.Equal(3, rig.OpenCount);
+        Assert.True(service.GetState().IsMonitoring);
+    }
+
+    [Fact]
+    public async Task A_weak_final_chunk_delivered_during_release_tail_keeps_every_captured_sample()
+    {
+        var capture = new ControlledCapture();
+        using var rig = new CaptureRig(capture);
+        using var service = rig.CreateService();
+        service.Start();
+        var voiced = SyntheticPcm(0.2f).Concat(SyntheticPcm(0.2f)).Concat(SyntheticPcm(0.2f)).ToArray();
+        capture.SnapshotData(voiced)();
+        var finalWeak = new byte[1600 * sizeof(float)];
+        for (var index = 0; index < 1600; index++)
+            BitConverter.TryWriteBytes(finalWeak.AsSpan(index * sizeof(float), sizeof(float)),
+                index == 1599 ? 1e-7f : (index % 2 == 0 ? 1e-5f : -1e-5f));
+        var stop = service.StopAsync(CancellationToken.None);
+        // Deliver a controlled callback after stop was requested, before the take is completed.
+        capture.SnapshotData(finalWeak)();
+
+        var completed = await stop;
+        var expected = AudioCaptureService.ConvertToMono16Khz(voiced.Concat(finalWeak).ToArray(), capture.WaveFormat);
+
+        Assert.True(completed.HasSpeech);
+        Assert.Equal(expected, completed.Samples);
+        Assert.Equal(6400, completed.Samples.Length);
+        Assert.Equal(1e-7f, completed.Samples[^1]);
+        Assert.Equal(350, AudioCaptureService.ReleaseTailDuration.TotalMilliseconds);
+        Assert.True(service.GetState().IsMonitoring);
+    }
+
+    [Fact]
+    public void Transient_unavailability_does_not_change_user_pause_intent()
+    {
+        using var rig = new CaptureRig(new ControlledCapture(), new ControlledCapture());
+        using var service = rig.CreateService();
+        rig.Catalog.RemoveAllDevices();
+        Assert.True(service.GetState().IsTransientlyUnavailable);
+        Assert.False(service.GetState().IsUserPaused);
+        service.PauseMonitoring();
+        Assert.False(service.GetState().IsTransientlyUnavailable);
+        Assert.True(service.GetState().IsUserPaused);
+        rig.Catalog.RestoreDevices("replacement");
+        Assert.True(service.GetState().IsUserPaused);
+        Assert.Equal(1, rig.OpenCount);
+    }
+
+    [Fact]
+    public async Task Explicit_retry_and_silent_default_switch_notify_their_fresh_state()
+    {
+        using var rig = new CaptureRig(new ControlledCapture(), new ControlledCapture(), new ControlledCapture());
+        using var service = rig.CreateService();
+        var observed = new List<AudioCaptureStateChangedEventArgs>();
+        service.StateChanged += (_, args) => observed.Add(args);
+        rig.Catalog.ChangeDefault("replacement", notify: false);
+        service.Start();
+        Assert.Equal(AudioCaptureChangeKind.DefaultDeviceChanged, observed[^1].Kind);
+        Assert.True(observed[^1].State.IsMonitoring);
+        await service.CancelAsync();
+        rig.Captures[1].SnapshotStopped()();
+        service.Start();
+        Assert.Equal(AudioCaptureChangeKind.Resumed, observed[^1].Kind);
+        Assert.False(observed[^1].State.IsTransientlyUnavailable);
+        Assert.True(observed[^1].State.IsMonitoring);
+        await service.CancelAsync();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task A_pause_or_terminal_dispose_cannot_be_overwritten_by_a_default_Start_restart(bool terminal)
+    {
+        var first = new ControlledCapture { HoldDispose = true };
+        using var rig = new CaptureRig(first, new ControlledCapture());
+        var service = rig.CreateService();
+        rig.Catalog.ChangeDefault("replacement", notify: false);
+        var start = Task.Run(service.Start);
+        Assert.True(first.DisposeEntered.Wait(TimeSpan.FromSeconds(2)));
+        Task? dispose = null;
+        try
+        {
+            if (terminal)
+            {
+                dispose = Task.Run(service.Dispose);
+                Assert.True(SpinWait.SpinUntil(() =>
+                {
+                    try { service.GetState(); return false; }
+                    catch (ObjectDisposedException) { return true; }
+                }, TimeSpan.FromSeconds(2)));
+            }
+            else service.PauseMonitoring();
+        }
+        finally { first.AllowDisposeFinish.Set(); }
+        if (terminal)
+        {
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => start);
+            await dispose!.WaitAsync(TimeSpan.FromSeconds(3));
+        }
+        else
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => start);
+            Assert.True(service.GetState().IsUserPaused);
+        }
+        await Task.Run(service.Dispose).WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.Equal(1, rig.OpenCount);
+        Assert.Equal(1, first.DisposeCount);
+    }
+
     private static byte[] SyntheticPcm(float amplitude)
     {
         var bytes = new byte[1600 * sizeof(float)];
@@ -897,8 +1128,8 @@ public sealed class AudioCaptureServiceTests(ITestOutputHelper output)
         internal List<CountedHandle> Handles { get; } = [];
         internal int OpenCount { get; private set; }
 
-        internal AudioCaptureService CreateService(bool startPaused = false, bool ownsCatalog = false) => new(
-            Catalog, ownsCatalog, persistCompletedTake: false, captureDeviceId: null, startPaused,
+        internal AudioCaptureService CreateService(bool startPaused = false, bool ownsCatalog = false, string? captureDeviceId = null) => new(
+            Catalog, ownsCatalog, persistCompletedTake: false, captureDeviceId, startPaused,
             selected =>
             {
                 var capture = Captures[OpenCount++];
@@ -930,16 +1161,25 @@ public sealed class AudioCaptureServiceTests(ITestOutputHelper output)
         public IReadOnlyList<MicrophoneDeviceInfo> GetActiveDevices() => Volatile.Read(ref _devices);
         public NAudio.CoreAudioApi.MMDevice OpenCaptureDevice(string? deviceId) =>
             throw new InvalidOperationException("The lifecycle fixture must never open microphone hardware.");
-        internal void ChangeDefault(string id)
+        internal void ChangeDefault(string id, bool notify = true)
         {
             Volatile.Write(ref _devices, _devices.Select(d => d with { IsDefault = d.Id == id }).ToArray());
-            DevicesChanged?.Invoke(this, EventArgs.Empty);
+            if (notify) Notify();
         }
-        internal void RemoveAllDevices()
+        internal void RemoveAllDevices(bool notify = true)
         {
             Volatile.Write(ref _devices, []);
-            DevicesChanged?.Invoke(this, EventArgs.Empty);
+            if (notify) Notify();
         }
+        internal void SetDevices(MicrophoneDeviceInfo[] devices)
+        {
+            Volatile.Write(ref _devices, devices);
+            Notify();
+        }
+        internal void RestoreDevices(string defaultId) => SetDevices(
+            [new("default", "Synthetic default", defaultId == "default"),
+             new("replacement", "Synthetic replacement", defaultId == "replacement")]);
+        internal void Notify() => DevicesChanged?.Invoke(this, EventArgs.Empty);
         public void Dispose() => Interlocked.Increment(ref _disposeCount);
     }
 

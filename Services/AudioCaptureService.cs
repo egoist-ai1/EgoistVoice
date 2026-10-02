@@ -43,6 +43,8 @@ public sealed class AudioCaptureService : IAudioCaptureService
     private string? _selectedDeviceId;
     private string? _activeDeviceId;
     private bool _paused;
+    private bool _resumeWhenAvailable;
+    private string? _lastRecoveryDeviceId;
     private bool _stopRequested;
     private bool _disposed;
     private Exception? _monitoringFailure;
@@ -102,7 +104,11 @@ public sealed class AudioCaptureService : IAudioCaptureService
         {
             // App start remains recoverable when the default endpoint is temporarily unavailable.
             // Start() retries and turns the same concrete failure into the capsule state.
-            lock (_sync) _monitoringFailure = exception;
+            lock (_sync)
+            {
+                _monitoringFailure = exception;
+                _resumeWhenAvailable = true;
+            }
             AppLog.Write("WASAPI warm capture unavailable; will retry on trigger", exception);
         }
         finally
@@ -147,12 +153,15 @@ public sealed class AudioCaptureService : IAudioCaptureService
                         : "Выбранный микрофон сейчас недоступен.");
                 var expected = ResolveActiveDeviceId(normalized, devices);
                 if (string.Equals(_selectedDeviceId, normalized, StringComparison.Ordinal)
-                    && (_paused || _capture is not null
+                    && (_paused && !_resumeWhenAvailable || _capture is not null
                         && string.Equals(_activeDeviceId, expected, StringComparison.Ordinal))) return;
                 cancelled = _buffer?.IsSessionActive == true;
                 DiscardSessionLocked(clearPreRoll: true);
                 retired = DetachCaptureLocked();
                 _selectedDeviceId = normalized;
+                if (_resumeWhenAvailable) _paused = false;
+                _resumeWhenAvailable = false;
+                _lastRecoveryDeviceId = null;
                 _monitoringFailure = null;
                 generation = ++_lifecycleGeneration;
             }
@@ -176,7 +185,9 @@ public sealed class AudioCaptureService : IAudioCaptureService
             lock (_sync)
             {
                 ObjectDisposedException.ThrowIf(_disposed, this);
-                if (_paused) return;
+                if (_paused && !_resumeWhenAvailable) return;
+                _resumeWhenAvailable = false;
+                _lastRecoveryDeviceId = null;
                 var cancelled = _buffer?.IsSessionActive == true;
                 _paused = true;
                 generation = ++_lifecycleGeneration;
@@ -209,6 +220,8 @@ public sealed class AudioCaptureService : IAudioCaptureService
                             ? "Системный микрофон сейчас недоступен."
                             : "Выбранный микрофон сейчас недоступен.");
                     _paused = false;
+                    _resumeWhenAvailable = false;
+                    _lastRecoveryDeviceId = null;
                     _monitoringFailure = null;
                     generation = ++_lifecycleGeneration;
                 }
@@ -221,6 +234,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
                     lock (_sync)
                     {
                         _paused = true;
+                        _resumeWhenAvailable = true;
                         _monitoringFailure = exception;
                     }
                     throw;
@@ -239,25 +253,90 @@ public sealed class AudioCaptureService : IAudioCaptureService
 
     public void Start()
     {
+        PendingDisposal? retired = null;
         PendingDisposal? failedStart = null;
+        AudioCaptureStateChangedEventArgs? change = null;
+        MicrophoneUnavailableException? unavailable = null;
+        AudioCaptureChangeKind? successfulChange = null;
+        long generation = 0;
         try
         {
             lock (_lifecycleSync)
             {
-                bool needsCapture;
                 lock (_sync)
                 {
                     ObjectDisposedException.ThrowIf(_disposed, this);
                     if (_buffer?.IsSessionActive == true)
                         throw new InvalidOperationException("Запись уже запущена.");
-                    if (_paused) throw new InvalidOperationException("Запись приостановлена.");
-                    needsCapture = _capture is null;
+                    if (_paused && !_resumeWhenAvailable)
+                        throw new InvalidOperationException("Запись приостановлена.");
+                    // Windows notifications can be delayed/coalesced. Resolve the default anew
+                    // before every take; a warm endpoint is not proof that it is still selected.
+                    var devices = GetDevicesSafe();
+                    if (!MicrophoneSelectionPolicy.IsAvailable(_selectedDeviceId, devices))
+                    {
+                        unavailable = new MicrophoneUnavailableException(_selectedDeviceId is null
+                            ? "Системный микрофон сейчас недоступен." : "Выбранный микрофон сейчас недоступен.");
+                        _paused = true;
+                        _resumeWhenAvailable = true;
+                        _lastRecoveryDeviceId = null;
+                        _monitoringFailure = unavailable;
+                        DiscardSessionLocked(clearPreRoll: true);
+                        retired = DetachCaptureLocked();
+                        generation = ++_lifecycleGeneration;
+                        change = new(GetStateLocked(devices), AudioCaptureChangeKind.DeviceUnavailable, false);
+                    }
+                    else
+                    {
+                        var expected = ResolveActiveDeviceId(_selectedDeviceId, devices);
+                        if (_resumeWhenAvailable) successfulChange = AudioCaptureChangeKind.Resumed;
+                        else if (_capture is not null && !string.Equals(expected, _activeDeviceId, StringComparison.Ordinal))
+                            successfulChange = AudioCaptureChangeKind.DefaultDeviceChanged;
+                        if (_paused || _capture is not null
+                            && !string.Equals(expected, _activeDeviceId, StringComparison.Ordinal))
+                        {
+                            DiscardSessionLocked(clearPreRoll: true);
+                            retired = DetachCaptureLocked();
+                            ++_lifecycleGeneration;
+                        }
+                        _paused = false;
+                        _monitoringFailure = null;
+                        generation = _lifecycleGeneration;
+                    }
                 }
-                if (needsCapture) StartMonitoringLocked(out failedStart);
+            }
+            RunDisposal(retired);
+            retired = null;
+            if (unavailable is not null) throw unavailable;
+            lock (_lifecycleSync)
+            {
                 lock (_sync)
                 {
                     ObjectDisposedException.ThrowIf(_disposed, this);
-                    if (_paused || _monitoringFailure is not null)
+                    if (_paused || generation != _lifecycleGeneration)
+                        throw new OperationCanceledException("Состояние микрофона изменилось во время запуска.");
+                    if (_buffer?.IsSessionActive == true)
+                        throw new InvalidOperationException("Запись уже запущена.");
+                }
+                try { StartMonitoringLocked(out failedStart); }
+                catch (Exception exception)
+                {
+                    lock (_sync)
+                    {
+                        if (!_disposed && generation == _lifecycleGeneration)
+                        {
+                            _paused = true;
+                            _resumeWhenAvailable = true;
+                            _monitoringFailure = exception;
+                            change = new(GetStateLocked(GetDevicesSafe()), AudioCaptureChangeKind.DeviceUnavailable, false);
+                        }
+                    }
+                    throw;
+                }
+                lock (_sync)
+                {
+                    ObjectDisposedException.ThrowIf(_disposed, this);
+                    if (_paused || generation != _lifecycleGeneration || _monitoringFailure is not null)
                         throw new InvalidOperationException("Микрофон недоступен.", _monitoringFailure);
                     var format = _captureFormat ?? throw new InvalidOperationException("Формат микрофона не определён.");
                     _spectrum.Reset();
@@ -266,12 +345,16 @@ public sealed class AudioCaptureService : IAudioCaptureService
                     ++_sessionGeneration;
                     _stopRequested = false;
                     _smoothedLevel = 0;
+                    if (successfulChange is { } kind)
+                        change = new(GetStateLocked(GetDevicesSafe()), kind, false);
                 }
             }
         }
         finally
         {
+            RunDisposal(retired);
             RunDisposal(failedStart);
+            RaiseStateChanged(change, generation);
         }
     }
 
@@ -432,8 +515,12 @@ public sealed class AudioCaptureService : IAudioCaptureService
             }
             capture.StartRecording();
             lock (_sync)
+            {
                 if (!ReferenceEquals(capture, _capture))
                     throw new InvalidOperationException("Микрофон остановился во время запуска.", _monitoringFailure);
+                _resumeWhenAvailable = false;
+                _lastRecoveryDeviceId = null;
+            }
             AppLog.Write($"WASAPI microphone warm: rate={format.SampleRate}, bits={format.BitsPerSample}, channels={format.Channels}");
         }
         catch
@@ -441,7 +528,10 @@ public sealed class AudioCaptureService : IAudioCaptureService
             lock (_sync)
             {
                 if (endpoint is not null && ReferenceEquals(endpoint.Capture, _capture))
+                {
+                    _lastRecoveryDeviceId = endpoint.DeviceId;
                     failedStart = DetachCaptureLocked();
+                }
                 else if (endpoint is not null && !published)
                     failedStart = RegisterDisposalLocked(() => DisposeEndpoint(endpoint));
             }
@@ -591,6 +681,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
             if (_disposed || !ReferenceEquals(sender, _capture)) return;
             var cancelled = _buffer?.IsSessionActive == true;
             _monitoringFailure = args.Exception ?? new InvalidOperationException("WASAPI capture stopped unexpectedly.");
+            _resumeWhenAvailable = !_paused || _resumeWhenAvailable;
             _paused = true;
             generation = ++_lifecycleGeneration;
             DiscardSessionLocked(clearPreRoll: true);
@@ -608,44 +699,56 @@ public sealed class AudioCaptureService : IAudioCaptureService
         PendingDisposal? retired = null;
         AudioCaptureStateChangedEventArgs? change;
         long generation;
-        MicrophoneTopologyAction topologyAction;
+        bool restart = false;
         lock (_lifecycleSync)
         {
             lock (_sync)
             {
                 if (_disposed) return;
                 var devices = GetDevicesSafe();
-                topologyAction = MicrophoneLifecyclePolicy.EvaluateTopologyChange(
-                    _selectedDeviceId, _paused, _activeDeviceId, devices);
+                var available = MicrophoneSelectionPolicy.IsAvailable(_selectedDeviceId, devices);
+                var expected = ResolveActiveDeviceId(_selectedDeviceId, devices);
                 var cancelled = _buffer?.IsSessionActive == true;
-                if (topologyAction == MicrophoneTopologyAction.PauseUnavailable)
+                if (!available)
                 {
+                    _resumeWhenAvailable = !_paused || _resumeWhenAvailable;
                     _paused = true;
+                    _lastRecoveryDeviceId = null;
                     _monitoringFailure = new MicrophoneUnavailableException(_selectedDeviceId is null
                         ? "Системный микрофон сейчас недоступен." : "Выбранный микрофон сейчас недоступен.");
                     DiscardSessionLocked(clearPreRoll: true);
                     retired = DetachCaptureLocked();
                     ++_lifecycleGeneration;
                     change = new(GetStateLocked(devices), AudioCaptureChangeKind.DeviceUnavailable, cancelled,
-                        "Микрофон отключён. Выберите доступное устройство и возобновите запись.");
+                        "Микрофон отключён. Подключите устройство или выберите другое.");
                 }
-                else if (topologyAction == MicrophoneTopologyAction.RestartOnDefault)
+                else if ((_resumeWhenAvailable
+                    && !string.Equals(expected, _lastRecoveryDeviceId, StringComparison.Ordinal))
+                    || (!_paused && _capture is not null && _selectedDeviceId is null
+                    && !string.Equals(expected, _activeDeviceId, StringComparison.Ordinal)))
                 {
+                    var recovering = _resumeWhenAvailable;
+                    _paused = false;
+                    _monitoringFailure = null;
+                    _lastRecoveryDeviceId = expected;
                     DiscardSessionLocked(clearPreRoll: true);
                     retired = DetachCaptureLocked();
                     ++_lifecycleGeneration;
-                    change = new(GetStateLocked(devices), AudioCaptureChangeKind.DefaultDeviceChanged, cancelled);
+                    restart = true;
+                    change = new(GetStateLocked(devices), recovering ? AudioCaptureChangeKind.Resumed
+                        : AudioCaptureChangeKind.DefaultDeviceChanged, cancelled);
                 }
                 else
                 {
-                    if (_paused && _monitoringFailure is MicrophoneUnavailableException) _monitoringFailure = null;
+                    if (!_resumeWhenAvailable && _paused && _monitoringFailure is MicrophoneUnavailableException)
+                        _monitoringFailure = null;
                     change = new(GetStateLocked(devices), AudioCaptureChangeKind.InventoryChanged, false);
                 }
                 generation = _lifecycleGeneration;
             }
         }
         RunDisposal(retired);
-        if (topologyAction == MicrophoneTopologyAction.RestartOnDefault)
+        if (restart)
         {
             try
             {
@@ -660,10 +763,11 @@ public sealed class AudioCaptureService : IAudioCaptureService
                 {
                     if (_disposed || generation != _lifecycleGeneration) return;
                     _paused = true;
+                    _resumeWhenAvailable = true;
                     _monitoringFailure = exception;
                     change = new(GetStateLocked(GetDevicesSafe()), AudioCaptureChangeKind.DeviceUnavailable,
                         change?.ActiveTakeCancelled ?? false,
-                        "Не удалось переключиться на системный микрофон. Выберите устройство вручную.");
+                        "Не удалось открыть микрофон. Повторите запись или выберите другое устройство.");
                 }
             }
         }
@@ -692,7 +796,8 @@ public sealed class AudioCaptureService : IAudioCaptureService
             _paused,
             _capture is not null && !_paused,
             available,
-            !available || _monitoringFailure is not null ? "device-unavailable" : null);
+            !available || _monitoringFailure is not null ? "device-unavailable" : null)
+            { IsTransientlyUnavailable = _resumeWhenAvailable };
     }
 
     private static string? ResolveActiveDeviceId(

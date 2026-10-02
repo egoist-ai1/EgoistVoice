@@ -1,4 +1,4 @@
-﻿namespace Egoist.Voice.Services;
+namespace Egoist.Voice.Services;
 
 public readonly record struct VoiceTimbreLevel(
     float Overall,
@@ -56,7 +56,14 @@ public sealed record AudioCaptureState(
     bool IsPaused,
     bool IsMonitoring,
     bool IsAvailable,
-    string? ErrorCode = null);
+    string? ErrorCode = null)
+{
+    /// <summary>Operational pause after device loss while automatic recovery remains intended.</summary>
+    public bool IsTransientlyUnavailable { get; init; }
+
+    /// <summary>A deliberate pause, rather than a temporary missing or failing endpoint.</summary>
+    public bool IsUserPaused => IsPaused && !IsTransientlyUnavailable;
+}
 
 public enum AudioCaptureChangeKind
 {

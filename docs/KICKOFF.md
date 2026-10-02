@@ -2,7 +2,7 @@
 
 ## Current route — 2026-10-02
 
-Start with STATUS → active EV-2232 → artifacts/quality-next.2.4 remains published/installed and immutable; the wider goal of≥50% fewer word/spelling/punctuation errors and optimized startup/stability is active. Do not build the next final release before its quality gates pass. Historical2.2 instructions below do not define this task.
+Start with STATUS → active EV-2233 → artifacts/quality-next/gigaam-tuning-windows. The user chose currentGigaAMv3 tuning (5–10% desired quality gain), Windows/default-mic/resource/animation improvements and removal of unused trial models. EV-2232's50% search is superseded, not achieved.2.4 remains the immutable installed baseline; validate the new scope before final packaging. Historical2.2 instructions below do not define this task.
 
 Дата подготовки: `2026-08-02T16:37:11Z`.
 

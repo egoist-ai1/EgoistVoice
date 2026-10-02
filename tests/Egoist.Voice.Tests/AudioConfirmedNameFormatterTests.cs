@@ -125,4 +125,72 @@ public sealed class AudioConfirmedNameFormatterTests
         const string primary = "гитхаб \ud800";
         Assert.Equal(primary, AudioConfirmedNameFormatter.Apply(primary, "GitHub"));
     }
+
+    [Theory]
+    [InlineData("Пишу сТелеграма очень быстро.", "Пишу с Телеграма очень быстро.", "Пишу с Телеграма очень быстро.")]
+    [InlineData("Работаю вДискорде каждый вечер!", "Работаю в Дискорде каждый вечер!", "Работаю в Дискорде каждый вечер!")]
+    [InlineData("Скачал изГитхаба новый проект.", "Скачал из Гитхаба новый проект.", "Скачал из Гитхаба новый проект.")]
+    [InlineData("Смотрю наЮтубе новое видео.", "Смотрю на Ютубе новое видео.", "Смотрю на Ютубе новое видео.")]
+    [InlineData("Пишу с Тилеграма очень быстро.", "Пишу с Телеграма очень быстро.", "Пишу с Телеграма очень быстро.")]
+    [InlineData("Я доволен Тилеграмом сегодня.", "Я доволен Телеграмом сегодня.", "Я доволен Телеграмом сегодня.")]
+    [InlineData("С Тилеграму написали сегодня.", "С Телеграму написали сегодня.", "С Телеграму написали сегодня.")]
+    [InlineData("И создаёт новые инструменты.", "ИИ создаёт новые инструменты.", "ИИ создаёт новые инструменты.")]
+    [InlineData("Я изучаю ссср давно.", "Я изучаю СССР давно.", "Я изучаю СССР давно.")]
+    [InlineData("В рф работает команда.", "В РФ работает команда.", "В РФ работает команда.")]
+    public void Repairs_one_known_span_only_with_exact_secondary_and_unchanged_anchors(
+        string primary, string secondary, string expected)
+    {
+        var actual = AudioConfirmedNameFormatter.Apply(primary, secondary);
+        Assert.Equal(expected, actual);
+        Assert.Equal(actual, AudioConfirmedNameFormatter.Apply(actual, secondary));
+    }
+
+    [Theory]
+    [InlineData("Чай и кофе готовы.", "Чай и кофе готовы.")]
+    [InlineData("И создаёт новые инструменты.", "И создаёт новые инструменты.")]
+    [InlineData("И создаёт новые инструменты.", "Ии создаёт новые инструменты.")]
+    [InlineData("И творят.", "ИИ творят.")]
+    [InlineData("И.", "ИИ.")]
+    [InlineData("Ии и кофе.", "ИИ и кофе.")]
+    [InlineData("Иии создаёт новые инструменты.", "ИИ создаёт новые инструменты.")]
+    [InlineData("Пишу сТелеграма очень быстро.", "Пишу с телеграма очень быстро.")]
+    [InlineData("Пишу сТелеграма очень быстро.", "Пишу с Телеграмом очень быстро.")]
+    [InlineData("Пишу с Тилеграма очень быстро.", "Пишу с Телеграмом очень быстро.")]
+    [InlineData("Пишу сТелеграма очень быстро.", "Пишу с, Телеграма очень быстро.")]
+    [InlineData("Пишу сКвантора очень быстро.", "Пишу с Квантора очень быстро.")]
+    [InlineData("Потом ушёл домой.", "По том ушёл домой.")]
+    [InlineData("Инпила.", "Ну пива.")]
+    [InlineData("Инпила сегодня очень холодное.", "Ну пива сегодня очень холодное.")]
+    [InlineData("О новом доме говорят.", "ООН новом доме говорят.")]
+    [InlineData("Пишу сТелеграма через ID42 сегодня.", "Пишу с Телеграма через ID43 сегодня.")]
+    [InlineData("Энергетик пришёл домой.", "Энергетика пришёл домой.")]
+    [InlineData("Умереть от кальяна энергетик.", "Умереть от кальяна энергетика.")]
+    [InlineData("Не пишу сТелеграма сегодня.", "Пишу с Телеграма сегодня.")]
+    [InlineData("Пишу сТелеграма 42 сообщения.", "Пишу с Телеграма 43 сообщения.")]
+    [InlineData("И создаёт новые инструменты.", "ИИ не создаёт новые инструменты.")]
+    [InlineData("И творят чудеса.", "ИИ творит чудеса.")]
+    [InlineData("Пишу сТелеграма и сДискорда сегодня.", "Пишу с Телеграма и с Дискорда сегодня.")]
+    [InlineData("Пишу сТелеграма через https://t.me.", "Пишу с Телеграма через https://t.me.")]
+    [InlineData("Пишу сТелеграма через user_id.", "Пишу с Телеграма через user_id.")]
+    [InlineData("Пишу сТелеграма через v2.4.", "Пишу с Телеграма через v2.4.")]
+    [InlineData("Пишу сТелеграма через ID-42.", "Пишу с Телеграма через ID-42.")]
+    [InlineData("Пишу сТелеграма через c:\\voice.", "Пишу с Телеграма через c:\\voice.")]
+    public void Abstains_from_unconfirmed_grammar_unknown_names_and_structured_text(
+        string primary, string secondary) =>
+        Assert.Equal(primary, AudioConfirmedNameFormatter.Apply(primary, secondary));
+
+    [Fact]
+    public void Restoring_a_name_boundary_preserves_all_bytes_outside_that_span()
+    {
+        Assert.Equal("  Пишу  с Телеграма,\tочень быстро!  ",
+            AudioConfirmedNameFormatter.Apply("  Пишу  сТелеграма,\tочень быстро!  ",
+                "Пишу с Телеграма очень быстро."));
+    }
+
+    [Fact]
+    public void Missing_secondary_never_restores_missing_letters_or_boundaries()
+    {
+        foreach (var primary in new[] { "И творят чудеса.", "Пишу сТелеграма очень быстро.", "Пишу с Тилеграма очень быстро." })
+            Assert.Equal(primary, AudioConfirmedNameFormatter.Apply(primary, null));
+    }
 }
