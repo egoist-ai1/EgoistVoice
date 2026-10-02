@@ -2,7 +2,7 @@
 
 ## Current route — 2026-10-02
 
-Start with STATUS → completed EV-2231 → docs/releases/2.4.0.md and artifacts/quality-2.4.0/release-qa. Russian quality2.4 is published and installed; all545 installed hashes/readiness/settings/Data and actual installed CLI smoke are verified. The owner authorized model/settings/UI changes, publication and workstation replacement. Source/tag61611 remains immutable; later main commits may contain post-deployment documentation only. Instructions below describe the historical2.2 program, not the current kickoff or authority. Personal acoustic/English-name/prosody and clean-VM limits remain explicit.
+Start with STATUS → active EV-2232 → artifacts/quality-next.2.4 remains published/installed and immutable; the wider goal of≥50% fewer word/spelling/punctuation errors and optimized startup/stability is active. Do not build the next final release before its quality gates pass. Historical2.2 instructions below do not define this task.
 
 Дата подготовки: `2026-08-02T16:37:11Z`.
 

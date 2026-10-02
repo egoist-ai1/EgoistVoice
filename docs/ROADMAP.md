@@ -1,5 +1,9 @@
 # Egoist Voice — roadmap
 
+## Active quality goal — 2026-10-02
+
+EV-2232 continues toward≥50% fewer word/spelling/punctuation errors, independent human control tests and then verified cold-start/resource/stability/UI improvements before the next final build.2.4 remains the intermediate installed baseline. [Acceptance](tickets/EV-2232-quality-50.md).
+
 ## Current quality release — 2026-10-02
 
 EV-2231 / [2.4.0](https://github.com/egoist-ai1/EgoistVoice/releases/tag/v2.4.0) is published and installed: plain words + audio punctuation/case and conservative known names. Full/CI1037, Compact1030/7skip, Pester34 and exact shipped public80 pass.545 installed files match; both engines ready, punctuation on, existing user settings/Data preserved, actual installed CLI smoke passed. Public punctuation errors−53.07%/raw character errors−57.94%, lexical26/1169 unchanged. Personal acoustic/English-name/prosody gold and clean-Windows installer lifecycle remain future checks. [Evaluation](models/EVALUATION-2.4.0.md).
