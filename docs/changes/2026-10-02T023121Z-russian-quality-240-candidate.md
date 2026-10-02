@@ -1,0 +1,9 @@
+# Russian quality 2.4 candidate
+
+Owner authorized quality improvements, large local model comparisons, source/UI changes, build/publication and installed replacement; hard25%resource cap relaxed. DNS is excluded. Candidate adds plain RNNT words plus E2E audio punctuation/case and bounded audio-confirmed names, preserving original PCM, literal word policy and safe delivery. Eight pinned offline models; source-only UTF8managedfork fixes Unicode paths without replacing stock native DLLs.
+
+Actual80public human clips reproduce26/1169lexical errors unchanged, punctuation277→130, rawchars573→241; warmmedian76→162ms. ActiveCPU~2.14×; readyprivate~747MB before independent baseline engine. Silence3empty, file/memory parity, inputimmutability, formattingoff, cancel/recovery,111saudio/Unicode pass. Full1037/1037,Compact1030/7skip; independentUI21states/10layouts/439focuschecks pass. Candidate comparison and limits in Evaluation2.4; actual private voice/Englishname/prosodygold not established.
+
+Source interfaces preserved: TranscriptionResult keeps original constructor/deconstruction and adds formatting status; legacy catalog export stays4 and qualityexport8 added. Portable usesqualityservice; Full hybrid unchanged. Legacy settings missingformatSpeech defaulttrue, explicitfalse preserved. Formatterfailure returnsprimarywords with visible fallback and boundedretry; lifecycle serialized tofixwarmup/dispose races.
+
+Builder/updater validate8models for>=2.4 andlegacy4; sourcefreeze/independentfinalpayload/publication/localtransaction/readback are next. No installer executed on user workstation; Data/history preserved. 2.3tag/assets remain immutable. This note records source candidate and tests, not completed rollout.

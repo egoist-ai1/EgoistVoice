@@ -1,0 +1,26 @@
+/// Copyright (c)  2025  Xiaomi Corporation (authors: Fangjun Kuang)
+
+using System.Runtime.InteropServices;
+
+namespace SherpaOnnx
+{
+    [StructLayout(LayoutKind.Sequential)]
+    public struct HomophoneReplacerConfig
+    {
+        public HomophoneReplacerConfig()
+        {
+          DictDir = "";
+          Lexicon = "";
+          RuleFsts = "";
+        }
+
+        [MarshalAs(UnmanagedType.LPUTF8Str)]
+        public string DictDir;
+
+        [MarshalAs(UnmanagedType.LPUTF8Str)]
+        public string Lexicon;
+
+        [MarshalAs(UnmanagedType.LPUTF8Str)]
+        public string RuleFsts;
+    }
+}

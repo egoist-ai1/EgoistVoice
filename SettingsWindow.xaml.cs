@@ -203,6 +203,14 @@ public partial class SettingsWindow : Window
                 0));
     }
 
+    // Static render fixture only; never changes the real engine or saved settings.
+    public void ShowRecognitionFormattingUnavailablePreview()
+    {
+        ShowModelsAndActivate();
+        _recognitionModelPreviewActive = true;
+        UpdateRecognitionModelState(allModelsReady: true, progress: null);
+        RecognitionModelStatusText.Text = "Речь готова · оформление недоступно";
+    }
     public void ShowFilledHistoryPreview()
     {
         ShowHistoryAndActivate();
@@ -301,10 +309,12 @@ public partial class SettingsWindow : Window
         {
             var settings = _settingsService.Load();
             LoadTextSettings(settings);
+            SpeechPunctuationCheck.IsChecked = settings.FormatSpeechPunctuation;
+            SpeechPunctuationCheck.Visibility = VoiceRuntimeProfile.IsPortable ? Visibility.Visible : Visibility.Collapsed;
             DirectFastModeCheck.IsChecked = settings.DirectGigaamFastMode;
             DirectFastModeCheck.Visibility = VoiceRuntimeProfile.IsPortable ? Visibility.Collapsed : Visibility.Visible;
             DirectFastModeHint.Text = VoiceRuntimeProfile.IsPortable
-                ? "Один русский распознаватель GigaAM v3 RNNT работает на компьютере. Тихие звуки и окончания сохраняются в аудио; ошибка распознавания всё ещё возможна."
+                ? "Русская речь распознаётся локально. Автоматическое оформление учитывает аудио и сохраняет распознанные слова. Тихие звуки и окончания остаются в записи."
                 : "GigaAM распознаёт русскую речь. Дополнительная сверка Whisper может помочь смешанной речи, но увеличивает ожидание.";
             MixedLanguageCheck.IsChecked = settings.MixedLanguageMode && !VoiceRuntimeProfile.IsPortable;
             MixedLanguageCheck.IsEnabled = !VoiceRuntimeProfile.IsPortable && !settings.PreserveSpokenWords;
@@ -562,6 +572,7 @@ public partial class SettingsWindow : Window
         var current = _settingsService.Load();
         _settingsService.Save(current with
         {
+            FormatSpeechPunctuation = SpeechPunctuationCheck.IsChecked == true,
             DirectGigaamFastMode = DirectFastModeCheck.IsChecked == true,
             MixedLanguageMode = MixedLanguageCheck.IsChecked == true,
             ApplyNumberNormalization = NumbersCheck.IsChecked == true,
@@ -898,6 +909,8 @@ public partial class SettingsWindow : Window
         RecognitionModelStatusText.Text = presentation.StatusText;
         if (VoiceRuntimeProfile.IsPortable && allModelsReady)
             RecognitionModelStatusText.Text = "GigaAM v3 RNNT · русский · CPU · готово без сети";
+        if (VoiceRuntimeProfile.IsPortable && _mainWindow.IsSpeechFormattingUnavailable)
+            RecognitionModelStatusText.Text = "Речь готова · оформление недоступно";
         RecognitionModelStatusText.Foreground = presentation.IsFailure ? LoudBrush : MutedBrush;
         ShowModelDownloadsButton.Visibility = presentation.ShowProgress
             ? Visibility.Visible

@@ -25,17 +25,21 @@
     <NoWarn>$(NoWarn);WFAC010</NoWarn>
     <AssemblyName>Egoist.Voice</AssemblyName>
     <RootNamespace>Egoist.Voice</RootNamespace>
-    <Version>2.3.0</Version>
-    <AssemblyVersion>2.3.0.0</AssemblyVersion>
-    <FileVersion>2.3.0.0</FileVersion>
+    <Version>2.4.0</Version>
+    <AssemblyVersion>2.4.0.0</AssemblyVersion>
+    <FileVersion>2.4.0.0</FileVersion>
     <Company>EGOIST</Company>
     <Product>Egoist Voice</Product>
     <Description>Быстрая локальная русская диктовка для Windows</Description>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="vendor\sherpa-managed-utf8\1.13.4\Egoist.Sherpa.Onnx.Utf8.csproj" />
+    <Content Include="vendor\sherpa-managed-utf8\1.13.4\LICENSE" Link="licenses\sherpa-managed-utf8-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="vendor\sherpa-managed-utf8\1.13.4\source-manifest.json" Link="licenses\sherpa-managed-utf8-source-manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="vendor\sherpa-managed-utf8\1.13.4\utf8-binding.patch" Link="licenses\sherpa-managed-utf8.patch" CopyToOutputDirectory="PreserveNewest" />
     <PackageReference Include="NAudio" Version="2.3.0" />
-    <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.4" />
+    <PackageReference Include="org.k2fsa.sherpa.onnx.runtime.win-x64" Version="1.13.4" />
     <PackageReference Include="Whisper.net" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" Condition="'$(VoiceFlavor)' != 'Compact'" />
     <PackageReference Include="Whisper.net.Runtime.Cuda" Version="1.9.1" Condition="'$(VoiceFlavor)' != 'Compact'" />
@@ -62,6 +66,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="vendor\**\*.cs" />
     <Compile Remove="tests\**\*.cs" />
     <Compile Remove="installer\EgoistVoiceBootstrap.cs" />
     <Compile Remove="installer\EgoistVoiceWebBootstrap.cs" />

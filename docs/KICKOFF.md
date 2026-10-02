@@ -2,7 +2,7 @@
 
 ## Current route — 2026-10-02
 
-Start with STATUS → EV-2230 → releases/2.3.0.md. The Russian RNNT release is published and installed. The owner authorized model/settings/UI changes, publication and workstation replacement. Instructions below describe the historical 2.2 program; they are not the current kickoff or authority for 2.3. Personal quality and clean-VM limits remain explicit.
+Start with STATUS → EV-2231 → artifacts/quality-2.3.1. The Russian RNNT 2.3.0 release is published and installed; its quality follow-up is active. The owner authorized model/settings/UI changes, publication and workstation replacement. Instructions below describe the historical 2.2 program; they are not the current kickoff or authority for 2.3. Personal quality and clean-VM limits remain explicit.
 
 Дата подготовки: `2026-08-02T16:37:11Z`.
 

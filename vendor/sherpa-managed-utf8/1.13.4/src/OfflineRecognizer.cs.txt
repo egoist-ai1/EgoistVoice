@@ -1,0 +1,111 @@
+﻿/// Copyright (c)  2024.5 by 东风破
+
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+
+namespace SherpaOnnx
+{
+    public class OfflineRecognizer : IDisposable
+    {
+        public OfflineRecognizer(OfflineRecognizerConfig config)
+        {
+            IntPtr h = SherpaOnnxCreateOfflineRecognizer(ref config);
+            if (h == IntPtr.Zero)
+            {
+                throw new InvalidOperationException("The offline ASR model or configuration could not be loaded.");
+            }
+            _handle = new HandleRef(this, h);
+        }
+
+        public void SetConfig(OfflineRecognizerConfig config)
+        {
+            ThrowIfDisposed();
+            SherpaOnnxOfflineRecognizerSetConfig(_handle.Handle, ref config);
+        }
+
+        public OfflineStream CreateStream()
+        {
+            ThrowIfDisposed();
+            IntPtr p = SherpaOnnxCreateOfflineStream(_handle.Handle);
+            if (p == IntPtr.Zero)
+            {
+                throw new InvalidOperationException("The offline ASR stream could not be created.");
+            }
+            return new OfflineStream(p);
+        }
+
+        public void Decode(OfflineStream stream)
+        {
+            ThrowIfDisposed();
+            if (stream == null) throw new ArgumentNullException(nameof(stream));
+            if (stream.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(OfflineStream));
+            Decode(_handle.Handle, stream.Handle);
+        }
+
+        // The caller should ensure all passed streams are ready for decoding.
+        public void Decode(IEnumerable<OfflineStream> streams)
+        {
+            // TargetFramework=net20 does not support System.Linq
+            // IntPtr[] ptrs = streams.Select(s => s.Handle).ToArray();
+            ThrowIfDisposed();
+            if (streams == null) throw new ArgumentNullException(nameof(streams));
+            List<IntPtr> list = new List<IntPtr>();
+            foreach (OfflineStream s in streams)
+            {
+              if (s == null) throw new ArgumentException("An ASR stream is null.", nameof(streams));
+              if (s.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(OfflineStream));
+              list.Add(s.Handle);
+            }
+            IntPtr[] ptrs = list.ToArray();
+            Decode(_handle.Handle, ptrs, ptrs.Length);
+        }
+
+        public void Dispose()
+        {
+            Cleanup();
+            // Prevent the object from being placed on the
+            // finalization queue
+            System.GC.SuppressFinalize(this);
+        }
+
+        ~OfflineRecognizer()
+        {
+            Cleanup();
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_handle.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(OfflineRecognizer));
+        }
+
+        private void Cleanup()
+        {
+            SherpaOnnxDestroyOfflineRecognizer(_handle.Handle);
+
+            // Don't permit the handle to be used again.
+            _handle = new HandleRef(this, IntPtr.Zero);
+        }
+
+        private HandleRef _handle;
+
+        [DllImport(Dll.Filename)]
+        private static extern IntPtr SherpaOnnxCreateOfflineRecognizer(ref OfflineRecognizerConfig config);
+
+        [DllImport(Dll.Filename)]
+        private static extern void SherpaOnnxOfflineRecognizerSetConfig(IntPtr handle, ref OfflineRecognizerConfig config);
+
+        [DllImport(Dll.Filename)]
+        private static extern void SherpaOnnxDestroyOfflineRecognizer(IntPtr handle);
+
+        [DllImport(Dll.Filename)]
+        private static extern IntPtr SherpaOnnxCreateOfflineStream(IntPtr handle);
+
+        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxDecodeOfflineStream")]
+        private static extern void Decode(IntPtr handle, IntPtr stream);
+
+        [DllImport(Dll.Filename, EntryPoint = "SherpaOnnxDecodeMultipleOfflineStreams")]
+        private static extern void Decode(IntPtr handle, IntPtr[] streams, int n);
+    }
+
+}

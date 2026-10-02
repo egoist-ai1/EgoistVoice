@@ -1,6 +1,10 @@
 # Egoist Voice — roadmap
 
-## Current publication — 2026-10-02
+## Current quality candidate — 2026-10-02
+
+EV-2231 / 2.4.0 source is verified: plain words + audio punctuation/case and conservative known names; Full1037, Compact1030/7skip and actual public80 pass. Packaging/publication/local replacement pending. Personal acoustic quality and clean-Windows installer lifecycle remain unverified. [Evaluation](models/EVALUATION-2.4.0.md).
+
+## Previous publication — 2026-10-02
 
 EV-2230 / [2.3.0](https://github.com/egoist-ai1/EgoistVoice/releases/tag/v2.3.0) is published and installed: single Russian plain RNNT profile, quiet acceptance fix, bounded native animation and transactional upgrade. CI920, independent package hashes and current installed readiness pass. Personal difficult-speech corpus and clean Windows lifecycle remain separate follow-up checks; historical Full EV-2210 is not declared complete.
 

@@ -1,4 +1,4 @@
-Describe 'Russian installer build boundaries' {
+﻿Describe 'Russian installer build boundaries' {
     BeforeAll {
         $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
         $builder = Join-Path $projectRoot 'scripts\Build-RussianInstaller.ps1'
@@ -8,6 +8,11 @@ Describe 'Russian installer build boundaries' {
         $runtime = Join-Path $inputDirectory 'runtime.zip'
         [IO.File]::WriteAllText($model, 'synthetic invalid model')
         [IO.File]::WriteAllText($runtime, 'synthetic invalid archive')
+        $tokens = $null; $parseErrors = $null
+        $builderAst = [Management.Automation.Language.Parser]::ParseFile($builder, [ref]$tokens, [ref]$parseErrors)
+        if ($parseErrors.Count) { throw 'Installer builder parse errors.' }
+        $defaultsDefinition = $builderAst.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Get-RussianInstallerConfiguration'}, $true)
+        . ([scriptblock]::Create($defaultsDefinition.Extent.Text))
         $buildArguments = @{
             OutputDirectory = Join-Path $projectRoot ('artifacts\plan-check-' + [Guid]::NewGuid().ToString('N'))
             WorkDirectory = Join-Path $TestDrive 'work not created'
@@ -24,6 +29,15 @@ Describe 'Russian installer build boundaries' {
         $result.planOnly | Should -BeTrue
         Test-Path -LiteralPath $buildArguments.OutputDirectory | Should -BeFalse
         Test-Path -LiteralPath $buildArguments.WorkDirectory | Should -BeFalse
+    }
+
+    It 'provides explicit true audio punctuation in valid installer defaults JSON' {
+        $defaults = Get-RussianInstallerConfiguration | ConvertTo-Json -Compress | ConvertFrom-Json
+        $defaults.formatSpeechPunctuation | Should -BeTrue
+        $defaults.preserveSpokenWords | Should -BeTrue
+        $defaults.formatWithQwen | Should -BeFalse
+        $defaults.startLocalQwen | Should -BeFalse
+        $defaults.saveRecentRecordings | Should -BeFalse
     }
 
     It 'rejects an output outside this project without touching its contents' {
@@ -44,6 +58,9 @@ Describe 'Russian installer build boundaries' {
         }
         $result = (& $builder @arguments) | ConvertFrom-Json
         $result.includeTextEditor | Should -BeFalse
+        $result.modelAssetCount | Should -Be 8
+        $result.modelAssetBytes | Should -Be 650090519
+        $result.formatSpeechPunctuation | Should -BeTrue
         Test-Path -LiteralPath $arguments.OutputDirectory | Should -BeFalse
     }
 

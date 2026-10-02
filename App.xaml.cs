@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using System.IO;
 using System.Net.Http;
 using System.Diagnostics;
@@ -38,6 +38,12 @@ public partial class App : System.Windows.Application
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             AppLog.Write("AppDomain unhandled exception", args.ExceptionObject as Exception);
 
+        if (e.Args.Length == 2 && e.Args[0] == "--export-russian-quality-models")
+        {
+            File.WriteAllText(e.Args[1], System.Text.Json.JsonSerializer.Serialize(ModelCatalog.CreateRussianQualityModels()));
+            Shutdown();
+            return;
+        }
         if (e.Args.Length == 2 && e.Args[0] == "--export-compact-models")
         {
             File.WriteAllText(e.Args[1], System.Text.Json.JsonSerializer.Serialize(ModelCatalog.CreateCompactModels()));
@@ -336,7 +342,11 @@ public partial class App : System.Windows.Application
                 }
                 else if (renderMode.Contains("recognition", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (renderMode.Contains("model-error", StringComparison.OrdinalIgnoreCase))
+                    if (renderMode.Contains("formatting-unavailable", StringComparison.OrdinalIgnoreCase))
+                    {
+                        settingsWindow.ShowRecognitionFormattingUnavailablePreview();
+                    }
+                    else if (renderMode.Contains("model-error", StringComparison.OrdinalIgnoreCase))
                     {
                         settingsWindow.ShowRecognitionModelFailurePreview();
                     }

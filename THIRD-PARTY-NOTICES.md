@@ -31,6 +31,10 @@ https://huggingface.co/Qwen/Qwen3-4B-GGUF/tree/bc640142c66e1fdd12af0bd68f4044545
 `..._tokens.txt` рядом с EXE в `Models/Speech`; все четыре файла и исходная ревизия закреплены в model manifest. Исторический Full Preview 2 сохраняет свой
 кэш при удалении приложения. Compact хранит модели рядом с EXE.
 
+Русская поставка 2.4.0 дополнительно включает четыре hash-pinned E2E RNNT файла из той же ревизии `6888903da215c7735f51101d939f3bfa679fb2b8`. Plain RNNT определяет слова; E2E распознаёт то же аудио для пунктуации, регистра и подтверждения известных названий. Общий размер восьми файлов — 650 090 519 байт. Полный MIT notice модели и model card находятся в `Models/Licenses`.
+
+Managed bindings sherpa-onnx включены как исходный UTF-8 fork `Egoist.Sherpa.Onnx.Utf8` 1.13.4.1, Apache-2.0, из commit `142807252687d81b40d6315f23470a1512a00de3`. Изменены Windows-маршалинг строк и проверки нулевых native handles; исходный публичный API сохранён. Native runtime остаётся `org.k2fsa.sherpa.onnx.runtime.win-x64` 1.13.4. Исходники, patch и pinned manifest доступны в `vendor/sherpa-managed-utf8/1.13.4`; LICENSE, patch и manifest поставляются в `licenses/`. Экспериментальный исправленный frontend не входит в эту поставку.
+
 ### Whisper large-v3-turbo — фолбэк для смешанной русско-английской речи
 
 - Автор модели: OpenAI

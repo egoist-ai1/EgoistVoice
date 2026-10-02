@@ -19,6 +19,9 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
     private readonly bool _ownsModelManager;
     private readonly bool _enableContextualBias;
     private readonly int _inferenceThreads;
+    private readonly IReadOnlyList<ModelDescriptor> _gigaDescriptors;
+    private readonly string _engineName;
+    private readonly bool _formattingEngine;
     private OfflineRecognizer? _recognizer;
     private volatile bool _disposed;
 
@@ -29,14 +32,43 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
         IModelManager? modelManager = null,
         bool enableContextualBias = false,
         int? inferenceThreads = null)
+        : this(modelManager, enableContextualBias, inferenceThreads,
+            ModelCatalog.CreateCompactModels(), "GigaAM", formattingEngine: false)
+    {
+    }
+
+    private GigaAmTranscriptionService(
+        IModelManager? modelManager,
+        bool enableContextualBias,
+        int? inferenceThreads,
+        IReadOnlyList<ModelDescriptor> descriptors,
+        string engineName,
+        bool formattingEngine)
     {
         _modelManager = modelManager ?? new ModelManager(ModelCatalog.CreateRequiredModels());
         _ownsModelManager = modelManager is null;
         _enableContextualBias = enableContextualBias;
         _inferenceThreads = Math.Clamp(inferenceThreads ?? BenchmarkDecodeThreads, 1, 12);
+        _gigaDescriptors = descriptors;
+        _engineName = engineName;
+        _formattingEngine = formattingEngine;
     }
 
-    public string EngineName => "GigaAM";
+    internal static GigaAmTranscriptionService CreateFormattingEngine(
+        IModelManager modelManager, int? threads = null)
+    {
+        ArgumentNullException.ThrowIfNull(modelManager);
+        return new GigaAmTranscriptionService(modelManager, enableContextualBias: false,
+            threads ?? Math.Clamp(Environment.ProcessorCount, 1, 4),
+            ModelCatalog.CreateFormattingModels(), "GigaAM v3 E2E RNNT", formattingEngine: true);
+    }
+
+    public string EngineName => _engineName;
+
+    internal OfflineRecognizerConfig CreateRecognizerConfiguration(IReadOnlyDictionary<string, string> paths) =>
+        RussianAsrProfile.CreateRecognizerConfig(
+            paths[_gigaDescriptors[0].Id], paths[_gigaDescriptors[1].Id],
+            paths[_gigaDescriptors[2].Id], paths[_gigaDescriptors[3].Id], _inferenceThreads);
 
     public async Task WarmUpAsync(IProgress<ModelProgress>? progress, CancellationToken cancellationToken)
     {
@@ -56,7 +88,7 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
             }
 
             var paths = new Dictionary<string, string>(StringComparer.Ordinal);
-            foreach (var descriptor in GigaDescriptors)
+            foreach (var descriptor in _gigaDescriptors)
             {
                 var transferProgress = progress is null
                     ? null
@@ -75,13 +107,9 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
                 AppLog.Write("GigaAM contextual bias disabled: reason=plain-rnnt-character-vocabulary");
             }
 
-            progress?.Report(new ModelProgress("Запускаю GigaAM…", 100));
+            progress?.Report(new ModelProgress(_formattingEngine ? "Запускаю оформление…" : "Запускаю GigaAM…", 100));
             var initialized = await Task.Run(
-                () => CreateRecognizer(
-                    paths[ModelCatalog.GigaAmEncoder.Id],
-                    paths[ModelCatalog.GigaAmDecoder.Id],
-                    paths[ModelCatalog.GigaAmJoiner.Id],
-                    paths[ModelCatalog.GigaAmTokens.Id]),
+                () => new OfflineRecognizer(CreateRecognizerConfiguration(paths)),
                 cancellationToken).ConfigureAwait(false);
 
             // The first two ONNX Runtime invocations pay for graph optimization and
@@ -101,7 +129,9 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
             ContextualBiasActive = false;
             ContextualBiasPhraseCount = 0;
             _recognizer = initialized;
-            AppLog.Write("Russian ASR ready: engine=GigaAM v3 RNNT");
+            AppLog.Write(_formattingEngine
+                ? "Russian formatter ready: engine=GigaAM v3 E2E RNNT"
+                : "Russian ASR ready: engine=GigaAM v3 RNNT");
         }
         finally
         {
@@ -346,12 +376,6 @@ public sealed class GigaAmTranscriptionService : ITranscriptionEngine, ISampleTr
         // instead of cloning every long-form chunk up front.
         return samples.ToArray();
     }
-
-    private OfflineRecognizer CreateRecognizer(string encoder, string decoder, string joiner, string tokens) =>
-        new(RussianAsrProfile.CreateRecognizerConfig(encoder, decoder, joiner, tokens, _inferenceThreads));
-
-    private static IReadOnlyList<ModelDescriptor> GigaDescriptors =>
-        [ModelCatalog.GigaAmEncoder, ModelCatalog.GigaAmDecoder, ModelCatalog.GigaAmJoiner, ModelCatalog.GigaAmTokens];
 
     private static string GetProgressLabel(ModelTransferProgress value) => value.Stage switch
     {
