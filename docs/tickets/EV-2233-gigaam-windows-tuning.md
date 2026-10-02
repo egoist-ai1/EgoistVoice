@@ -30,3 +30,5 @@ ui_refresh: Capsule controls/cadence/MainWindow.Visuals + focused tests.
 asr_models: locked current-GigaAM candidate runner and later authorised lexical implementation; Tone cleanup.
 multilingual: cleanup aggregate and deferred Vibe receipt; former600M cleanup is complete. Capture integration ownership returns to root after the focused owner work; final source-bound checks remain pending.
 Each source/artifact has one writer; benchmark/build windows are coordinated.
+
+Final version startup correction: clean Windows CI exposed initial reduced-motion notification before ExitStoryboard assignment (21constructor failures). Root deterministic isolated test reproduced old-source1pass/1failure without changing Windows preferences. Moving storyboard initialization before subscription/settings notification fixes it; new Full1150/Compact1143+7 pass. Historical1148/1141 and native22source evidence retain their pre-correction bindings. Clean CI/payload follow.

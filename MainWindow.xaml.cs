@@ -141,6 +141,7 @@ public partial class MainWindow : Window, IDisposable
         _recentRecordings = recentRecordings;
         _themeService = themeService;
         _sounds = new FeedbackSoundService(_audioCapture.SuppressFeedbackAudio);
+        _exitStoryboard = (Storyboard)Resources["ExitStoryboard"];
         _themeService.ThemeChanged += OnCapsuleThemeChanged;
         ApplyDictationSettings();
 
@@ -154,7 +155,6 @@ public partial class MainWindow : Window, IDisposable
         _pushToTalk.SetPaused(capturePreference.IsCapturePaused);
         _captureInitializationTask = InitializeCaptureSnapshotAsync();
         _modelManager.ProgressChanged += OnModelProgressChanged;
-        _exitStoryboard = (Storyboard)Resources["ExitStoryboard"];
         _exitStoryboard.Completed += (_, _) =>
         {
             if (CapsuleHidePolicy.CanComplete(

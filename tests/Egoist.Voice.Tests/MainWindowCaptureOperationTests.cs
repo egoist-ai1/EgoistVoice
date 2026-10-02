@@ -217,6 +217,20 @@ public sealed class MainWindowCaptureOperationTests(CaptureWindowDispatcher disp
         var capture=await construction;Assert.NotEqual(uiThread,nativeThread);await Task.Run(capture.Dispose);
     });
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task Theme_notification_during_construction_is_safe_with_reduced_motion(bool reducedMotion) => dispatcher.RunAsync(async () =>
+    {
+        await using var f = new WindowFixture(initialReducedMotion: reducedMotion);
+        await f.ReadyAsync();
+        Assert.Equal(reducedMotion, f.Window.ReducedMotion);
+        Assert.True(await Dispatcher.CurrentDispatcher.InvokeAsync(() => true).Task.WaitAsync(TimeSpan.FromMilliseconds(500)));
+        await f.Window.ToggleRecordingAsync();
+        Assert.True(f.Capture.Active);
+        await f.CancelAsync();
+    });
+
     [Fact]
     public Task Active_recording_start_cue_cannot_suppress_first_audio_callback() => dispatcher.RunAsync(async () =>
     {
@@ -413,7 +427,7 @@ internal sealed class WindowFixture:IAsyncDisposable
     internal MainWindow Window {get;}
     internal nint Foreground {get;set;}=1234;
     internal int ForegroundReads {get;private set;}
-    internal WindowFixture(Action<ControlledCapture>? configure = null, bool paused = false)
+    internal WindowFixture(Action<ControlledCapture>? configure = null, bool paused = false, bool? initialReducedMotion = null)
     {
         configure?.Invoke(Capture);
         _root=Path.Combine(Environment.GetEnvironmentVariable("EGOIST_VOICE_TEST_ROOT")??Path.GetTempPath(),"voice-window-tests",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(_root);
@@ -428,6 +442,18 @@ internal sealed class WindowFixture:IAsyncDisposable
             .SetValue(_theme, SystemParameters.HighContrast ? EffectiveAppTheme.HighContrast : EffectiveAppTheme.Dark);
         typeof(AppThemeService).GetProperty(nameof(AppThemeService.ReducedMotion))!
             .SetValue(_theme, !SystemParameters.ClientAreaAnimation || SystemParameters.HighContrast);
+        if (initialReducedMotion is { } reducedMotion)
+        {
+            // Simulate the initial Windows presentation notification inside this isolated test
+            // process. No registry or OS animation preference is changed.
+            _theme.ThemeChanged += (_, args) =>
+            {
+                typeof(AppThemeChangedEventArgs).GetProperty(nameof(AppThemeChangedEventArgs.ReducedMotion))!
+                    .SetValue(args, reducedMotion);
+                typeof(AppThemeService).GetProperty(nameof(AppThemeService.ReducedMotion))!
+                    .SetValue(_theme, reducedMotion);
+            };
+        }
         Window=new(Capture,Transcription,new(new ClipboardService(),new TextInsertionService()),new FakeWindowModels(),Settings,new RecentRecordingHistoryService(Path.Combine(_root,"history")),_theme,
             new MainWindowInteractionHooks(()=>{ForegroundReads++;return Foreground;},()=>{},()=>{},()=>true));
         Window.ShowActivated=false;Window.Left=-20000;Window.Top=-20000;
